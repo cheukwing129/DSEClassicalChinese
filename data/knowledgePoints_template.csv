@@ -1,0 +1,6 @@
+kpId,textId,sectionId,type,content,explanation,difficulty
+kp_yueyang_001,yueyanglou,s1,實詞,謫,貶官，降職至偏遠地方任職,1
+kp_yueyang_002,yueyanglou,s2,句式,『微斯人，吾誰與歸』,倒裝句，正常語序為『吾與誰歸』，疑問代詞作賓語前置,3
+kp_yueyang_003,yueyanglou,s3,主題手法,覽物之情與政治理想的對比昇華,由悲喜之情推展至『先天下之憂而憂』的士人抱負,3
+kp_yueyang_004,yueyanglou,s3,名句默寫,先天下之憂而憂，後天下之樂而樂,全文主旨句，常考默寫,2
+kp_virtual_zhi,CROSS,,虛詞用法,之,可作代詞(他/她/它)或結構助詞(的)，需依語境判斷,2

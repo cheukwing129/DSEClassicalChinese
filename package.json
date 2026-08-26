@@ -1,0 +1,12 @@
+{
+  "name": "dse-wenyan-app",
+  "version": "1.0.0",
+  "description": "DSE 文言文自主學習平台（字詞、句式為主軸）",
+  "scripts": {
+    "dev": "wrangler pages dev public",
+    "deploy": "wrangler pages deploy public"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
