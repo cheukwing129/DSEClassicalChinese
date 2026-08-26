@@ -1,7 +1,7 @@
-# Firebase匯入腳本使用說明
+# Firebase匯入腳本使用說明（v2：統一題型格式）
 
 ## 前置準備
-1. 在 Firebase Console 建立/確認你的專案
+1. 在 Firebase Console 建立/確認你的專案（manjingo-95d9a）
 2. 到「專案設定 → 服務帳戶」下載 serviceAccountKey.json，放在 scripts/ 目錄下
 3. cd scripts && npm install firebase-admin csv-parser
 
@@ -10,13 +10,20 @@ cd scripts
 node import_to_firestore.js
 
 ## 資料流向說明
-- data/texts_template.csv        -> Firestore: texts collection
-- data/knowledgePoints_template.csv (textId=篇章ID) -> Firestore: knowledgePoints collection
-- data/knowledgePoints_template.csv (textId=CROSS)  -> Firestore: crossTextVocab collection（跨篇虛詞/語法庫）
-- data/questions_template.csv    -> Firestore: questions collection
+- data/texts_template.csv         -> Firestore: texts collection
+- data/questions_v2_template.csv  -> Firestore: questions collection
+  （type欄位決定前端用哪種題型引擎渲染：choice/reorder/match/fill/mark）
 
-## 之後擴充建議
-- userProgress collection 不從CSV匯入，由前端/Cloud Function在學生答題時動態寫入
-  結構：userProgress/{userId}/kpRecords/{kpId} -> { easeFactor, repetition, interval, nextReviewAt, lastQuality }
-- 新增文言語法知識點：補充 data/grammar_knowledge_starter.csv 與 data/virtual_words_reference.csv 後，
-  依相同格式併入 knowledgePoints_template.csv 再重新執行匯入
+## 新增題目的方法
+1. 打開 data/questions_v2_template.csv，新增一行
+   - type=choice：options用 | 分隔選項，answer填正確選項文字
+   - type=reorder：options用 | 分隔正確順序的詞塊，answer與options相同
+   - type=match：options用 ; 分隔配對組，每組內用 | 分隔左右兩邊，answer留空
+   - type=fill：options留空，answer填正確答案文字
+   - type=mark：options用 / 分隔句中每個字，answer填活用字的index（從0開始，用|分隔多個）
+2. 重新執行 node import_to_firestore.js（會覆寫同ID的題目，新增ID則新增文件）
+3. 重新整理網頁，新題目會自動出現在練習流程中，不需要改任何程式碼
+
+## 舊版CSV已停用
+data/knowledgePoints_template.csv 與 data/questions_template.csv 是舊格式，
+已被 data/questions_v2_template.csv 取代，可保留作參考但不再匯入。

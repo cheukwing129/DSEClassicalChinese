@@ -1,6 +1,6 @@
 /**
  * import_to_firestore.js
- * 將 texts / knowledgePoints / questions 三份CSV匯入Firestore
+ * 將 texts / questions（統一七種題型格式）匯入Firestore
  * 使用方式：node import_to_firestore.js
  * 需先安裝：npm install firebase-admin csv-parser
  */
@@ -42,40 +42,25 @@ async function importTexts() {
   console.log(`✅ texts: ${rows.length} 篇已匯入`);
 }
 
-async function importKnowledgePoints() {
-  const rows = await readCSV("../data/knowledgePoints_template.csv");
-  const batch = db.batch();
-  rows.forEach((row) => {
-    const isCross = row.textId === "CROSS";
-    const targetCollection = isCross ? "crossTextVocab" : "knowledgePoints";
-    const ref = db.collection(targetCollection).doc(row.kpId);
-    batch.set(ref, {
-      textId: isCross ? null : row.textId,
-      sectionId: row.sectionId || null,
-      type: row.type,
-      content: row.content,
-      explanation: row.explanation,
-      difficulty: Number(row.difficulty) || 1,
-      appearsIn: isCross ? [] : [row.textId],
-    });
-  });
-  await batch.commit();
-  console.log(`✅ knowledgePoints: ${rows.length} 條已匯入`);
-}
-
-async function importQuestions() {
-  const rows = await readCSV("../data/questions_template.csv");
+/**
+ * 匯入統一格式題庫（data/questions_v2_template.csv）
+ * type: choice / reorder / match / fill / mark
+ * options 依 type 有不同的字串編碼規則，直接原樣存入 Firestore，
+ * 前端 index.html 的 normalizeQuestion() 會負責解析成陣列/物件
+ */
+async function importQuestionsV2() {
+  const rows = await readCSV("../data/questions_v2_template.csv");
   const batch = db.batch();
   rows.forEach((row) => {
     const ref = db.collection("questions").doc(row.questionId);
     batch.set(ref, {
-      textId: row.textId === "CROSS" ? null : row.textId,
-      kpId: row.kpId,
       type: row.type,
+      kpId: row.kpId || null,
+      textId: row.textId === "CROSS" ? null : (row.textId || null),
       question: row.question,
-      options: row.options ? row.options.split("|") : [],
-      answer: row.answer,
-      points: Number(row.points) || 1,
+      options: row.options || "",
+      answer: row.answer || "",
+      xp: Number(row.xp) || 5,
     });
   });
   await batch.commit();
@@ -85,8 +70,7 @@ async function importQuestions() {
 (async () => {
   try {
     await importTexts();
-    await importKnowledgePoints();
-    await importQuestions();
+    await importQuestionsV2();
     console.log("🎉 全部匯入完成");
     process.exit(0);
   } catch (err) {
