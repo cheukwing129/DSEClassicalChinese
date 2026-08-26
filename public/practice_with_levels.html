@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文言自學平台 - 練習（含等級系統）</title>
+<style>
+  body { font-family: "Noto Sans TC", sans-serif; max-width: 600px; margin: 20px auto; background:#f7f6f2; color:#333; padding: 0 16px; }
+  .top-bar { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#fff; border-radius:16px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .level-badge { display:flex; align-items:center; gap:8px; }
+  .level-circle { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#1cb0f6,#58cc02); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:15px; }
+  .streak-display { display:flex; align-items:center; gap:4px; font-weight:bold; color:#ff9600; }
+  .freeze-count { font-size:12px; color:#4aa8ff; margin-left:4px; }
+  .xp-total { font-size:13px; color:#999; }
+
+  .daily-goal-card { background:#fff; border-radius:16px; padding:16px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .daily-goal-label { display:flex; justify-content:space-between; font-size:13px; color:#666; margin-bottom:6px; }
+  .daily-bar { height:12px; background:#e0e0e0; border-radius:8px; overflow:hidden; }
+  .daily-bar-fill { height:100%; background:linear-gradient(90deg,#58cc02,#8ee000); border-radius:8px; transition: width .4s; }
+
+  .level-progress-card { background:#fff; border-radius:16px; padding:16px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .level-progress-label { display:flex; justify-content:space-between; font-size:13px; color:#666; margin-bottom:6px; }
+  .level-bar { height:10px; background:#e0e0e0; border-radius:6px; overflow:hidden; }
+  .level-bar-fill { height:100%; background:linear-gradient(90deg,#1cb0f6,#7bd4ff); border-radius:6px; transition: width .4s; }
+
+  .card { background:#fff; border-radius:16px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:20px; }
+  .question { font-size:18px; margin-bottom:16px; line-height:1.6; }
+  .option { display:block; width:100%; padding:12px; margin-bottom:10px; border:2px solid #e0e0e0; border-radius:12px; background:#fff; cursor:pointer; font-size:16px; text-align:left; }
+  .option:hover { border-color:#1cb0f6; }
+  .option.correct { border-color:#58cc02; background:#d7ffb8; }
+  .option.wrong { border-color:#ff4b4b; background:#ffdfe0; }
+  .feedback { margin-top:16px; padding:12px; border-radius:10px; font-weight:bold; }
+  .feedback.correct { background:#d7ffb8; color:#2b7a00; }
+  .feedback.wrong { background:#ffdfe0; color:#c40000; }
+  button.next-btn { margin-top:16px; width:100%; padding:14px; background:#58cc02; color:#fff; border:none; border-radius:12px; font-size:16px; font-weight:bold; cursor:pointer; }
+  button.next-btn:disabled { background:#ccc; cursor:not-allowed; }
+
+  .levelup-overlay {
+    position: fixed; top:0; left:0; width:100%; height:100%;
+    background: rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center;
+    z-index: 999;
+  }
+  .levelup-modal {
+    background:#fff; border-radius:20px; padding:40px 30px; text-align:center;
+    animation: popIn 0.4s ease-out;
+    max-width: 320px;
+  }
+  @keyframes popIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .levelup-circle {
+    width:100px; height:100px; border-radius:50%;
+    background: linear-gradient(135deg,#ffc800,#ff9600);
+    display:flex; align-items:center; justify-content:center;
+    font-size:36px; font-weight:bold; color:#fff; margin:0 auto 16px;
+    box-shadow: 0 0 0 8px rgba(255,200,0,0.2);
+  }
+  .levelup-title { font-size:22px; font-weight:bold; color:#333; margin-bottom:8px; }
+  .levelup-sub { font-size:14px; color:#777; margin-bottom:20px; }
+  .levelup-close { padding:12px 32px; background:#58cc02; color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:bold; cursor:pointer; }
+
+  .streak-toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: #ff9600; color:#fff; padding:10px 20px; border-radius:20px;
+    font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,.2);
+    display:none; z-index: 998;
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="level-badge">
+    <div class="level-circle" id="levelCircle">1</div>
+    <div>
+      <div class="xp-total" id="xpTotalText">共 0 XP</div>
+    </div>
+  </div>
+  <div class="streak-display">
+    🔥 <span id="streakCount">0</span> 日
+    <span class="freeze-count" id="freezeCount">❄️×2</span>
+  </div>
+</div>
+
+<div class="daily-goal-card">
+  <div class="daily-goal-label">
+    <span>今日目標</span>
+    <span id="dailyGoalText">0 / 20 XP</span>
+  </div>
+  <div class="daily-bar"><div class="daily-bar-fill" id="dailyBarFill" style="width:0%;"></div></div>
+</div>
+
+<div class="level-progress-card">
+  <div class="level-progress-label">
+    <span>等級進度</span>
+    <span id="levelProgressText">0 / 50 XP</span>
+  </div>
+  <div class="level-bar"><div class="level-bar-fill" id="levelBarFill" style="width:0%;"></div></div>
+</div>
+
+<div class="card" id="quizCard">
+  <div class="question" id="questionText">『謫守巴陵郡』中『謫』字的意思是？</div>
+  <div id="optionsContainer"></div>
+  <div id="feedbackBox"></div>
+  <button class="next-btn" id="nextBtn" disabled>下一題</button>
+</div>
+
+<div class="streak-toast" id="streakToast">🔥 連續學習日 +1！</div>
+
+<div class="levelup-overlay" id="levelupOverlay">
+  <div class="levelup-modal">
+    <div class="levelup-circle" id="levelupCircle">2</div>
+    <div class="levelup-title">升級了！</div>
+    <div class="levelup-sub" id="levelupSub">你已達到 Lv.2</div>
+    <button class="levelup-close" onclick="closeLevelUp()">繼續學習</button>
+  </div>
+</div>
+
+<script type="module">
+import {
+  loadProgress, checkDailyStreak, recordXpGain, getLevelFromTotalXp
+} from "./levelSystem.js";
+
+const questions = [
+  { id:"q001", kpId:"kp_yueyang_001", question:"『謫守巴陵郡』中『謫』字的意思是？",
+    options:["提拔","貶官","辭職","退休"], answer:"貶官" },
+  { id:"q004", kpId:"kp_virtual_zhi", question:"『輟耕之壟上』中『之』字的用法是？",
+    options:["代詞","結構助詞(的)","動詞(到/往)","語氣助詞"], answer:"動詞(到/往)" },
+  { id:"q002", kpId:"kp_yueyang_002", question:"『廉頗者，趙之良將也』屬於哪種句式？",
+    options:["判斷句","被動句","省略句","倒裝句"], answer:"判斷句" }
+];
+
+let currentIndex = 0;
+
+function refreshTopUI() {
+  const state = checkDailyStreak(loadProgress());
+  localStorage.setItem("dse_wenyan_progress", JSON.stringify(state));
+
+  const levelInfo = getLevelFromTotalXp(state.totalXp);
+
+  document.getElementById("levelCircle").textContent = levelInfo.level;
+  document.getElementById("xpTotalText").textContent = `共 ${state.totalXp} XP`;
+  document.getElementById("streakCount").textContent = state.streak;
+  document.getElementById("freezeCount").textContent = `❄️×${state.streakFreezes}`;
+
+  document.getElementById("dailyGoalText").textContent = `${state.todayXp} / ${state.dailyGoalXp} XP`;
+  const dailyPct = Math.min(100, Math.round((state.todayXp / state.dailyGoalXp) * 100));
+  document.getElementById("dailyBarFill").style.width = `${dailyPct}%`;
+
+  document.getElementById("levelProgressText").textContent =
+    `${levelInfo.currentLevelXp} / ${levelInfo.nextLevelNeeded} XP`;
+  document.getElementById("levelBarFill").style.width = `${levelInfo.progressPercent}%`;
+}
+
+function renderQuestion() {
+  const q = questions[currentIndex];
+  document.getElementById("questionText").textContent = q.question;
+  const container = document.getElementById("optionsContainer");
+  container.innerHTML = "";
+  document.getElementById("feedbackBox").innerHTML = "";
+  document.getElementById("nextBtn").disabled = true;
+
+  q.options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.className = "option";
+    btn.textContent = opt;
+    btn.onclick = () => handleAnswer(btn, opt, q);
+    container.appendChild(btn);
+  });
+}
+
+function showStreakToast() {
+  const toast = document.getElementById("streakToast");
+  toast.style.display = "block";
+  setTimeout(() => { toast.style.display = "none"; }, 2200);
+}
+
+function showLevelUp(levelInfo) {
+  document.getElementById("levelupCircle").textContent = levelInfo.level;
+  document.getElementById("levelupSub").textContent = `你已達到 Lv.${levelInfo.level}`;
+  document.getElementById("levelupOverlay").style.display = "flex";
+}
+
+window.closeLevelUp = function() {
+  document.getElementById("levelupOverlay").style.display = "none";
+};
+
+function handleAnswer(btn, selected, q) {
+  const isCorrect = selected === q.answer;
+  document.querySelectorAll(".option").forEach(b => b.onclick = null);
+
+  const xpGained = isCorrect ? 10 : 2;
+
+  if (isCorrect) {
+    btn.classList.add("correct");
+    document.getElementById("feedbackBox").innerHTML =
+      `<div class="feedback correct">答對了！+${xpGained} XP</div>`;
+  } else {
+    btn.classList.add("wrong");
+    document.getElementById("feedbackBox").innerHTML =
+      `<div class="feedback wrong">答錯了，正確答案：${q.answer}（+${xpGained} XP 參與獻励）</div>`;
+  }
+
+  const result = recordXpGain(xpGained);
+  refreshTopUI();
+
+  if (result.streakIncreased) {
+    showStreakToast();
+  }
+  if (result.leveledUp) {
+    setTimeout(() => showLevelUp(result.levelInfo), 600);
+  }
+
+  document.getElementById("nextBtn").disabled = false;
+}
+
+document.getElementById("nextBtn").onclick = () => {
+  currentIndex = (currentIndex + 1) % questions.length;
+  renderQuestion();
+};
+
+refreshTopUI();
+renderQuestion();
+</script>
+
+</body>
+</html>
