@@ -6,12 +6,12 @@ import { getFirestore, collection, getDocs, doc, getDoc, setDoc, serverTimestamp
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCGhpSFHy3MDf75fhAJtrHTQJoa18SjqAM",
+  authDomain: "manjingo-95d9a.firebaseapp.com",
+  projectId: "manjingo-95d9a",
+  storageBucket: "manjingo-95d9a.firebasestorage.app",
+  messagingSenderId: "653860419855",
+  appId: "1:653860419855:web:bd584b431a71a0ca70267a"
 };
 
 const app = initializeApp(firebaseConfig);
