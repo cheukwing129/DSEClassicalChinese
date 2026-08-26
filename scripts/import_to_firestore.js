@@ -3,16 +3,22 @@
  * 將 texts / questions（統一七種題型格式）匯入Firestore
  * 使用方式：node import_to_firestore.js
  * 需先安裝：npm install firebase-admin csv-parser
+ *
+ * 注意：firebase-admin v12+ 採用模組化匯入，不再用 admin.credential.cert()，
+ * 改用 initializeApp({ credential: cert(...) }) 的寫法。
  */
 
-const admin = require("firebase-admin");
+const { initializeApp, cert } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
 const fs = require("fs");
 const csv = require("csv-parser");
 
-admin.initializeApp({
-  credential: admin.credential.cert(require("./serviceAccountKey.json")),
+const serviceAccount = require("./serviceAccountKey.json");
+
+initializeApp({
+  credential: cert(serviceAccount),
 });
-const db = admin.firestore();
+const db = getFirestore();
 
 function readCSV(filePath) {
   return new Promise((resolve, reject) => {
@@ -42,12 +48,6 @@ async function importTexts() {
   console.log(`✅ texts: ${rows.length} 篇已匯入`);
 }
 
-/**
- * 匯入統一格式題庫（data/questions_v2_template.csv）
- * type: choice / reorder / match / fill / mark
- * options 依 type 有不同的字串編碼規則，直接原樣存入 Firestore，
- * 前端 index.html 的 normalizeQuestion() 會負責解析成陣列/物件
- */
 async function importQuestionsV2() {
   const rows = await readCSV("../data/questions_v2_template.csv");
   const batch = db.batch();
