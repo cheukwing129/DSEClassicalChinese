@@ -5,85 +5,444 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DSE 文言文自主學習平台</title>
 <style>
-  body {
-    font-family: "Noto Sans TC", sans-serif;
-    max-width: 640px;
-    margin: 60px auto;
-    background: #f7f6f2;
-    color: #333;
-    padding: 0 20px;
-  }
-  h1 {
-    text-align: center;
-    color: #1cb0f6;
-    margin-bottom: 8px;
-  }
-  p.subtitle {
-    text-align: center;
-    color: #777;
-    margin-bottom: 40px;
-  }
-  .nav-card {
-    display: block;
-    background: #fff;
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    text-decoration: none;
-    color: #333;
-    transition: transform 0.15s, box-shadow 0.15s;
-  }
-  .nav-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-  }
-  .nav-card h2 {
-    margin: 0 0 8px 0;
-    color: #1cb0f6;
-    font-size: 20px;
-  }
-  .nav-card p {
-    margin: 0;
-    font-size: 15px;
-    color: #666;
-    line-height: 1.5;
-  }
-  .tag {
-    display: inline-block;
-    background: #e8f4ff;
-    color: #1cb0f6;
-    font-size: 12px;
-    padding: 2px 10px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-  }
-  footer {
-    text-align: center;
-    margin-top: 40px;
-    font-size: 13px;
-    color: #999;
-  }
+  body { font-family: "Noto Sans TC", sans-serif; max-width: 640px; margin: 20px auto; background:#f7f6f2; color:#333; padding: 0 16px; }
+  h1.main-title { text-align:center; font-size:20px; color:#1cb0f6; margin: 8px 0 16px; }
+
+  .top-bar { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#fff; border-radius:16px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .level-badge { display:flex; align-items:center; gap:8px; }
+  .level-circle { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#1cb0f6,#58cc02); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:15px; }
+  .streak-display { display:flex; align-items:center; gap:4px; font-weight:bold; color:#ff9600; }
+  .freeze-count { font-size:12px; color:#4aa8ff; margin-left:4px; }
+  .xp-total { font-size:13px; color:#999; }
+
+  .daily-goal-card, .level-progress-card { background:#fff; border-radius:16px; padding:16px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .daily-goal-label, .level-progress-label { display:flex; justify-content:space-between; font-size:13px; color:#666; margin-bottom:6px; }
+  .daily-bar { height:12px; background:#e0e0e0; border-radius:8px; overflow:hidden; }
+  .daily-bar-fill { height:100%; background:linear-gradient(90deg,#58cc02,#8ee000); border-radius:8px; transition: width .4s; }
+  .level-bar { height:10px; background:#e0e0e0; border-radius:6px; overflow:hidden; }
+  .level-bar-fill { height:100%; background:linear-gradient(90deg,#1cb0f6,#7bd4ff); border-radius:6px; transition: width .4s; }
+
+  .tabs { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px; }
+  .tab-btn { flex-shrink:0; padding:8px 16px; border-radius:20px; border:2px solid #e0e0e0; background:#fff; font-size:14px; font-weight:bold; color:#666; cursor:pointer; white-space:nowrap; }
+  .tab-btn.active { background:#1cb0f6; border-color:#1cb0f6; color:#fff; }
+
+  .card { background:#fff; border-radius:16px; padding:22px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:20px; }
+  .tag { display:inline-block; background:#e8f4ff; color:#1cb0f6; font-size:12px; padding:2px 8px; border-radius:8px; margin-bottom:8px; }
+  .question, h3.qtitle { font-size:18px; margin-bottom:16px; line-height:1.6; margin-top:0; color:#333; }
+  .option { display:block; width:100%; padding:12px; margin-bottom:10px; border:2px solid #e0e0e0; border-radius:12px; background:#fff; cursor:pointer; font-size:16px; text-align:left; }
+  .option:hover { border-color:#1cb0f6; }
+  .option.correct { border-color:#58cc02; background:#d7ffb8; }
+  .option.wrong { border-color:#ff4b4b; background:#ffdfe0; }
+  .feedback { margin-top:16px; padding:12px; border-radius:10px; font-weight:bold; }
+  .feedback.correct { background:#d7ffb8; color:#2b7a00; }
+  .feedback.wrong { background:#ffdfe0; color:#c40000; }
+  button.next-btn, button.check-btn { margin-top:16px; width:100%; padding:14px; background:#58cc02; color:#fff; border:none; border-radius:12px; font-size:16px; font-weight:bold; cursor:pointer; }
+  button.next-btn:disabled { background:#ccc; cursor:not-allowed; }
+
+  .word-bank { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; min-height:44px; padding:8px; background:#f0f0f0; border-radius:10px; }
+  .word-tile { padding:8px 14px; background:#1cb0f6; color:#fff; border-radius:8px; cursor:grab; font-size:16px; user-select:none; }
+  .drop-zone { display:flex; flex-wrap:wrap; gap:8px; min-height:44px; padding:8px; border:2px dashed #ccc; border-radius:10px; margin-bottom:10px; }
+  .drop-zone .word-tile { background:#58cc02; cursor:pointer; }
+
+  .match-container { display:flex; gap:20px; }
+  .match-col { flex:1; }
+  .match-item { padding:10px; margin:6px 0; border:2px solid #e0e0e0; border-radius:10px; cursor:pointer; text-align:center; font-size:15px; }
+  .match-item.selected { border-color:#1cb0f6; background:#e8f4ff; }
+  .match-item.matched { border-color:#58cc02; background:#d7ffb8; cursor:default; }
+
+  input.fill-input { padding:8px 12px; border:2px solid #e0e0e0; border-radius:8px; font-size:16px; width:140px; }
+
+  .levelup-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index: 999; }
+  .levelup-modal { background:#fff; border-radius:20px; padding:40px 30px; text-align:center; animation: popIn 0.4s ease-out; max-width: 320px; }
+  @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  .levelup-circle { width:100px; height:100px; border-radius:50%; background: linear-gradient(135deg,#ffc800,#ff9600); display:flex; align-items:center; justify-content:center; font-size:36px; font-weight:bold; color:#fff; margin:0 auto 16px; box-shadow: 0 0 0 8px rgba(255,200,0,0.2); }
+  .levelup-title { font-size:22px; font-weight:bold; color:#333; margin-bottom:8px; }
+  .levelup-sub { font-size:14px; color:#777; margin-bottom:20px; }
+  .levelup-close { padding:12px 32px; background:#58cc02; color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:bold; cursor:pointer; }
+
+  .streak-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #ff9600; color:#fff; padding:10px 20px; border-radius:20px; font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,.2); display:none; z-index: 998; }
+
+  .section { display:none; }
+  .section.active { display:block; }
 </style>
 </head>
 <body>
 
-<h1>DSE 文言文自主學習平台</h1>
-<p class="subtitle">以字詞、句式為主軸的 Duolingo 式文言複習系統</p>
+<h1 class="main-title">DSE 文言文自主學習平台</h1>
 
-<a class="nav-card" href="./practice_page_prototype.html">
-  <span class="tag">練習模式</span>
-  <h2>基礎練習頁</h2>
-  <p>包含 XP、連續學習日 Streak、進度條與即時对錯反饋，示範《岳陽樓記》實詞與跨篇虛詞題目。</p>
-</a>
+<div class="top-bar">
+  <div class="level-badge">
+    <div class="level-circle" id="levelCircle">1</div>
+    <div class="xp-total" id="xpTotalText">共 0 XP</div>
+  </div>
+  <div class="streak-display">
+    🔥 <span id="streakCount">0</span> 日
+    <span class="freeze-count" id="freezeCount">❄️×2</span>
+  </div>
+</div>
 
-<a class="nav-card" href="./exercise_types_prototype.html">
-  <span class="tag">題型展示</span>
-  <h2>七種題型原型集</h2>
-  <p>字義選擇、句子重組（拖曳還原語序）、配對題、填空默寫、判斷句式題、語譯選擇、詞類活用標記。</p>
-</a>
+<div class="daily-goal-card">
+  <div class="daily-goal-label"><span>今日目標</span><span id="dailyGoalText">0 / 20 XP</span></div>
+  <div class="daily-bar"><div class="daily-bar-fill" id="dailyBarFill" style="width:0%;"></div></div>
+</div>
 
-<footer>DSEClassicalChinese &middot; 開發中原型</footer>
+<div class="level-progress-card">
+  <div class="level-progress-label"><span>等級進度</span><span id="levelProgressText">0 / 50 XP</span></div>
+  <div class="level-bar"><div class="level-bar-fill" id="levelBarFill" style="width:0%;"></div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-target="section-practice">練習模式</button>
+  <button class="tab-btn" data-target="section-types">題型集</button>
+</div>
+
+<div class="section active" id="section-practice">
+  <div class="card" id="quizCard">
+    <div class="question" id="questionText"></div>
+    <div id="optionsContainer"></div>
+    <div id="feedbackBox"></div>
+    <button class="next-btn" id="nextBtn" disabled>下一題</button>
+  </div>
+</div>
+
+<div class="section" id="section-types">
+  <div class="card">
+    <span class="tag">字義選擇題</span>
+    <h3 class="qtitle">『謫守巴陵郡』中『謫』字的意思是？</h3>
+    <div id="q1options"></div>
+    <div class="feedback" id="q1feedback"></div>
+  </div>
+
+  <div class="card">
+    <span class="tag">句子重組 · 賓語前置還原</span>
+    <h3 class="qtitle">將詞塊拖曳排成正確語序（原句出自《岳陽樓記》）</h3>
+    <div class="drop-zone" id="dropZone"></div>
+    <div class="word-bank" id="wordBank"></div>
+    <button class="check-btn" id="checkReorderBtn">檢查答案</button>
+    <div class="feedback" id="q2feedback"></div>
+  </div>
+
+  <div class="card">
+    <span class="tag">配對題 · 虛詞多義配對</span>
+    <h3 class="qtitle">將「之」的用法與對應例句配對</h3>
+    <div class="match-container">
+      <div class="match-col" id="matchLeft"></div>
+      <div class="match-col" id="matchRight"></div>
+    </div>
+    <div class="feedback" id="q3feedback"></div>
+  </div>
+
+  <div class="card">
+    <span class="tag">填空默寫</span>
+    <h3 class="qtitle">先天下之憂而憂，<input type="text" class="fill-input" id="q4input" placeholder="請輸入">。</h3>
+    <button class="check-btn" id="checkFillBtn">提交</button>
+    <div class="feedback" id="q4feedback"></div>
+  </div>
+
+  <div class="card">
+    <span class="tag">判斷句式題</span>
+    <h3 class="qtitle">『廉頗者，趙之良將也』屬於哪種句式？</h3>
+    <div id="q5options"></div>
+    <div class="feedback" id="q5feedback"></div>
+  </div>
+
+  <div class="card">
+    <span class="tag">語譯選擇</span>
+    <h3 class="qtitle">『微斯人，吾誰與歸』的正確白話翻譯是？</h3>
+    <div id="q6options"></div>
+    <div class="feedback" id="q6feedback"></div>
+  </div>
+
+  <div class="card">
+    <span class="tag">詞類活用標記</span>
+    <h3 class="qtitle">點擊句中活用的字：「先天下之憂而憂，後天下之樂而樂」</h3>
+    <div id="q7sentence"></div>
+    <div class="feedback" id="q7feedback"></div>
+  </div>
+</div>
+
+<div class="streak-toast" id="streakToast">🔥 連續學習日 +1！</div>
+
+<div class="levelup-overlay" id="levelupOverlay">
+  <div class="levelup-modal">
+    <div class="levelup-circle" id="levelupCircle">2</div>
+    <div class="levelup-title">升級了！</div>
+    <div class="levelup-sub" id="levelupSub">你已達到 Lv.2</div>
+    <button class="levelup-close" id="levelupCloseBtn">繼續學習</button>
+  </div>
+</div>
+
+<script type="module">
+import { loadProgress, checkDailyStreak, recordXpGain, getLevelFromTotalXp } from "./levelSystem.js";
+
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.target).classList.add("active");
+  });
+});
+
+function refreshTopUI() {
+  const state = checkDailyStreak(loadProgress());
+  localStorage.setItem("dse_wenyan_progress", JSON.stringify(state));
+  const levelInfo = getLevelFromTotalXp(state.totalXp);
+
+  document.getElementById("levelCircle").textContent = levelInfo.level;
+  document.getElementById("xpTotalText").textContent = `共 ${state.totalXp} XP`;
+  document.getElementById("streakCount").textContent = state.streak;
+  document.getElementById("freezeCount").textContent = `❄️×${state.streakFreezes}`;
+  document.getElementById("dailyGoalText").textContent = `${state.todayXp} / ${state.dailyGoalXp} XP`;
+  document.getElementById("dailyBarFill").style.width =
+    `${Math.min(100, Math.round((state.todayXp / state.dailyGoalXp) * 100))}%`;
+  document.getElementById("levelProgressText").textContent =
+    `${levelInfo.currentLevelXp} / ${levelInfo.nextLevelNeeded} XP`;
+  document.getElementById("levelBarFill").style.width = `${levelInfo.progressPercent}%`;
+}
+
+function showStreakToast() {
+  const toast = document.getElementById("streakToast");
+  toast.style.display = "block";
+  setTimeout(() => { toast.style.display = "none"; }, 2200);
+}
+
+function showLevelUp(levelInfo) {
+  document.getElementById("levelupCircle").textContent = levelInfo.level;
+  document.getElementById("levelupSub").textContent = `你已達到 Lv.${levelInfo.level}`;
+  document.getElementById("levelupOverlay").style.display = "flex";
+}
+document.getElementById("levelupCloseBtn").onclick = () => {
+  document.getElementById("levelupOverlay").style.display = "none";
+};
+
+function gainXp(xpGained, isCorrect) {
+  const result = recordXpGain(xpGained);
+  refreshTopUI();
+  if (result.streakIncreased) showStreakToast();
+  if (result.leveledUp) setTimeout(() => showLevelUp(result.levelInfo), 500);
+  return result;
+}
+
+const questions = [
+  { id:"q001", kpId:"kp_yueyang_001", question:"『謫守巴陵郡』中『謫』字的意思是？",
+    options:["提拔","貶官","辭職","退休"], answer:"貶官" },
+  { id:"q004", kpId:"kp_virtual_zhi", question:"『輟耕之壟上』中『之』字的用法是？",
+    options:["代詞","結構助詞(的)","動詞(到/往)","語氣助詞"], answer:"動詞(到/往)" },
+  { id:"q002", kpId:"kp_yueyang_002", question:"『廉頗者，趙之良將也』屬於哪種句式？",
+    options:["判斷句","被動句","省略句","倒裝句"], answer:"判斷句" }
+];
+let currentIndex = 0;
+
+function renderQuestion() {
+  const q = questions[currentIndex];
+  document.getElementById("questionText").textContent = q.question;
+  const container = document.getElementById("optionsContainer");
+  container.innerHTML = "";
+  document.getElementById("feedbackBox").innerHTML = "";
+  document.getElementById("nextBtn").disabled = true;
+
+  q.options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.className = "option";
+    btn.textContent = opt;
+    btn.onclick = () => handleMainAnswer(btn, opt, q);
+    container.appendChild(btn);
+  });
+}
+
+function handleMainAnswer(btn, selected, q) {
+  const isCorrect = selected === q.answer;
+  document.querySelectorAll("#optionsContainer .option").forEach(b => b.onclick = null);
+  const xpGained = isCorrect ? 10 : 2;
+
+  if (isCorrect) {
+    btn.classList.add("correct");
+    document.getElementById("feedbackBox").innerHTML = `<div class="feedback correct">答對了！+${xpGained} XP</div>`;
+  } else {
+    btn.classList.add("wrong");
+    document.getElementById("feedbackBox").innerHTML = `<div class="feedback wrong">答錯了，正確答案：${q.answer}（+${xpGained} XP 參與獻励）</div>`;
+  }
+  gainXp(xpGained, isCorrect);
+  document.getElementById("nextBtn").disabled = false;
+}
+
+document.getElementById("nextBtn").onclick = () => {
+  currentIndex = (currentIndex + 1) % questions.length;
+  renderQuestion();
+};
+
+function renderQ1() {
+  const opts = ["提拔","貶官","辭職","退休"];
+  const answer = "貶官";
+  const box = document.getElementById("q1options");
+  opts.forEach(o => {
+    const btn = document.createElement("button");
+    btn.className = "option"; btn.textContent = o;
+    btn.onclick = () => {
+      document.querySelectorAll("#q1options .option").forEach(b=>b.onclick=null);
+      const fb = document.getElementById("q1feedback");
+      const correct = o === answer;
+      if (correct) { btn.classList.add("correct"); fb.className="feedback correct"; fb.textContent="答對了！+8 XP"; }
+      else { btn.classList.add("wrong"); fb.className="feedback wrong"; fb.textContent=`正確答案：${answer}（+2 XP）`; }
+      gainXp(correct ? 8 : 2, correct);
+    };
+    box.appendChild(btn);
+  });
+}
+
+const correctOrder = ["吾","誰","與","歸"];
+let shuffled = ["誰","歸","與","吾"];
+function renderReorder() {
+  const bank = document.getElementById("wordBank");
+  const zone = document.getElementById("dropZone");
+  bank.innerHTML = ""; zone.innerHTML = "";
+  shuffled.forEach(word => {
+    const tile = document.createElement("div");
+    tile.className = "word-tile";
+    tile.textContent = word;
+    tile.draggable = true;
+    tile.ondragstart = e => e.dataTransfer.setData("text", word);
+    tile.onclick = () => {
+      if (tile.parentElement.id === "wordBank") zone.appendChild(tile);
+      else bank.appendChild(tile);
+    };
+    bank.appendChild(tile);
+  });
+  zone.ondragover = e => e.preventDefault();
+  zone.ondrop = e => {
+    e.preventDefault();
+    const word = e.dataTransfer.getData("text");
+    const tile = [...bank.children].find(t => t.textContent === word);
+    if (tile) zone.appendChild(tile);
+  };
+}
+document.getElementById("checkReorderBtn").onclick = () => {
+  const zone = document.getElementById("dropZone");
+  const current = [...zone.children].map(t => t.textContent);
+  const fb = document.getElementById("q2feedback");
+  const correct = JSON.stringify(current) === JSON.stringify(correctOrder);
+  if (correct) { fb.className = "feedback correct"; fb.textContent = "正確！『吾誰與歸』— 疑問代詞『誰』作賓語前置 +10 XP"; }
+  else { fb.className = "feedback wrong"; fb.textContent = `順序不對，正確語序：${correctOrder.join("")}`; }
+  gainXp(correct ? 10 : 1, correct);
+};
+
+const pairs = [
+  {left:"之(動詞：到/往)", right:"輟耕之壟上"},
+  {left:"之(代詞：他)", right:"公與之乘"},
+  {left:"之(結構助詞：的)", right:"三里之城"}
+];
+let selectedLeft = null;
+function renderMatch() {
+  const leftCol = document.getElementById("matchLeft");
+  const rightCol = document.getElementById("matchRight");
+  const shuffledRight = [...pairs].sort(()=>Math.random()-0.5);
+  pairs.forEach(p => {
+    const item = document.createElement("div");
+    item.className = "match-item"; item.textContent = p.left; item.dataset.match = p.right;
+    item.onclick = () => selectMatch(item);
+    leftCol.appendChild(item);
+  });
+  shuffledRight.forEach(p => {
+    const item = document.createElement("div");
+    item.className = "match-item"; item.textContent = p.right; item.dataset.match = p.left;
+    item.onclick = () => selectMatch(item);
+    rightCol.appendChild(item);
+  });
+}
+function selectMatch(item) {
+  if (item.classList.contains("matched")) return;
+  if (!selectedLeft) { selectedLeft = item; item.classList.add("selected"); return; }
+  const a = selectedLeft, b = item;
+  const isCorrect = a.dataset.match === b.textContent || b.dataset.match === a.textContent;
+  const fb = document.getElementById("q3feedback");
+  if (isCorrect) {
+    a.classList.remove("selected"); a.classList.add("matched"); b.classList.add("matched");
+    fb.className = "feedback correct"; fb.textContent = "配對正確！+5 XP";
+    gainXp(5, true);
+  } else {
+    a.classList.remove("selected");
+    fb.className = "feedback wrong"; fb.textContent = "配對錯誤，再試一次";
+  }
+  selectedLeft = null;
+}
+
+function normalize(str) { return str.replace(/[，。、；：！？\s]/g,""); }
+document.getElementById("checkFillBtn").onclick = () => {
+  const input = document.getElementById("q4input").value;
+  const answer = "後天下之樂而樂";
+  const fb = document.getElementById("q4feedback");
+  const correct = normalize(input) === normalize(answer);
+  if (correct) { fb.className = "feedback correct"; fb.textContent = "默寫正確！+10 XP"; }
+  else { fb.className = "feedback wrong"; fb.textContent = `正確答案：${answer}`; }
+  gainXp(correct ? 10 : 1, correct);
+};
+
+function renderQ5() {
+  const opts = ["判斷句","被動句","省略句","倒裝句"];
+  const answer = "判斷句";
+  const box = document.getElementById("q5options");
+  opts.forEach(o => {
+    const btn = document.createElement("button");
+    btn.className = "option"; btn.textContent = o;
+    btn.onclick = () => {
+      document.querySelectorAll("#q5options .option").forEach(b=>b.onclick=null);
+      const fb = document.getElementById("q5feedback");
+      const correct = o === answer;
+      if (correct) { btn.classList.add("correct"); fb.className="feedback correct"; fb.textContent="正確！『者...也』是判斷句標誌 +8 XP"; }
+      else { btn.classList.add("wrong"); fb.className="feedback wrong"; fb.textContent=`正確答案：${answer}`; }
+      gainXp(correct ? 8 : 2, correct);
+    };
+    box.appendChild(btn);
+  });
+}
+
+function renderQ6() {
+  const opts = ["如果沒有這樣的人，我要跟從誰呢？","如果沒有這樣的人，誰會跟從我呢？","沒有這樣的人，我不知道去哪裡。","這個人不存在，我們一起回去。"];
+  const answer = opts[0];
+  const box = document.getElementById("q6options");
+  opts.forEach(o => {
+    const btn = document.createElement("button");
+    btn.className = "option"; btn.textContent = o;
+    btn.onclick = () => {
+      document.querySelectorAll("#q6options .option").forEach(b=>b.onclick=null);
+      const fb = document.getElementById("q6feedback");
+      const correct = o === answer;
+      if (correct) { btn.classList.add("correct"); fb.className="feedback correct"; fb.textContent="答對了！+8 XP"; }
+      else { btn.classList.add("wrong"); fb.className="feedback wrong"; fb.textContent="語序理解錯誤，注意『誰與歸』= 與誰歸"; }
+      gainXp(correct ? 8 : 2, correct);
+    };
+    box.appendChild(btn);
+  });
+}
+
+function renderQ7() {
+  const chars = ["先","天","下","之","憂","而","憂","，","後","天","下","之","樂","而","樂"];
+  const activatedIndices = [0, 8];
+  const container = document.getElementById("q7sentence");
+  chars.forEach((ch, i) => {
+    const span = document.createElement("span");
+    span.textContent = ch;
+    span.style.cursor = "pointer"; span.style.padding = "4px 2px"; span.style.fontSize = "18px";
+    span.onclick = () => {
+      const fb = document.getElementById("q7feedback");
+      if (activatedIndices.includes(i) && span.style.background !== "rgb(215, 255, 184)") {
+        span.style.background = "#d7ffb8";
+        fb.className = "feedback correct"; fb.textContent = `「${ch}」是方位詞使動用法，意為「使...在先/後」 +5 XP`;
+        gainXp(5, true);
+      } else if (!activatedIndices.includes(i)) {
+        span.style.background = "#ffdfe0";
+        fb.className = "feedback wrong"; fb.textContent = "這個字沒有活用，再找找看";
+      }
+    };
+    container.appendChild(span);
+  });
+}
+
+refreshTopUI();
+renderQuestion();
+renderQ1(); renderReorder(); renderMatch(); renderQ5(); renderQ6(); renderQ7();
+</script>
 
 </body>
 </html>
