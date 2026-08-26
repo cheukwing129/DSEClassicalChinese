@@ -1,7 +1,7 @@
 /**
  * levelSystem.js
  * XP、等級、Streak（含Streak Freeze）核心邏輯
- * 純前端 localStorage 版本，之後可換成從 Firestore userProgress 讀寫
+ * 支援 Firebase 雲端同步 + localStorage 離線後備
  */
 
 function getXpNeededForLevel(level) {
@@ -31,9 +31,7 @@ function getLevelFromTotalXp(totalXp) {
 
 const STORAGE_KEY = "dse_wenyan_progress";
 
-function loadProgress() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) return JSON.parse(raw);
+function defaultState() {
   return {
     totalXp: 0,
     streak: 0,
@@ -45,7 +43,13 @@ function loadProgress() {
   };
 }
 
-function saveProgress(state) {
+function loadLocalProgress() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) return JSON.parse(raw);
+  return defaultState();
+}
+
+function saveLocalProgress(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
@@ -61,15 +65,11 @@ function daysBetween(d1, d2) {
 
 function checkDailyStreak(state) {
   const today = todayStr();
-  if (state.lastActiveDate === today) {
-    return state;
-  }
+  if (state.lastActiveDate === today) return state;
 
   if (state.lastActiveDate) {
     const gap = daysBetween(state.lastActiveDate, today);
-    if (gap === 1) {
-      // 正常延續，不做事，答題時才會+1
-    } else if (gap > 1) {
+    if (gap > 1) {
       const missedDays = gap - 1;
       if (state.streakFreezes >= missedDays) {
         state.streakFreezes -= missedDays;
@@ -79,57 +79,81 @@ function checkDailyStreak(state) {
       }
     }
   }
-
   state.todayXp = 0;
   return state;
 }
 
-function recordXpGain(xpGained) {
-  const state = checkDailyStreak(loadProgress());
-  const today = todayStr();
-
-  const wasGoalMetBefore = state.todayXp >= state.dailyGoalXp;
-  state.todayXp += xpGained;
-  state.totalXp += xpGained;
-
-  const isGoalMetNow = state.todayXp >= state.dailyGoalXp;
-  let streakIncreased = false;
-
-  if (!wasGoalMetBefore && isGoalMetNow && state.lastActiveDate !== today) {
-    state.streak += 1;
-    state.lastActiveDate = today;
-    streakIncreased = true;
-  } else if (state.lastActiveDate !== today && isGoalMetNow) {
-    state.lastActiveDate = today;
+class ProgressManager {
+  constructor() {
+    this.state = defaultState();
+    this.userId = null;
+    this.cloudSaveFn = null;
+    this.cloudLogFn = null;
   }
 
-  const levelInfo = getLevelFromTotalXp(state.totalXp);
-  const prevLevelInfo = getLevelFromTotalXp(state.totalXp - xpGained);
-  const leveledUp = levelInfo.level > prevLevelInfo.level;
+  async init(userId, cloudState, cloudSaveFn, cloudLogFn) {
+    this.userId = userId;
+    this.cloudSaveFn = cloudSaveFn;
+    this.cloudLogFn = cloudLogFn;
 
-  saveProgress(state);
+    if (cloudState) {
+      this.state = { ...defaultState(), ...cloudState };
+    } else {
+      this.state = loadLocalProgress();
+    }
+    this.state = checkDailyStreak(this.state);
+    this._persist();
+    return this.state;
+  }
 
-  return {
-    state,
-    levelInfo,
-    leveledUp,
-    streakIncreased,
-    goalMetNow: isGoalMetNow
-  };
+  _persist() {
+    saveLocalProgress(this.state);
+    if (this.userId && this.cloudSaveFn) {
+      this.cloudSaveFn(this.userId, this.state).catch(e => console.warn("雲端同步失敗", e));
+    }
+  }
+
+  getLevelInfo() {
+    return getLevelFromTotalXp(this.state.totalXp);
+  }
+
+  recordAnswer({ questionId, kpId, isCorrect, xpGained }) {
+    this.state = checkDailyStreak(this.state);
+    const today = todayStr();
+
+    const wasGoalMetBefore = this.state.todayXp >= this.state.dailyGoalXp;
+    const prevTotalXp = this.state.totalXp;
+
+    this.state.todayXp += xpGained;
+    this.state.totalXp += xpGained;
+
+    const isGoalMetNow = this.state.todayXp >= this.state.dailyGoalXp;
+    let streakIncreased = false;
+
+    if (!wasGoalMetBefore && isGoalMetNow && this.state.lastActiveDate !== today) {
+      this.state.streak += 1;
+      this.state.lastActiveDate = today;
+      streakIncreased = true;
+    } else if (this.state.lastActiveDate !== today && isGoalMetNow) {
+      this.state.lastActiveDate = today;
+    }
+
+    const levelInfo = getLevelFromTotalXp(this.state.totalXp);
+    const prevLevelInfo = getLevelFromTotalXp(prevTotalXp);
+    const leveledUp = levelInfo.level > prevLevelInfo.level;
+
+    this._persist();
+
+    if (this.userId && this.cloudLogFn) {
+      this.cloudLogFn(this.userId, { questionId, kpId, isCorrect, xpGained }).catch(e => console.warn("答題紀錄寫入失敗", e));
+    }
+
+    return { state: this.state, levelInfo, leveledUp, streakIncreased, goalMetNow: isGoalMetNow };
+  }
 }
 
-function getStreakMilestoneBadge(streak) {
-  const milestones = [
-    { days: 7, badge: "一週堅持" },
-    { days: 14, badge: "兩週恆心" },
-    { days: 30, badge: "月度堅持者" },
-    { days: 100, badge: "百日筑基" },
-    { days: 365, badge: "一年之約" }
-  ];
-  return milestones.find(m => m.days === streak) || null;
-}
+const manager = new ProgressManager();
 
 export {
-  loadProgress, saveProgress, checkDailyStreak, recordXpGain,
-  getLevelFromTotalXp, getXpNeededForLevel, getStreakMilestoneBadge, todayStr
+  manager, getLevelFromTotalXp, getXpNeededForLevel, todayStr
 };

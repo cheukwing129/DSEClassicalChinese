@@ -22,13 +22,11 @@
   .level-bar { height:10px; background:#e0e0e0; border-radius:6px; overflow:hidden; }
   .level-bar-fill { height:100%; background:linear-gradient(90deg,#1cb0f6,#7bd4ff); border-radius:6px; transition: width .4s; }
 
-  .tabs { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px; }
-  .tab-btn { flex-shrink:0; padding:8px 16px; border-radius:20px; border:2px solid #e0e0e0; background:#fff; font-size:14px; font-weight:bold; color:#666; cursor:pointer; white-space:nowrap; }
-  .tab-btn.active { background:#1cb0f6; border-color:#1cb0f6; color:#fff; }
+  .sync-status { font-size:11px; text-align:center; color:#aaa; margin-bottom:10px; }
 
   .card { background:#fff; border-radius:16px; padding:22px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:20px; }
   .tag { display:inline-block; background:#e8f4ff; color:#1cb0f6; font-size:12px; padding:2px 8px; border-radius:8px; margin-bottom:8px; }
-  .question, h3.qtitle { font-size:18px; margin-bottom:16px; line-height:1.6; margin-top:0; color:#333; }
+  .question { font-size:18px; margin-bottom:16px; line-height:1.6; margin-top:0; color:#333; }
   .option { display:block; width:100%; padding:12px; margin-bottom:10px; border:2px solid #e0e0e0; border-radius:12px; background:#fff; cursor:pointer; font-size:16px; text-align:left; }
   .option:hover { border-color:#1cb0f6; }
   .option.correct { border-color:#58cc02; background:#d7ffb8; }
@@ -40,9 +38,9 @@
   button.next-btn:disabled { background:#ccc; cursor:not-allowed; }
 
   .word-bank { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; min-height:44px; padding:8px; background:#f0f0f0; border-radius:10px; }
-  .word-tile { padding:8px 14px; background:#1cb0f6; color:#fff; border-radius:8px; cursor:grab; font-size:16px; user-select:none; }
+  .word-tile { padding:8px 14px; background:#1cb0f6; color:#fff; border-radius:8px; cursor:pointer; font-size:16px; user-select:none; }
   .drop-zone { display:flex; flex-wrap:wrap; gap:8px; min-height:44px; padding:8px; border:2px dashed #ccc; border-radius:10px; margin-bottom:10px; }
-  .drop-zone .word-tile { background:#58cc02; cursor:pointer; }
+  .drop-zone .word-tile { background:#58cc02; }
 
   .match-container { display:flex; gap:20px; }
   .match-col { flex:1; }
@@ -50,7 +48,9 @@
   .match-item.selected { border-color:#1cb0f6; background:#e8f4ff; }
   .match-item.matched { border-color:#58cc02; background:#d7ffb8; cursor:default; }
 
-  input.fill-input { padding:8px 12px; border:2px solid #e0e0e0; border-radius:8px; font-size:16px; width:140px; }
+  input.fill-input { padding:8px 12px; border:2px solid #e0e0e0; border-radius:8px; font-size:16px; width:160px; }
+
+  .mark-char { cursor:pointer; padding:4px 2px; font-size:18px; }
 
   .levelup-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index: 999; }
   .levelup-modal { background:#fff; border-radius:20px; padding:40px 30px; text-align:center; animation: popIn 0.4s ease-out; max-width: 320px; }
@@ -62,13 +62,13 @@
 
   .streak-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #ff9600; color:#fff; padding:10px 20px; border-radius:20px; font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,.2); display:none; z-index: 998; }
 
-  .section { display:none; }
-  .section.active { display:block; }
+  .no-more { text-align:center; color:#999; padding:20px; }
 </style>
 </head>
 <body>
 
 <h1 class="main-title">DSE 文言文自主學習平台</h1>
+<div class="sync-status" id="syncStatus">連接中...</div>
 
 <div class="top-bar">
   <div class="level-badge">
@@ -91,74 +91,8 @@
   <div class="level-bar"><div class="level-bar-fill" id="levelBarFill" style="width:0%;"></div></div>
 </div>
 
-<div class="tabs">
-  <button class="tab-btn active" data-target="section-practice">練習模式</button>
-  <button class="tab-btn" data-target="section-types">題型集</button>
-</div>
-
-<div class="section active" id="section-practice">
-  <div class="card" id="quizCard">
-    <div class="question" id="questionText"></div>
-    <div id="optionsContainer"></div>
-    <div id="feedbackBox"></div>
-    <button class="next-btn" id="nextBtn" disabled>下一題</button>
-  </div>
-</div>
-
-<div class="section" id="section-types">
-  <div class="card">
-    <span class="tag">字義選擇題</span>
-    <h3 class="qtitle">『謫守巴陵郡』中『謫』字的意思是？</h3>
-    <div id="q1options"></div>
-    <div class="feedback" id="q1feedback"></div>
-  </div>
-
-  <div class="card">
-    <span class="tag">句子重組 · 賓語前置還原</span>
-    <h3 class="qtitle">將詞塊拖曳排成正確語序（原句出自《岳陽樓記》）</h3>
-    <div class="drop-zone" id="dropZone"></div>
-    <div class="word-bank" id="wordBank"></div>
-    <button class="check-btn" id="checkReorderBtn">檢查答案</button>
-    <div class="feedback" id="q2feedback"></div>
-  </div>
-
-  <div class="card">
-    <span class="tag">配對題 · 虛詞多義配對</span>
-    <h3 class="qtitle">將「之」的用法與對應例句配對</h3>
-    <div class="match-container">
-      <div class="match-col" id="matchLeft"></div>
-      <div class="match-col" id="matchRight"></div>
-    </div>
-    <div class="feedback" id="q3feedback"></div>
-  </div>
-
-  <div class="card">
-    <span class="tag">填空默寫</span>
-    <h3 class="qtitle">先天下之憂而憂，<input type="text" class="fill-input" id="q4input" placeholder="請輸入">。</h3>
-    <button class="check-btn" id="checkFillBtn">提交</button>
-    <div class="feedback" id="q4feedback"></div>
-  </div>
-
-  <div class="card">
-    <span class="tag">判斷句式題</span>
-    <h3 class="qtitle">『廉頗者，趙之良將也』屬於哪種句式？</h3>
-    <div id="q5options"></div>
-    <div class="feedback" id="q5feedback"></div>
-  </div>
-
-  <div class="card">
-    <span class="tag">語譯選擇</span>
-    <h3 class="qtitle">『微斯人，吾誰與歸』的正確白話翻譯是？</h3>
-    <div id="q6options"></div>
-    <div class="feedback" id="q6feedback"></div>
-  </div>
-
-  <div class="card">
-    <span class="tag">詞類活用標記</span>
-    <h3 class="qtitle">點擊句中活用的字：「先天下之憂而憂，後天下之樂而樂」</h3>
-    <div id="q7sentence"></div>
-    <div class="feedback" id="q7feedback"></div>
-  </div>
+<div class="card" id="quizCard">
+  <div id="quizContent"></div>
 </div>
 
 <div class="streak-toast" id="streakToast">🔥 連續學習日 +1！</div>
@@ -173,31 +107,56 @@
 </div>
 
 <script type="module">
-import { loadProgress, checkDailyStreak, recordXpGain, getLevelFromTotalXp } from "./levelSystem.js";
+import { manager, getLevelFromTotalXp } from "./levelSystem.js";
+import { ensureLogin, fetchAllQuestions, fetchUserProgress, saveUserProgress, logAnswerEvent } from "./firebase-config.js";
 
-document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById(btn.dataset.target).classList.add("active");
-  });
-});
+const fallbackQuestions = [
+  { id:"q001", type:"choice", kpId:"kp_yueyang_001", question:"『謫守巴陵郡』中『謫』字的意思是？", options:["提拔","貶官","辭職","退休"], answer:"貶官", xp:8 },
+  { id:"q004", type:"choice", kpId:"kp_virtual_zhi", question:"『輟耕之壟上』中『之』字的用法是？", options:["代詞","結構助詞(的)","動詞(到/往)","語氣助詞"], answer:"動詞(到/往)", xp:8 },
+  { id:"q005", type:"choice", kpId:"sx_001", question:"『廉頗者，趙之良將也』屬於哪種句式？", options:["判斷句","被動句","省略句","倒裝句"], answer:"判斷句", xp:8 },
+  { id:"q006", type:"reorder", kpId:"sx_006", question:"將詞塊排成正確語序（岳陽樓記）", options:["吾","誰","與","歸"], answer:["吾","誰","與","歸"], xp:10 },
+  { id:"q007", type:"match", kpId:"kp_virtual_zhi", question:"將「之」的用法與例句配對",
+    options:[["之(動詞：到/往)","輟耕之壟上"],["之(代詞：他)","公與之乘"],["之(結構助詞：的)","三里之城"]], xp:5 },
+  { id:"q008", type:"fill", kpId:"kp_yueyang_004", question:"先天下之憂而憂，____________。", answer:"後天下之樂而樂", xp:10 },
+  { id:"q010", type:"choice", kpId:"sx_006", question:"『微斯人，吾誰與歸』的正確白話翻譯是？",
+    options:["如果沒有這樣的人，我要跟從誰呢？","如果沒有這樣的人，誰會跟從我呢？","沒有這樣的人，我不知道去哪裡。","這個人不存在，我們一起回去。"],
+    answer:"如果沒有這樣的人，我要跟從誰呢？", xp:8 },
+  { id:"q011", type:"mark", kpId:"cy_004", question:"點擊句中活用的字：先天下之憂而憂，後天下之樂而樂",
+    options:["先","天","下","之","憂","而","憂","，","後","天","下","之","樂","而","樂"], answer:[0,8], xp:5 }
+];
+
+function normalizeQuestion(raw) {
+  const q = { ...raw };
+  if (q.type === "choice") {
+    q.options = Array.isArray(q.options) ? q.options : (q.options || "").split("|");
+  } else if (q.type === "reorder") {
+    const arr = Array.isArray(q.options) ? q.options : (q.options || "").split("|");
+    q.options = [...arr].sort(() => Math.random() - 0.5);
+    q.answer = Array.isArray(q.answer) ? q.answer : (q.answer || "").split("|");
+  } else if (q.type === "match") {
+    if (!Array.isArray(q.options)) {
+      q.options = (q.options || "").split(";").map(pair => pair.split("|"));
+    }
+  } else if (q.type === "mark") {
+    q.options = Array.isArray(q.options) ? q.options : (q.options || "").split("/");
+    q.answer = Array.isArray(q.answer) ? q.answer : (q.answer || "").split("|").map(Number);
+  }
+  return q;
+}
+
+let questions = [];
+let currentIndex = 0;
 
 function refreshTopUI() {
-  const state = checkDailyStreak(loadProgress());
-  localStorage.setItem("dse_wenyan_progress", JSON.stringify(state));
-  const levelInfo = getLevelFromTotalXp(state.totalXp);
-
+  const state = manager.state;
+  const levelInfo = manager.getLevelInfo();
   document.getElementById("levelCircle").textContent = levelInfo.level;
   document.getElementById("xpTotalText").textContent = `共 ${state.totalXp} XP`;
   document.getElementById("streakCount").textContent = state.streak;
   document.getElementById("freezeCount").textContent = `❄️×${state.streakFreezes}`;
   document.getElementById("dailyGoalText").textContent = `${state.todayXp} / ${state.dailyGoalXp} XP`;
-  document.getElementById("dailyBarFill").style.width =
-    `${Math.min(100, Math.round((state.todayXp / state.dailyGoalXp) * 100))}%`;
-  document.getElementById("levelProgressText").textContent =
-    `${levelInfo.currentLevelXp} / ${levelInfo.nextLevelNeeded} XP`;
+  document.getElementById("dailyBarFill").style.width = `${Math.min(100, Math.round((state.todayXp / state.dailyGoalXp) * 100))}%`;
+  document.getElementById("levelProgressText").textContent = `${levelInfo.currentLevelXp} / ${levelInfo.nextLevelNeeded} XP`;
   document.getElementById("levelBarFill").style.width = `${levelInfo.progressPercent}%`;
 }
 
@@ -216,232 +175,226 @@ document.getElementById("levelupCloseBtn").onclick = () => {
   document.getElementById("levelupOverlay").style.display = "none";
 };
 
-function gainXp(xpGained, isCorrect) {
-  const result = recordXpGain(xpGained);
+function submitAnswer(q, isCorrect, xpOverride) {
+  const xpGained = xpOverride !== undefined ? xpOverride : (isCorrect ? (q.xp || 8) : Math.min(2, q.xp || 2));
+  const result = manager.recordAnswer({ questionId: q.id, kpId: q.kpId, isCorrect, xpGained });
   refreshTopUI();
   if (result.streakIncreased) showStreakToast();
   if (result.leveledUp) setTimeout(() => showLevelUp(result.levelInfo), 500);
-  return result;
+  return xpGained;
 }
 
-const questions = [
-  { id:"q001", kpId:"kp_yueyang_001", question:"『謫守巴陵郡』中『謫』字的意思是？",
-    options:["提拔","貶官","辭職","退休"], answer:"貶官" },
-  { id:"q004", kpId:"kp_virtual_zhi", question:"『輟耕之壟上』中『之』字的用法是？",
-    options:["代詞","結構助詞(的)","動詞(到/往)","語氣助詞"], answer:"動詞(到/往)" },
-  { id:"q002", kpId:"kp_yueyang_002", question:"『廉頗者，趙之良將也』屬於哪種句式？",
-    options:["判斷句","被動句","省略句","倒裝句"], answer:"判斷句" }
-];
-let currentIndex = 0;
-
-function renderQuestion() {
-  const q = questions[currentIndex];
-  document.getElementById("questionText").textContent = q.question;
-  const container = document.getElementById("optionsContainer");
+function renderQuiz() {
+  const container = document.getElementById("quizContent");
   container.innerHTML = "";
-  document.getElementById("feedbackBox").innerHTML = "";
-  document.getElementById("nextBtn").disabled = true;
 
+  if (currentIndex >= questions.length) {
+    container.innerHTML = `<div class="no-more">今日題目已完成！明天再來挑戰更多題目 🎉</div>`;
+    return;
+  }
+
+  const q = normalizeQuestion(questions[currentIndex]);
+
+  if (q.type === "choice") renderChoice(container, q);
+  else if (q.type === "reorder") renderReorder(container, q);
+  else if (q.type === "match") renderMatch(container, q);
+  else if (q.type === "fill") renderFill(container, q);
+  else if (q.type === "mark") renderMark(container, q);
+  else nextQuestion();
+}
+
+function nextQuestion() {
+  currentIndex += 1;
+  renderQuiz();
+}
+
+function renderChoice(container, q) {
+  container.innerHTML = `
+    <div class="question">${q.question}</div>
+    <div id="optWrap"></div>
+    <div class="feedback" id="fb"></div>
+    <button class="next-btn" id="nextBtn" disabled>下一題</button>
+  `;
+  const optWrap = container.querySelector("#optWrap");
   q.options.forEach(opt => {
     const btn = document.createElement("button");
     btn.className = "option";
     btn.textContent = opt;
-    btn.onclick = () => handleMainAnswer(btn, opt, q);
-    container.appendChild(btn);
-  });
-}
-
-function handleMainAnswer(btn, selected, q) {
-  const isCorrect = selected === q.answer;
-  document.querySelectorAll("#optionsContainer .option").forEach(b => b.onclick = null);
-  const xpGained = isCorrect ? 10 : 2;
-
-  if (isCorrect) {
-    btn.classList.add("correct");
-    document.getElementById("feedbackBox").innerHTML = `<div class="feedback correct">答對了！+${xpGained} XP</div>`;
-  } else {
-    btn.classList.add("wrong");
-    document.getElementById("feedbackBox").innerHTML = `<div class="feedback wrong">答錯了，正確答案：${q.answer}（+${xpGained} XP 參與獻励）</div>`;
-  }
-  gainXp(xpGained, isCorrect);
-  document.getElementById("nextBtn").disabled = false;
-}
-
-document.getElementById("nextBtn").onclick = () => {
-  currentIndex = (currentIndex + 1) % questions.length;
-  renderQuestion();
-};
-
-function renderQ1() {
-  const opts = ["提拔","貶官","辭職","退休"];
-  const answer = "貶官";
-  const box = document.getElementById("q1options");
-  opts.forEach(o => {
-    const btn = document.createElement("button");
-    btn.className = "option"; btn.textContent = o;
     btn.onclick = () => {
-      document.querySelectorAll("#q1options .option").forEach(b=>b.onclick=null);
-      const fb = document.getElementById("q1feedback");
-      const correct = o === answer;
-      if (correct) { btn.classList.add("correct"); fb.className="feedback correct"; fb.textContent="答對了！+8 XP"; }
-      else { btn.classList.add("wrong"); fb.className="feedback wrong"; fb.textContent=`正確答案：${answer}（+2 XP）`; }
-      gainXp(correct ? 8 : 2, correct);
+      optWrap.querySelectorAll(".option").forEach(b => b.onclick = null);
+      const correct = opt === q.answer;
+      const fb = container.querySelector("#fb");
+      const xp = submitAnswer(q, correct);
+      if (correct) { btn.classList.add("correct"); fb.className = "feedback correct"; fb.textContent = `答對了！+${xp} XP`; }
+      else { btn.classList.add("wrong"); fb.className = "feedback wrong"; fb.textContent = `正確答案：${q.answer}（+${xp} XP）`; }
+      container.querySelector("#nextBtn").disabled = false;
     };
-    box.appendChild(btn);
+    optWrap.appendChild(btn);
   });
+  container.querySelector("#nextBtn").onclick = nextQuestion;
 }
 
-const correctOrder = ["吾","誰","與","歸"];
-let shuffled = ["誰","歸","與","吾"];
-function renderReorder() {
-  const bank = document.getElementById("wordBank");
-  const zone = document.getElementById("dropZone");
-  bank.innerHTML = ""; zone.innerHTML = "";
-  shuffled.forEach(word => {
+function renderReorder(container, q) {
+  container.innerHTML = `
+    <div class="question">${q.question}</div>
+    <div class="drop-zone" id="dropZone"></div>
+    <div class="word-bank" id="wordBank"></div>
+    <button class="check-btn" id="checkBtn">檢查答案</button>
+    <div class="feedback" id="fb"></div>
+    <button class="next-btn" id="nextBtn" disabled>下一題</button>
+  `;
+  const bank = container.querySelector("#wordBank");
+  const zone = container.querySelector("#dropZone");
+  q.options.forEach(word => {
     const tile = document.createElement("div");
     tile.className = "word-tile";
     tile.textContent = word;
-    tile.draggable = true;
-    tile.ondragstart = e => e.dataTransfer.setData("text", word);
     tile.onclick = () => {
-      if (tile.parentElement.id === "wordBank") zone.appendChild(tile);
+      if (tile.parentElement === bank) zone.appendChild(tile);
       else bank.appendChild(tile);
     };
     bank.appendChild(tile);
   });
-  zone.ondragover = e => e.preventDefault();
-  zone.ondrop = e => {
-    e.preventDefault();
-    const word = e.dataTransfer.getData("text");
-    const tile = [...bank.children].find(t => t.textContent === word);
-    if (tile) zone.appendChild(tile);
+  container.querySelector("#checkBtn").onclick = () => {
+    const current = [...zone.children].map(t => t.textContent);
+    const correct = JSON.stringify(current) === JSON.stringify(q.answer);
+    const fb = container.querySelector("#fb");
+    const xp = submitAnswer(q, correct);
+    if (correct) { fb.className = "feedback correct"; fb.textContent = `正確！+${xp} XP`; }
+    else { fb.className = "feedback wrong"; fb.textContent = `順序不對，正確語序：${q.answer.join("")}`; }
+    container.querySelector("#nextBtn").disabled = false;
   };
+  container.querySelector("#nextBtn").onclick = nextQuestion;
 }
-document.getElementById("checkReorderBtn").onclick = () => {
-  const zone = document.getElementById("dropZone");
-  const current = [...zone.children].map(t => t.textContent);
-  const fb = document.getElementById("q2feedback");
-  const correct = JSON.stringify(current) === JSON.stringify(correctOrder);
-  if (correct) { fb.className = "feedback correct"; fb.textContent = "正確！『吾誰與歸』— 疑問代詞『誰』作賓語前置 +10 XP"; }
-  else { fb.className = "feedback wrong"; fb.textContent = `順序不對，正確語序：${correctOrder.join("")}`; }
-  gainXp(correct ? 10 : 1, correct);
-};
 
-const pairs = [
-  {left:"之(動詞：到/往)", right:"輟耕之壟上"},
-  {left:"之(代詞：他)", right:"公與之乘"},
-  {left:"之(結構助詞：的)", right:"三里之城"}
-];
-let selectedLeft = null;
-function renderMatch() {
-  const leftCol = document.getElementById("matchLeft");
-  const rightCol = document.getElementById("matchRight");
-  const shuffledRight = [...pairs].sort(()=>Math.random()-0.5);
-  pairs.forEach(p => {
-    const item = document.createElement("div");
-    item.className = "match-item"; item.textContent = p.left; item.dataset.match = p.right;
-    item.onclick = () => selectMatch(item);
-    leftCol.appendChild(item);
-  });
-  shuffledRight.forEach(p => {
-    const item = document.createElement("div");
-    item.className = "match-item"; item.textContent = p.right; item.dataset.match = p.left;
-    item.onclick = () => selectMatch(item);
-    rightCol.appendChild(item);
-  });
-}
-function selectMatch(item) {
-  if (item.classList.contains("matched")) return;
-  if (!selectedLeft) { selectedLeft = item; item.classList.add("selected"); return; }
-  const a = selectedLeft, b = item;
-  const isCorrect = a.dataset.match === b.textContent || b.dataset.match === a.textContent;
-  const fb = document.getElementById("q3feedback");
-  if (isCorrect) {
-    a.classList.remove("selected"); a.classList.add("matched"); b.classList.add("matched");
-    fb.className = "feedback correct"; fb.textContent = "配對正確！+5 XP";
-    gainXp(5, true);
-  } else {
-    a.classList.remove("selected");
-    fb.className = "feedback wrong"; fb.textContent = "配對錯誤，再試一次";
+function renderMatch(container, q) {
+  container.innerHTML = `
+    <div class="question">${q.question}</div>
+    <div class="match-container"><div class="match-col" id="mLeft"></div><div class="match-col" id="mRight"></div></div>
+    <div class="feedback" id="fb"></div>
+    <button class="next-btn" id="nextBtn" disabled>下一題</button>
+  `;
+  const left = container.querySelector("#mLeft");
+  const right = container.querySelector("#mRight");
+  const shuffledRight = [...q.options].sort(() => Math.random() - 0.5);
+  let selectedLeft = null;
+  let matchedCount = 0;
+
+  function selectItem(item) {
+    if (item.classList.contains("matched")) return;
+    if (!selectedLeft) { selectedLeft = item; item.classList.add("selected"); return; }
+    const a = selectedLeft, b = item;
+    const correct = a.dataset.match === b.textContent || b.dataset.match === a.textContent;
+    const fb = container.querySelector("#fb");
+    if (correct) {
+      a.classList.remove("selected"); a.classList.add("matched"); b.classList.add("matched");
+      matchedCount++;
+      const xp = submitAnswer(q, true, q.xp);
+      fb.className = "feedback correct"; fb.textContent = `配對正確！+${xp} XP`;
+      if (matchedCount === q.options.length) container.querySelector("#nextBtn").disabled = false;
+    } else {
+      a.classList.remove("selected");
+      fb.className = "feedback wrong"; fb.textContent = "配對錯誤，再試一次";
+    }
+    selectedLeft = null;
   }
-  selectedLeft = null;
-}
 
-function normalize(str) { return str.replace(/[，。、；：！？\s]/g,""); }
-document.getElementById("checkFillBtn").onclick = () => {
-  const input = document.getElementById("q4input").value;
-  const answer = "後天下之樂而樂";
-  const fb = document.getElementById("q4feedback");
-  const correct = normalize(input) === normalize(answer);
-  if (correct) { fb.className = "feedback correct"; fb.textContent = "默寫正確！+10 XP"; }
-  else { fb.className = "feedback wrong"; fb.textContent = `正確答案：${answer}`; }
-  gainXp(correct ? 10 : 1, correct);
-};
-
-function renderQ5() {
-  const opts = ["判斷句","被動句","省略句","倒裝句"];
-  const answer = "判斷句";
-  const box = document.getElementById("q5options");
-  opts.forEach(o => {
-    const btn = document.createElement("button");
-    btn.className = "option"; btn.textContent = o;
-    btn.onclick = () => {
-      document.querySelectorAll("#q5options .option").forEach(b=>b.onclick=null);
-      const fb = document.getElementById("q5feedback");
-      const correct = o === answer;
-      if (correct) { btn.classList.add("correct"); fb.className="feedback correct"; fb.textContent="正確！『者...也』是判斷句標誌 +8 XP"; }
-      else { btn.classList.add("wrong"); fb.className="feedback wrong"; fb.textContent=`正確答案：${answer}`; }
-      gainXp(correct ? 8 : 2, correct);
-    };
-    box.appendChild(btn);
+  q.options.forEach(pair => {
+    const item = document.createElement("div");
+    item.className = "match-item"; item.textContent = pair[0]; item.dataset.match = pair[1];
+    item.onclick = () => selectItem(item);
+    left.appendChild(item);
   });
-}
-
-function renderQ6() {
-  const opts = ["如果沒有這樣的人，我要跟從誰呢？","如果沒有這樣的人，誰會跟從我呢？","沒有這樣的人，我不知道去哪裡。","這個人不存在，我們一起回去。"];
-  const answer = opts[0];
-  const box = document.getElementById("q6options");
-  opts.forEach(o => {
-    const btn = document.createElement("button");
-    btn.className = "option"; btn.textContent = o;
-    btn.onclick = () => {
-      document.querySelectorAll("#q6options .option").forEach(b=>b.onclick=null);
-      const fb = document.getElementById("q6feedback");
-      const correct = o === answer;
-      if (correct) { btn.classList.add("correct"); fb.className="feedback correct"; fb.textContent="答對了！+8 XP"; }
-      else { btn.classList.add("wrong"); fb.className="feedback wrong"; fb.textContent="語序理解錯誤，注意『誰與歸』= 與誰歸"; }
-      gainXp(correct ? 8 : 2, correct);
-    };
-    box.appendChild(btn);
+  shuffledRight.forEach(pair => {
+    const item = document.createElement("div");
+    item.className = "match-item"; item.textContent = pair[1]; item.dataset.match = pair[0];
+    item.onclick = () => selectItem(item);
+    right.appendChild(item);
   });
+  container.querySelector("#nextBtn").onclick = nextQuestion;
 }
 
-function renderQ7() {
-  const chars = ["先","天","下","之","憂","而","憂","，","後","天","下","之","樂","而","樂"];
-  const activatedIndices = [0, 8];
-  const container = document.getElementById("q7sentence");
-  chars.forEach((ch, i) => {
+function renderFill(container, q) {
+  container.innerHTML = `
+    <div class="question">${q.question.replace("____________", "")}</div>
+    <input type="text" class="fill-input" id="fillInput" placeholder="請輸入">
+    <button class="check-btn" id="checkBtn">提交</button>
+    <div class="feedback" id="fb"></div>
+    <button class="next-btn" id="nextBtn" disabled>下一題</button>
+  `;
+  function normalize(str) { return str.replace(/[，。、；：！？\s]/g, ""); }
+  container.querySelector("#checkBtn").onclick = () => {
+    const input = container.querySelector("#fillInput").value;
+    const correct = normalize(input) === normalize(q.answer);
+    const fb = container.querySelector("#fb");
+    const xp = submitAnswer(q, correct);
+    if (correct) { fb.className = "feedback correct"; fb.textContent = `默寫正確！+${xp} XP`; }
+    else { fb.className = "feedback wrong"; fb.textContent = `正確答案：${q.answer}`; }
+    container.querySelector("#nextBtn").disabled = false;
+  };
+  container.querySelector("#nextBtn").onclick = nextQuestion;
+}
+
+function renderMark(container, q) {
+  container.innerHTML = `
+    <div class="question">${q.question}</div>
+    <div id="sentence"></div>
+    <div class="feedback" id="fb"></div>
+    <button class="next-btn" id="nextBtn" disabled>下一題</button>
+  `;
+  const sentence = container.querySelector("#sentence");
+  let foundCount = 0;
+  q.options.forEach((ch, i) => {
     const span = document.createElement("span");
+    span.className = "mark-char";
     span.textContent = ch;
-    span.style.cursor = "pointer"; span.style.padding = "4px 2px"; span.style.fontSize = "18px";
     span.onclick = () => {
-      const fb = document.getElementById("q7feedback");
-      if (activatedIndices.includes(i) && span.style.background !== "rgb(215, 255, 184)") {
+      const fb = container.querySelector("#fb");
+      if (q.answer.includes(i) && span.dataset.found !== "1") {
         span.style.background = "#d7ffb8";
-        fb.className = "feedback correct"; fb.textContent = `「${ch}」是方位詞使動用法，意為「使...在先/後」 +5 XP`;
-        gainXp(5, true);
-      } else if (!activatedIndices.includes(i)) {
+        span.dataset.found = "1";
+        foundCount++;
+        const xp = submitAnswer(q, true, q.xp);
+        fb.className = "feedback correct"; fb.textContent = `「${ch}」活用正確！+${xp} XP`;
+        if (foundCount === q.answer.length) container.querySelector("#nextBtn").disabled = false;
+      } else if (!q.answer.includes(i)) {
         span.style.background = "#ffdfe0";
         fb.className = "feedback wrong"; fb.textContent = "這個字沒有活用，再找找看";
       }
     };
-    container.appendChild(span);
+    sentence.appendChild(span);
   });
+  container.querySelector("#nextBtn").onclick = nextQuestion;
 }
 
-refreshTopUI();
-renderQuestion();
-renderQ1(); renderReorder(); renderMatch(); renderQ5(); renderQ6(); renderQ7();
+async function init() {
+  const syncEl = document.getElementById("syncStatus");
+  let userId = null;
+  let cloudState = null;
+
+  try {
+    userId = await ensureLogin();
+    if (userId) {
+      cloudState = await fetchUserProgress(userId);
+      const remoteQuestions = await fetchAllQuestions();
+      if (remoteQuestions && remoteQuestions.length) questions = remoteQuestions;
+      syncEl.textContent = "☁️ 已連接雲端，進度自動保存";
+    } else {
+      syncEl.textContent = "⚠️ 離線模式，進度只保存在此裝置";
+    }
+  } catch (e) {
+    console.warn("Firebase 連接失敗，使用離線模式", e);
+    syncEl.textContent = "⚠️ 離線模式，進度只保存在此裝置";
+  }
+
+  if (!questions.length) questions = fallbackQuestions;
+
+  await manager.init(userId, cloudState, saveUserProgress, logAnswerEvent);
+  refreshTopUI();
+  renderQuiz();
+}
+
+init();
 </script>
 
 </body>
