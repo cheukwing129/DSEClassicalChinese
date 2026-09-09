@@ -22,6 +22,10 @@ function assertAnswerData(data) {
   if (responseTimeMs != null && (!Number.isFinite(responseTimeMs) || responseTimeMs < 0 || responseTimeMs > 10 * 60 * 1000)) {
     throw new functions.https.HttpsError("invalid-argument", "responseTimeMs 無效");
   }
+  const localDate = data.localDate ? String(data.localDate) : new Date().toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(localDate)) {
+    throw new functions.https.HttpsError("invalid-argument", "localDate 必須為 YYYY-MM-DD");
+  }
   return {
     kpId: String(data.kpId),
     questionId: data.questionId ? String(data.questionId) : null,
@@ -30,6 +34,7 @@ function assertAnswerData(data) {
     usedHint: Boolean(data.usedHint),
     attemptCount,
     responseTimeMs,
+    localDate,
   };
 }
 
@@ -59,7 +64,11 @@ exports.submitAnswer = functions.https.onCall(async (data, context) => {
     const kpSnap = await transaction.get(kpRef);
     const gameSnap = await transaction.get(gamificationRef);
     const prev = kpSnap.exists ? kpSnap.data() : {};
-    const game = gameSnap.exists ? gameSnap.data() : {};
+    const rawGame = gameSnap.exists ? gameSnap.data() : {};
+
+    // 每日 XP 必須按「本地日曆日」切換，避免跨午夜沿用昨天的 todayXp。
+    const gameDate = rawGame.todayXpDate || answer.localDate;
+    const game = gameDate === answer.localDate ? rawGame : { ...rawGame, todayXp: 0, todayXpDate: answer.localDate };
 
     let baseXp = 8;
     if (answer.questionId) {
@@ -73,17 +82,26 @@ exports.submitAnswer = functions.https.onCall(async (data, context) => {
     const totalXp = Number(game.totalXp ?? 0) + update.xpEarned;
     const todayXp = Number(game.todayXp ?? 0) + update.xpEarned;
     const dailyGoalXp = Number(game.dailyGoalXp ?? 20);
-    const today = String(data.localDate || new Date().toISOString().slice(0, 10)).slice(0, 10);
     const previousActiveDate = game.lastActiveDate || null;
     let streak = Number(game.streak ?? 0);
+    let streakFreezes = Number(game.streakFreezes ?? 2);
     let streakIncreased = false;
 
-    if (todayXp >= dailyGoalXp && previousActiveDate !== today) {
+    if (todayXp >= dailyGoalXp && previousActiveDate !== answer.localDate) {
       const previousDate = previousActiveDate ? new Date(`${previousActiveDate}T00:00:00Z`) : null;
-      const currentDate = new Date(`${today}T00:00:00Z`);
+      const currentDate = new Date(`${answer.localDate}T00:00:00Z`);
       const gap = previousDate ? Math.round((currentDate - previousDate) / 86400000) : null;
       if (gap === 1) streak += 1;
-      else if (gap == null || gap > 1) streak = 1;
+      else if (gap == null || gap > 1) {
+        const missedDays = gap == null ? 0 : gap - 1;
+        if (missedDays > 0 && streakFreezes >= missedDays) {
+          streakFreezes -= missedDays;
+          streak += 1;
+        } else {
+          streak = 1;
+          streakFreezes = missedDays > 0 ? 0 : streakFreezes;
+        }
+      }
       streakIncreased = true;
     }
 
@@ -94,8 +112,9 @@ exports.submitAnswer = functions.https.onCall(async (data, context) => {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
     transaction.set(gamificationRef, {
-      totalXp, todayXp, dailyGoalXp, streak,
-      lastActiveDate: todayXp >= dailyGoalXp ? today : previousActiveDate,
+      totalXp, todayXp, todayXpDate: answer.localDate, dailyGoalXp,
+      streak, streakFreezes,
+      lastActiveDate: todayXp >= dailyGoalXp ? answer.localDate : previousActiveDate,
       level,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
@@ -107,6 +126,7 @@ exports.submitAnswer = functions.https.onCall(async (data, context) => {
       usedHint: answer.usedHint,
       attemptCount: answer.attemptCount,
       responseTimeMs: answer.responseTimeMs,
+      localDate: answer.localDate,
       quality: update.quality,
       xpEarned: update.xpEarned,
       answeredAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -118,7 +138,7 @@ exports.submitAnswer = functions.https.onCall(async (data, context) => {
       mastery: update.mastery,
       status: update.status,
       nextReviewAt: update.nextReviewAt,
-      totalXp, todayXp, streak, streakIncreased, level,
+      totalXp, todayXp, streak, streakFreezes, streakIncreased, level,
     };
   });
 
