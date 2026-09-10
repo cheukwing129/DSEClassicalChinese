@@ -17,10 +17,21 @@ const typeLessons={
  '論證方法':{title:'方法不是標籤，而是推理方式',explanation:'舉例論證用具體事例支持觀點；對比論證利用差異突出論點；比喻論證把抽象道理轉成容易理解的類比。',tip:'判斷方法後，再說它和論點之間的關係。'},
  '說理手法':{title:'說服力來自說理安排',explanation:'委婉進諫、類比、對比等安排，會影響讀者如何接受觀點。分析時要同時指出方法和效果。',tip:'想像如果改成直接斥責，效果有何不同。'}
 };
-function build(kp){
- const base=typeLessons[kp&&kp.type]||{title:'先理解，再練習',explanation:'先掌握這個知識點的核心概念，再用題目檢查是否真正理解。',tip:'答題後回看原因，而不只記答案。'};
- const focus=kp&&kp.content?String(kp.content):'';
- return{...base,focus,examples:focus?[{sentence:focus,explanation:'本課的核心焦點。答題時留意它在具體語境中的功能與意思。'}]:[]};
-}
+const dedicated={
+ kp_virtual_zhi:{title:'「之」：先分三大身份',explanation:'「之」最常考三類：①代詞，代人或事物；②結構助詞，相當於「的」；③動詞，表示「到、往」。另外，「主語＋之＋謂語」有時用來取消句子獨立性。',tip:'先看「之」後面：若直接接地點，優先想「往」；夾在修飾語和名詞之間，優先想「的」；能代回前文人物或事物，通常是代詞。',examples:[{sentence:'輟耕之壟上',explanation:'「之」是動詞：往、到。'},{sentence:'三里之城',explanation:'「之」是結構助詞：的。'},{sentence:'公與之乘',explanation:'「之」是代詞，代曹劌。'}]},
+ kp_virtual_er:{title:'「而」：判斷前後語意關係',explanation:'「而」常連接兩個詞或分句。常見關係包括並列、順承、轉折和修飾。它本身不是永遠等於「但是」。',tip:'把「而」左右兩邊各圈起來：意思相反多為轉折；動作先後相接多為順承；性質並列則多為並列。',examples:[{sentence:'人不知而不慍',explanation:'前後有轉折意味：別人不了解，卻不惱怒。'},{sentence:'舍魚而取熊掌',explanation:'兩個動作先後相接，可理解為順承。'}]},
+ kp_virtual_yi:{title:'「以」：因為、把、用、來',explanation:'「以」常見功能包括表示原因「因為」、處置「把」、工具方式「用／憑藉」，以及目的「來／用來」。判斷時要看它後面接的是原因、對象、工具還是目的。',tip:'試著依次代入「因為／把／用／來」，哪一個讓整句關係最合理，就最接近答案。',examples:[{sentence:'不以物喜',explanation:'「以」表示原因：不因外物而歡喜。'},{sentence:'以叢草為林',explanation:'「以」表示處置：把叢草當作樹林。'},{sentence:'屬予作文以記之',explanation:'「以」表示目的：來記述這件事。'}]},
+ kp_virtual_yu:{title:'「於」：位置、來源、比較與被動',explanation:'「於」是高頻介詞，可表示「在」、來源「從」、對象「向／對」、比較「比」，部分句式還能表示被動。真正的答案由前後詞語關係決定。',tip:'若前後是兩個可比較對象，優先想「比」；若是動作發生地點，優先想「在」；若指出來源，想「從」。',examples:[{sentence:'青，取之於藍',explanation:'表示來源：從藍草取得。'},{sentence:'而青於藍',explanation:'表示比較：比藍草更青。'}]},
+ kp_virtual_qi:{title:'「其」：代詞之外，也能表語氣',explanation:'「其」常作代詞，表示「他的、他們的、那」；在疑問或反問語境中，也可能參與表達推測、反問等語氣。',tip:'如果「其」後接名詞，先檢查是否可譯成「他的／那個」；若整句本身是反問，則要考慮語氣功能。',examples:[{sentence:'其鄉人曰',explanation:'「其」作代詞，可理解為「他的」。'},{sentence:'其真無馬邪？',explanation:'置於反問語境，帶有反問／推測語氣。'}]},
+ sx_006:{title:'賓語前置：先把「誰、何」放回去',explanation:'文言疑問句中，疑問代詞作賓語時常被移到動詞或介詞前。翻譯時要先還原正常語序，再處理詞義。',tip:'看到「誰、何、安、奚」等疑問代詞，不妨問：它是不是某個動詞的賓語？若是，就嘗試移回動詞後。',examples:[{sentence:'吾誰與歸',explanation:'正常語序：吾與誰歸。'},{sentence:'何陋之有',explanation:'正常語序：有何陋。'}]},
+ kp_p3_fronting:{title:'賓語前置：辨認標誌與還原語序',explanation:'賓語前置不是任意倒裝。常見情況包括疑問代詞作賓語，以及「何……之有」等固定結構。作答時應指出前置成分，再還原。',tip:'先找動詞，再問「動詞作用在誰／甚麼？」；若答案跑到動詞前面，就可能是賓語前置。',examples:[{sentence:'何陋之有',explanation:'「何陋」是「有」的賓語，前置；「之」是前置標誌。'}]},
+ sx_003:{title:'「見」字被動：不是每個「見」都是看見',explanation:'「見＋動詞」在某些文言句中可表示被動，相當於「被……」。判斷重點是主語是否承受後面的動作。',tip:'如果把「見」譯成「看見」不通，而主語明顯是受事者，就檢查被動用法。',examples:[{sentence:'徒見欺',explanation:'不是「只看見欺騙」，而是「白白被欺騙」。'}]},
+ sx_004:{title:'「於」字被動：看主語是不是受事者',explanation:'「動詞＋於……」有時可形成被動意味。不能只因看到「於」就判被動，要同時確認主語是動作的承受者。',tip:'句式判斷永遠先看語意角色，再看形式標誌。',examples:[{sentence:'而智勇多困於所溺',explanation:'智勇之人反而多被自己溺愛的事物困住。'}]},
+ kp_translation_001:{title:'「微斯人，吾誰與歸」逐層拆解',explanation:'先處理「微」＝如果沒有；「斯人」＝這樣的人；再辨認「誰與歸」是賓語前置，正常語序為「與誰歸」。整句不是逐字照原序翻。',tip:'答案應完整表達：「如果沒有這樣的人，我和誰一道呢／我要歸依誰呢？」重點是「微」和倒裝都不能漏。',examples:[{sentence:'微斯人，吾誰與歸？',explanation:'拆解：微＝如果沒有；斯人＝這樣的人；吾與誰歸＝我和誰一道／歸依誰。'}]},
+ kp_p3_translation:{title:'翻譯四步法：詞、句、補、順',explanation:'第一步「詞」：落實關鍵實詞虛詞；第二步「句」：辨認倒裝、被動、判斷等句式；第三步「補」：補出語境中必要的省略；第四步「順」：整理成自然白話。',tip:'完成後逐項檢查：有沒有漏詞？語序還原了嗎？補出的內容有根據嗎？白話讀得通嗎？',examples:[{sentence:'何陋之有',explanation:'詞：陋＝簡陋；句：賓語前置→有何陋；順：有甚麼簡陋的呢？'}]},
+ gj_004:{title:'「卑鄙」：古義不是品德惡劣',explanation:'《出師表》「先帝不以臣卑鄙」中的「卑鄙」是古今異義。「卑」指社會地位低微，「鄙」指見識淺陋，並非現代所說的品格惡劣。',tip:'古今異義題最常用現代義作干擾項；看到熟詞先回原句。',examples:[{sentence:'先帝不以臣卑鄙',explanation:'可理解為：先帝不因我身分低微、見識淺陋而輕視我。'}]},
+ gj_005:{title:'「感激」：古義重點在感奮',explanation:'《出師表》語境中的「感激」與今天單純表示「感謝」不同，更側重因受到知遇而感動、激奮。',tip:'把人物處境放回三顧之恩的脈絡，就不容易誤選現代義。',examples:[{sentence:'由是感激，遂許先帝以驅馳',explanation:'因而感動激奮，答應為先帝奔走效力。'}]}
+};
+function build(kp){const focus=kp&&kp.content?String(kp.content):'';const specific=kp&&dedicated[kp.kpId];if(specific)return{...specific,focus,examples:specific.examples||[]};const base=typeLessons[kp&&kp.type]||{title:'先理解，再練習',explanation:'先掌握這個知識點的核心概念，再用題目檢查是否真正理解。',tip:'答題後回看原因，而不只記答案。'};return{...base,focus,examples:focus?[{sentence:focus,explanation:'本課的核心焦點。答題時留意它在具體語境中的功能與意思。'}]:[]}}
 window.ManjingoLessonContent={build};
 })();
