@@ -1,0 +1,48 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const summary=require('../public/session-summary.js');
+const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
+
+test('daily session summary sends learners with mistakes to weakness diagnosis',()=>{
+ const data=summary.model({page:'home',answered:10,correct:8,xp:64,masteryDelta:12,resolved:['kp_virtual_yi'],unlockedStages:[]});
+ assert.equal(data.wrong,2);
+ assert.equal(data.action.href,'./index.html#weaknessPanel');
+ assert.equal(data.action.label,'查看弱點診斷');
+ const html=summary.markup({page:'home',answered:10,correct:8,xp:64,masteryDelta:12,resolved:['kp_virtual_yi'],unlockedStages:[]});
+ assert.match(html,/session-summary done/);
+ assert.match(html,/8 \/ 10/);
+ assert.match(html,/\+64/);
+ assert.match(html,/掌握度淨變化/);
+ assert.match(html,/已修正：kp_virtual_yi/);
+});
+
+test('perfect daily session prioritizes newly unlocked learning path content',()=>{
+ const data=summary.model({page:'home',answered:10,correct:10,xp:80,masteryDelta:20,resolved:[],unlockedStages:['句式']});
+ assert.equal(data.wrong,0);
+ assert.equal(data.action.href,'./index.html#learningPath');
+ assert.equal(data.action.label,'看看新解鎖內容');
+ assert.match(summary.markup({page:'home',answered:10,correct:10,xp:80,masteryDelta:20,resolved:[],unlockedStages:['句式']}),/新解鎖：句式/);
+});
+
+test('targeted and remedial lesson completion returns to learning results',()=>{
+ const targeted=summary.model({page:'lesson',targeted:true,remedial:false,kpId:'kp_virtual_yi',kpLabel:'以',answered:5,correct:4,xp:32,masteryDelta:9,unlockedStages:[]});
+ assert.equal(targeted.title,'弱點補強完成');
+ assert.equal(targeted.action.href,'./index.html#masteryDashboard');
+ assert.match(summary.markup({page:'lesson',targeted:true,kpId:'kp_virtual_yi',kpLabel:'以',answered:5,correct:4,xp:32,masteryDelta:9,unlockedStages:[]}),/「以」掌握度提升 9/);
+ const remedial=summary.model({page:'lesson',targeted:true,remedial:true,answered:2,correct:2,xp:16,masteryDelta:4,unlockedStages:[]});
+ assert.equal(remedial.title,'補救驗證完成');
+ assert.equal(remedial.action.label,'查看學習成果');
+});
+
+test('session summary is loaded after answer feedback and preserves homepage completion status',()=>{
+ const catalog=read('public/content-catalog.js'),runtime=read('public/session-summary.js'),css=read('public/app-ui.css');
+ assert.match(catalog,/feedback-ui\.js.*session-summary\.js/);
+ assert.match(runtime,/📱 今日學習完成/);
+ assert.match(runtime,/class="session-summary done"/);
+ assert.match(runtime,/自適應補救/);
+ assert.match(css,/Learning session completion/);
+ assert.match(css,/\.session-summary-metrics/);
+ assert.match(css,/\.session-summary-impact/);
+});
