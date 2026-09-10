@@ -46,7 +46,7 @@ function practiceMode(kpId){
  return targeted?'practice':'normal';
 }
 function contextFor(list,preferredIds){
- const source=Array.isArray(list)?list:[],kpId=source.find(q=>q&&q.kpId)&&source.find(q=>q&&q.kpId).kpId,learning=fromRoot('ManjingoLocalLearning');
+ const source=Array.isArray(list)?list:[],first=source.find(q=>q&&q.kpId),kpId=first&&first.kpId,learning=fromRoot('ManjingoLocalLearning');
  let record={};if(kpId&&learning&&typeof learning.getKnowledge==='function'){try{record=learning.getKnowledge(kpId)||{}}catch(e){}}
  return{mastery:Number(record.mastery)||0,lastCorrect:record.lastCorrect,mode:practiceMode(kpId),preferredIds};
 }
@@ -54,7 +54,11 @@ function installCatalog(){
  const catalog=fromRoot('ManjingoContent'),pack=fromRoot('ManjingoQuestionPackAdaptive01');
  if(!catalog||!Array.isArray(catalog.questions)||!pack||!Array.isArray(pack.questions))return false;
  const ids=new Set(catalog.questions.map(q=>String(q&&q.id)));
- pack.questions.forEach(q=>{if(q&&q.id&&!ids.has(String(q.id))){catalog.questions.push({...q});ids.add(String(q.id))}});
+ pack.questions.forEach(q=>{
+   if(!q||!q.id||ids.has(String(q.id)))return;
+   const concept=typeof catalog.misconceptionConcept==='function'?catalog.misconceptionConcept(q):null,enriched=concept?{...q,misconceptionKey:concept.key,misconceptionLabel:concept.label}:{...q};
+   catalog.questions.push(enriched);ids.add(String(q.id));
+ });
  catalog.catalogVersion='reviewed-v2';
  return true;
 }
