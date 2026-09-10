@@ -3,520 +3,64 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DSE 文言文自主學習平台</title>
+<title>Manjingo｜文言文自主學習</title>
 <style>
-
-  :root{
-    --color-eager-green:#58cc02;
-    --color-storybook-green:#d7ffb8;
-    --color-spark-blue:#1cb0f6;
-    --color-fresh-leaf:#a5ed6e;
-    --color-night-ink:#000437;
-    --color-paper-white:#ffffff;
-    --color-charcoal:#4b4b4b;
-    --color-pencil-gray:#777777;
-    --color-faded-gray:#afafaf;
-    --color-danger:#ff4b4b;
-    --color-danger-bg:#ffdfe0;
-    --color-gold:#ffc800;
-    --color-orange:#ff9600;
-    --radius:12px;
-    --radius-lg:20px;
-    --border-w:2px;
-  }
-  *{box-sizing:border-box;}
-  body{
-    font-family:'Nunito','Noto Sans TC',ui-sans-serif,system-ui,sans-serif;
-    max-width:640px;margin:24px auto;background:var(--color-paper-white);
-    color:var(--color-pencil-gray);padding:0 16px 40px;
-  }
-  h1.main-title{
-    text-align:center;font-family:'Nunito Black','Nunito',sans-serif;
-    font-weight:800;font-size:40px;line-height:1.2;letter-spacing:-0.02em;
-    color:var(--color-eager-green);margin:16px 0 20px;
-  }
-  .top-bar{
-    display:flex;justify-content:space-between;align-items:center;
-    padding:14px 16px;background:var(--color-paper-white);
-    border:var(--border-w) solid var(--color-faded-gray);
-    border-radius:var(--radius-lg);margin-bottom:16px;
-  }
-  .level-badge{display:flex;align-items:center;gap:10px;}
-  .level-circle{
-    width:40px;height:40px;border-radius:50%;
-    background:var(--color-eager-green);color:#fff;
-    border:var(--border-w) solid var(--color-night-ink);
-    display:flex;align-items:center;justify-content:center;
-    font-weight:800;font-size:16px;
-  }
-  .streak-display{
-    display:flex;align-items:center;gap:4px;
-    font-weight:800;color:var(--color-orange);font-size:16px;
-  }
-  .freeze-count{font-size:12px;color:var(--color-spark-blue);margin-left:4px;font-weight:700;}
-  .xp-total{font-size:13px;color:var(--color-pencil-gray);font-weight:700;}
-  .daily-goal-card,.level-progress-card{
-    background:var(--color-paper-white);
-    border:var(--border-w) solid var(--color-faded-gray);
-    border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;
-  }
-  .daily-goal-label,.level-progress-label{
-    display:flex;justify-content:space-between;font-size:13px;
-    color:var(--color-pencil-gray);font-weight:700;margin-bottom:8px;
-    text-transform:uppercase;letter-spacing:0.05em;
-  }
-  .daily-bar,.level-bar{
-    height:14px;background:#e5e5e5;border-radius:10px;overflow:hidden;
-    border:var(--border-w) solid var(--color-faded-gray);
-  }
-  .daily-bar-fill{
-    height:100%;background:var(--color-eager-green);
-    border-radius:8px;transition:width .4s;
-  }
-  .level-bar-fill{
-    height:100%;background:var(--color-spark-blue);
-    border-radius:8px;transition:width .4s;
-  }
-  .sync-status{
-    font-size:12px;text-align:center;color:var(--color-faded-gray);
-    margin-bottom:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;
-  }
-  .card{
-    background:var(--color-paper-white);
-    border:var(--border-w) solid var(--color-faded-gray);
-    border-radius:var(--radius-lg);padding:24px;margin-bottom:20px;
-  }
-  .tag{
-    display:inline-block;background:var(--color-storybook-green);
-    color:#2b7a00;font-size:13px;font-weight:700;padding:4px 12px;
-    border-radius:var(--radius);margin-bottom:12px;
-    text-transform:uppercase;letter-spacing:0.05em;
-  }
-  .question{
-    font-size:19px;font-weight:700;margin-bottom:20px;line-height:1.4;
-    margin-top:0;color:var(--color-charcoal);
-  }
-  .option{
-    display:block;width:100%;padding:14px 16px;margin-bottom:12px;
-    border:var(--border-w) solid var(--color-faded-gray);
-    border-radius:var(--radius);background:var(--color-paper-white);
-    cursor:pointer;font-size:16px;font-weight:700;text-align:left;
-    color:var(--color-charcoal);font-family:inherit;
-    transition:border-color .15s, background .15s;
-  }
-  .option:hover{border-color:var(--color-spark-blue);background:#f0faff;}
-  .option.correct{border-color:var(--color-eager-green);background:var(--color-storybook-green);color:#2b7a00;}
-  .option.wrong{border-color:var(--color-danger);background:var(--color-danger-bg);color:#c40000;}
-  .feedback{
-    margin-top:16px;padding:14px 16px;border-radius:var(--radius);
-    font-weight:800;font-size:15px;border:var(--border-w) solid transparent;
-  }
-  .feedback.correct{background:var(--color-storybook-green);color:#2b7a00;border-color:var(--color-eager-green);}
-  .feedback.wrong{background:var(--color-danger-bg);color:#c40000;border-color:var(--color-danger);}
-  button.next-btn,button.check-btn{
-    margin-top:16px;width:100%;padding:16px;background:var(--color-eager-green);
-    color:#fff;border:none;border-radius:var(--radius);font-size:16px;
-    font-weight:800;text-transform:uppercase;letter-spacing:0.05em;
-    cursor:pointer;font-family:inherit;
-  }
-  button.next-btn:disabled{background:#e5e5e5;color:var(--color-faded-gray);cursor:not-allowed;}
-  .word-bank{
-    display:flex;flex-wrap:wrap;gap:10px;margin:14px 0;min-height:48px;
-    padding:12px;background:#f7f7f7;border-radius:var(--radius);
-    border:var(--border-w) solid var(--color-faded-gray);
-  }
-  .word-tile{
-    padding:10px 16px;background:var(--color-spark-blue);color:#fff;
-    border-radius:var(--radius);cursor:pointer;font-size:16px;font-weight:700;
-    user-select:none;border:var(--border-w) solid var(--color-night-ink);
-  }
-  .drop-zone{
-    display:flex;flex-wrap:wrap;gap:10px;min-height:48px;padding:12px;
-    border:var(--border-w) dashed var(--color-faded-gray);
-    border-radius:var(--radius);margin-bottom:12px;
-  }
-  .drop-zone .word-tile{background:var(--color-eager-green);}
-  .match-container{display:flex;gap:20px;}
-  .match-col{flex:1;}
-  .match-item{
-    padding:12px;margin:8px 0;border:var(--border-w) solid var(--color-faded-gray);
-    border-radius:var(--radius);cursor:pointer;text-align:center;
-    font-size:15px;font-weight:700;color:var(--color-charcoal);
-  }
-  .match-item.selected{border-color:var(--color-spark-blue);background:#e8f4ff;}
-  .match-item.matched{border-color:var(--color-eager-green);background:var(--color-storybook-green);cursor:default;}
-  input.fill-input{
-    padding:12px 14px;border:var(--border-w) solid var(--color-faded-gray);
-    border-radius:var(--radius);font-size:16px;width:180px;font-family:inherit;
-  }
-  input.fill-input:focus{outline:none;border-color:var(--color-spark-blue);}
-  .mark-char{cursor:pointer;padding:6px 3px;font-size:19px;border-radius:6px;}
-  .levelup-overlay{
-    position:fixed;top:0;left:0;width:100%;height:100%;
-    background:rgba(0,4,55,0.6);display:none;
-    align-items:center;justify-content:center;z-index:999;
-  }
-  .levelup-modal{
-    background:var(--color-paper-white);border-radius:var(--radius-lg);
-    padding:40px 32px;text-align:center;max-width:320px;
-    border:var(--border-w) solid var(--color-night-ink);
-    animation:popIn 0.4s ease-out;
-  }
-  @keyframes popIn{0%{transform:scale(0.5);opacity:0;}100%{transform:scale(1);opacity:1;}}
-  .levelup-circle{
-    width:100px;height:100px;border-radius:50%;background:var(--color-gold);
-    display:flex;align-items:center;justify-content:center;font-size:36px;
-    font-weight:800;color:#fff;margin:0 auto 16px;
-    border:var(--border-w) solid var(--color-night-ink);
-  }
-  .levelup-title{font-size:24px;font-weight:800;color:var(--color-charcoal);margin-bottom:8px;}
-  .levelup-sub{font-size:15px;color:var(--color-pencil-gray);margin-bottom:24px;font-weight:700;}
-  .levelup-close{
-    padding:14px 36px;background:var(--color-eager-green);color:#fff;
-    border:none;border-radius:var(--radius);font-size:15px;font-weight:800;
-    text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;font-family:inherit;
-  }
-  .streak-toast{
-    position:fixed;top:20px;left:50%;transform:translateX(-50%);
-    background:var(--color-orange);color:#fff;padding:12px 24px;
-    border-radius:var(--radius-lg);font-weight:800;
-    border:var(--border-w) solid var(--color-night-ink);
-    display:none;z-index:998;
-  }
-  .no-more{text-align:center;color:var(--color-pencil-gray);padding:24px;font-weight:700;}
+:root{--green:#58cc02;--light-green:#d7ffb8;--blue:#1cb0f6;--ink:#000437;--text:#4b4b4b;--gray:#afafaf;--red:#ff4b4b;--light-red:#ffdfe0;--gold:#ffc800;--orange:#ff9600;--radius:14px;--lg:20px}
+*{box-sizing:border-box}body{font-family:'Noto Sans TC',system-ui,sans-serif;max-width:640px;margin:20px auto;padding:0 16px 40px;color:var(--text);background:#fff}button,input{font:inherit}.main-title{text-align:center;color:var(--green);font-size:34px;margin:16px 0}.sync-status{text-align:center;color:var(--gray);font-size:12px;font-weight:700;margin-bottom:12px}.top-bar,.progress-card,.quiz-card{border:2px solid var(--gray);border-radius:var(--lg);padding:16px;margin-bottom:16px;background:#fff}.top-bar{display:flex;justify-content:space-between;align-items:center}.level-badge{display:flex;align-items:center;gap:10px}.level-circle{width:42px;height:42px;border-radius:50%;background:var(--green);color:#fff;border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;font-weight:800}.xp-total,.streak{font-weight:800}.streak{color:var(--orange)}.freeze{font-size:12px;color:var(--blue);margin-left:5px}.progress-label{display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:7px}.bar{height:13px;background:#e5e5e5;border-radius:10px;overflow:hidden;border:2px solid var(--gray);margin-bottom:12px}.fill{height:100%;background:var(--green);transition:width .35s}.level-fill{background:var(--blue)}.question{font-size:20px;font-weight:800;line-height:1.5;margin-bottom:20px}.option,.action{width:100%;padding:14px 16px;border:2px solid var(--gray);border-radius:var(--radius);background:#fff;color:var(--text);font-weight:700;text-align:left;cursor:pointer;margin-bottom:10px}.option:hover{border-color:var(--blue);background:#f0faff}.option.correct{border-color:var(--green);background:var(--light-green)}.option.wrong{border-color:var(--red);background:var(--light-red)}.action{background:var(--green);color:#fff;text-align:center;border-color:var(--green);margin-top:10px}.action:disabled{background:#e5e5e5;color:var(--gray);border-color:#e5e5e5;cursor:not-allowed}.feedback{padding:13px 15px;border-radius:var(--radius);font-weight:800;margin-top:12px}.feedback.correct{background:var(--light-green);color:#2b7a00}.feedback.wrong{background:var(--light-red);color:#c40000}.word-bank,.drop-zone{display:flex;flex-wrap:wrap;gap:8px;padding:12px;border:2px solid var(--gray);border-radius:var(--radius);min-height:52px;margin-bottom:12px}.drop-zone{border-style:dashed}.word-tile{padding:9px 13px;background:var(--blue);color:#fff;border-radius:10px;border:2px solid var(--ink);cursor:pointer;font-weight:700}.drop-zone .word-tile{background:var(--green)}.match-container{display:flex;gap:14px}.match-col{flex:1}.match-item{padding:11px 8px;border:2px solid var(--gray);border-radius:10px;margin:8px 0;text-align:center;font-weight:700;cursor:pointer}.match-item.selected{border-color:var(--blue);background:#e8f4ff}.match-item.matched{border-color:var(--green);background:var(--light-green);cursor:default}.fill-input{width:100%;padding:13px;border:2px solid var(--gray);border-radius:var(--radius);margin-bottom:10px}.mark-char{display:inline-block;padding:6px 3px;font-size:20px;cursor:pointer;border-radius:6px}.no-more{text-align:center;padding:30px 10px;font-weight:800}.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:var(--orange);color:#fff;padding:12px 22px;border:2px solid var(--ink);border-radius:var(--lg);font-weight:800;display:none;z-index:5}.levelup{position:fixed;inset:0;background:rgba(0,4,55,.6);display:none;align-items:center;justify-content:center;z-index:10}.levelup-box{background:#fff;border:2px solid var(--ink);border-radius:var(--lg);padding:35px;text-align:center}.levelup-num{width:90px;height:90px;border-radius:50%;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900;margin:0 auto 15px}
 </style>
 </head>
 <body>
-
-<h1 class="main-title">DSE 文言文自主學習平台</h1>
+<h1 class="main-title">Manjingo</h1>
 <div class="sync-status" id="syncStatus">連接中...</div>
-
-<div class="top-bar">
-  <div class="level-badge">
-    <div class="level-circle" id="levelCircle">1</div>
-    <div class="xp-total" id="xpTotalText">共 0 XP</div>
-  </div>
-  <div class="streak-display">
-    🔥 <span id="streakCount">0</span> 日
-    <span class="freeze-count" id="freezeCount">❄️×2</span>
-  </div>
-</div>
-
-<div class="daily-goal-card">
-  <div class="daily-goal-label"><span>今日目標</span><span id="dailyGoalText">0 / 20 XP</span></div>
-  <div class="daily-bar"><div class="daily-bar-fill" id="dailyBarFill" style="width:0%;"></div></div>
-</div>
-
-<div class="level-progress-card">
-  <div class="level-progress-label"><span>等級進度</span><span id="levelProgressText">0 / 50 XP</span></div>
-  <div class="level-bar"><div class="level-bar-fill" id="levelBarFill" style="width:0%;"></div></div>
-</div>
-
-<div class="card" id="quizCard">
-  <div id="quizContent"></div>
-</div>
-
-<div class="streak-toast" id="streakToast">🔥 連續學習日 +1！</div>
-
-<div class="levelup-overlay" id="levelupOverlay">
-  <div class="levelup-modal">
-    <div class="levelup-circle" id="levelupCircle">2</div>
-    <div class="levelup-title">升級了！</div>
-    <div class="levelup-sub" id="levelupSub">你已達到 Lv.2</div>
-    <button class="levelup-close" id="levelupCloseBtn">繼續學習</button>
-  </div>
-</div>
-
+<div class="top-bar"><div class="level-badge"><div class="level-circle" id="levelCircle">1</div><div class="xp-total" id="xpTotalText">共 0 XP</div></div><div class="streak">🔥 <span id="streakCount">0</span> 日 <span class="freeze" id="freezeCount">❄️×2</span></div></div>
+<div class="progress-card"><div class="progress-label"><span>今日目標</span><span id="dailyGoalText">0 / 20 XP</span></div><div class="bar"><div class="fill" id="dailyBarFill" style="width:0"></div></div><div class="progress-label"><span>等級進度</span><span id="levelProgressText">0 / 50 XP</span></div><div class="bar"><div class="fill level-fill" id="levelBarFill" style="width:0"></div></div></div>
+<div class="quiz-card"><div id="quizContent"></div></div>
+<div class="toast" id="toast">🔥 連續學習日 +1！</div>
+<div class="levelup" id="levelup"><div class="levelup-box"><div class="levelup-num" id="levelupNum">2</div><h2>升級了！</h2><p id="levelupText">你已達到 Lv.2</p><button class="action" id="levelupClose">繼續學習</button></div></div>
 <script type="module">
-import { manager, getLevelFromTotalXp } from "./levelSystem.js";
-import { ensureLogin, fetchAllQuestions, fetchUserProgress, saveUserProgress, logAnswerEvent } from "./firebase-config.js";
+import { manager } from './levelSystem.js';
+import { ensureLogin, fetchAllQuestions, fetchUserGamification, submitAnswer } from './firebase-config.js';
 
-const fallbackQuestions = [
-  { id:"q001", type:"choice", kpId:"kp_yueyang_001", question:"『謫守巴陵郡』中『謫』字的意思是？", options:["提拔","貶官","辭職","退休"], answer:"貶官", xp:8 },
-  { id:"q004", type:"choice", kpId:"kp_virtual_zhi", question:"『輟耕之壟上』中『之』字的用法是？", options:["代詞","結構助詞(的)","動詞(到/往)","語氣助詞"], answer:"動詞(到/往)", xp:8 },
-  { id:"q005", type:"choice", kpId:"sx_001", question:"『廉頗者，趙之良將也』屬於哪種句式？", options:["判斷句","被動句","省略句","倒裝句"], answer:"判斷句", xp:8 },
-  { id:"q006", type:"reorder", kpId:"sx_006", question:"將詞塊排成正確語序（岳陽樓記）", options:["吾","誰","與","歸"], answer:["吾","誰","與","歸"], xp:10 },
-  { id:"q007", type:"match", kpId:"kp_virtual_zhi", question:"將「之」的用法與例句配對",
-    options:[["之(動詞：到/往)","輟耕之壟上"],["之(代詞：他)","公與之乘"],["之(結構助詞：的)","三里之城"]], xp:5 },
-  { id:"q008", type:"fill", kpId:"kp_yueyang_004", question:"先天下之憂而憂，____________。", answer:"後天下之樂而樂", xp:10 },
-  { id:"q010", type:"choice", kpId:"sx_006", question:"『微斯人，吾誰與歸』的正確白話翻譯是？",
-    options:["如果沒有這樣的人，我要跟從誰呢？","如果沒有這樣的人，誰會跟從我呢？","沒有這樣的人，我不知道去哪裡。","這個人不存在，我們一起回去。"],
-    answer:"如果沒有這樣的人，我要跟從誰呢？", xp:8 },
-  { id:"q011", type:"mark", kpId:"cy_004", question:"點擊句中活用的字：先天下之憂而憂，後天下之樂而樂",
-    options:["先","天","下","之","憂","而","憂","，","後","天","下","之","樂","而","樂"], answer:[0,8], xp:5 }
+const fallbackQuestions=[
+{id:'q001',type:'choice',kpId:'kp_yueyang_001',question:'『謫守巴陵郡』中『謫』字的意思是？',options:['提拔','貶官','辭職','退休'],answer:'貶官'},
+{id:'q004',type:'choice',kpId:'kp_virtual_zhi',question:'『輟耕之壟上』中『之』字的用法是？',options:['代詞','結構助詞（的）','動詞（到／往）','語氣助詞'],answer:'動詞（到／往）'},
+{id:'q005',type:'choice',kpId:'sx_001',question:'『廉頗者，趙之良將也』屬於哪種句式？',options:['判斷句','被動句','省略句','倒裝句'],answer:'判斷句'},
+{id:'q010',type:'choice',kpId:'sx_006',question:'『微斯人，吾誰與歸』的正確白話翻譯是？',options:['如果沒有這樣的人，我要跟從誰呢？','如果沒有這樣的人，誰會跟從我呢？','沒有這樣的人，我不知道去哪裡。','這個人不存在，我們一起回去。'],answer:'如果沒有這樣的人，我要跟從誰呢？'},
+{id:'q008',type:'fill',kpId:'kp_yueyang_004',question:'先天下之憂而憂，____________。',answer:'後天下之樂而樂'},
+{id:'q006',type:'reorder',kpId:'sx_006',question:'將詞塊排成正確語序（岳陽樓記）',options:['吾','誰','與','歸'],answer:['吾','誰','與','歸']}
 ];
 
-function normalizeQuestion(raw) {
-  const q = { ...raw };
-  if (q.type === "choice") {
-    q.options = Array.isArray(q.options) ? q.options : (q.options || "").split("|");
-  } else if (q.type === "reorder") {
-    const arr = Array.isArray(q.options) ? q.options : (q.options || "").split("|");
-    q.options = [...arr].sort(() => Math.random() - 0.5);
-    q.answer = Array.isArray(q.answer) ? q.answer : (q.answer || "").split("|");
-  } else if (q.type === "match") {
-    if (!Array.isArray(q.options)) {
-      q.options = (q.options || "").split(";").map(pair => pair.split("|"));
-    }
-  } else if (q.type === "mark") {
-    q.options = Array.isArray(q.options) ? q.options : (q.options || "").split("/");
-    q.answer = Array.isArray(q.answer) ? q.answer : (q.answer || "").split("|").map(Number);
-  }
-  return q;
+let questions=[];let currentIndex=0;let currentStartedAt=Date.now();let attemptCount=1;let submitting=false;
+const todayStr=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+function refreshTopUI(){const s=manager.state;const li=manager.getLevelInfo();document.getElementById('levelCircle').textContent=li.level;document.getElementById('xpTotalText').textContent=`共 ${s.totalXp||0} XP`;document.getElementById('streakCount').textContent=s.streak||0;document.getElementById('freezeCount').textContent=`❄️×${s.streakFreezes??2}`;const goal=s.dailyGoalXp||20;document.getElementById('dailyGoalText').textContent=`${s.todayXp||0} / ${goal} XP`;document.getElementById('dailyBarFill').style.width=`${Math.min(100,Math.round(((s.todayXp||0)/goal)*100))}%`;document.getElementById('levelProgressText').textContent=`${li.currentLevelXp} / ${li.nextLevelNeeded} XP`;document.getElementById('levelBarFill').style.width=`${li.progressPercent}%`}
+function toast(){const el=document.getElementById('toast');el.style.display='block';setTimeout(()=>el.style.display='none',2200)}
+function showLevelUp(level){document.getElementById('levelupNum').textContent=level;document.getElementById('levelupText').textContent=`你已達到 Lv.${level}`;document.getElementById('levelup').style.display='flex'}
+document.getElementById('levelupClose').onclick=()=>document.getElementById('levelup').style.display='none';
+
+async function submitCurrentAnswer(q,isCorrect,usedHint=false){
+ if(submitting)return null;submitting=true;
+ try{
+   const result=await submitAnswer({questionId:q.id,kpId:q.kpId,isCorrect,attemptCount,responseTimeMs:Date.now()-currentStartedAt,usedHint,localDate:todayStr()});
+   const previousLevel=manager.getLevelInfo().level;
+   manager.applyServerState({totalXp:result.totalXp,todayXp:result.todayXp,todayXpDate:todayStr(),streak:result.streak,streakFreezes:result.streakFreezes,dailyGoalXp:manager.state.dailyGoalXp||20,level:result.level});
+   refreshTopUI();
+   if(result.streakIncreased)toast();
+   if(result.level>previousLevel)setTimeout(()=>showLevelUp(result.level),350);
+   return result;
+ }catch(e){console.error('提交答案失敗',e);return null}finally{submitting=false}
 }
 
-let questions = [];
-let currentIndex = 0;
+function normalizeQuestion(raw){const q={...raw};if(q.type==='choice')q.options=Array.isArray(q.options)?q.options:String(q.options||'').split('|');if(q.type==='reorder'){const arr=Array.isArray(q.options)?q.options:String(q.options||'').split('|');q.options=[...arr].sort(()=>Math.random()-.5);q.answer=Array.isArray(q.answer)?q.answer:String(q.answer||'').split('|')}if(q.type==='match'&&!Array.isArray(q.options))q.options=String(q.options||'').split(';').map(x=>x.split('|'));if(q.type==='mark'){q.options=Array.isArray(q.options)?q.options:String(q.options||'').split('/');q.answer=Array.isArray(q.answer)?q.answer:String(q.answer||'').split('|').map(Number)}return q}
+function nextQuestion(){currentIndex++;currentStartedAt=Date.now();attemptCount=1;renderQuiz()}
+function renderQuiz(){const c=document.getElementById('quizContent');c.innerHTML='';if(currentIndex>=questions.length){c.innerHTML='<div class="no-more">今日題目已完成！🎉<br><small>下一步將加入個人化複習與弱項推薦。</small></div>';return}const q=normalizeQuestion(questions[currentIndex]);if(q.type==='choice')renderChoice(c,q);else if(q.type==='reorder')renderReorder(c,q);else if(q.type==='match')renderMatch(c,q);else if(q.type==='fill')renderFill(c,q);else if(q.type==='mark')renderMark(c,q);else nextQuestion()}
+function renderChoice(c,q){c.innerHTML=`<div class="question">${q.question}</div><div id="opts"></div><div id="fb"></div><button class="action" id="next" disabled>下一題</button>`;const opts=c.querySelector('#opts');q.options.forEach(opt=>{const b=document.createElement('button');b.className='option';b.textContent=opt;b.onclick=async()=>{opts.querySelectorAll('button').forEach(x=>x.disabled=true);const correct=opt===q.answer;const r=await submitCurrentAnswer(q,correct);const xp=r?.xpEarned??0;b.classList.add(correct?'correct':'wrong');c.querySelector('#fb').className=`feedback ${correct?'correct':'wrong'}`;c.querySelector('#fb').textContent=correct?`答對了！+${xp} XP`:`正確答案：${q.answer}（+${xp} XP）`;c.querySelector('#next').disabled=false};opts.appendChild(b)});c.querySelector('#next').onclick=nextQuestion}
+function renderReorder(c,q){c.innerHTML=`<div class="question">${q.question}</div><div class="drop-zone" id="zone"></div><div class="word-bank" id="bank"></div><button class="action" id="check">檢查答案</button><div id="fb"></div><button class="action" id="next" disabled>下一題</button>`;const bank=c.querySelector('#bank'),zone=c.querySelector('#zone');q.options.forEach(w=>{const t=document.createElement('div');t.className='word-tile';t.textContent=w;t.onclick=()=>t.parentElement===bank?zone.appendChild(t):bank.appendChild(t);bank.appendChild(t)});c.querySelector('#check').onclick=async()=>{c.querySelector('#check').disabled=true;const current=[...zone.children].map(x=>x.textContent);const correct=JSON.stringify(current)===JSON.stringify(q.answer);const r=await submitCurrentAnswer(q,correct);c.querySelector('#fb').className=`feedback ${correct?'correct':'wrong'}`;c.querySelector('#fb').textContent=correct?`正確！+${r?.xpEarned??0} XP`:`順序不對，正確語序：${q.answer.join('')}`;c.querySelector('#next').disabled=false};c.querySelector('#next').onclick=nextQuestion}
+function renderFill(c,q){c.innerHTML=`<div class="question">${q.question.replace('____________','')}</div><input class="fill-input" id="input" placeholder="請輸入答案"><button class="action" id="check">提交</button><div id="fb"></div><button class="action" id="next" disabled>下一題</button>`;const normalize=s=>String(s).replace(/[，。、；：！？\s]/g,'');c.querySelector('#check').onclick=async()=>{c.querySelector('#check').disabled=true;const correct=normalize(c.querySelector('#input').value)===normalize(q.answer);const r=await submitCurrentAnswer(q,correct);c.querySelector('#fb').className=`feedback ${correct?'correct':'wrong'}`;c.querySelector('#fb').textContent=correct?`默寫正確！+${r?.xpEarned??0} XP`:`正確答案：${q.answer}`;c.querySelector('#next').disabled=false};c.querySelector('#next').onclick=nextQuestion}
+function renderMatch(c,q){c.innerHTML=`<div class="question">${q.question}</div><div class="match-container"><div class="match-col" id="left"></div><div class="match-col" id="right"></div></div><div id="fb"></div><button class="action" id="next" disabled>下一題</button>`;let selected=null,matched=0;const left=c.querySelector('#left'),right=c.querySelector('#right');q.options.forEach(pair=>{const x=document.createElement('div');x.className='match-item';x.textContent=pair[0];x.dataset.match=pair[1];x.onclick=()=>select(x);left.appendChild(x)});[...q.options].sort(()=>Math.random()-.5).forEach(pair=>{const x=document.createElement('div');x.className='match-item';x.textContent=pair[1];x.dataset.match=pair[0];x.onclick=()=>select(x);right.appendChild(x)});function select(x){if(x.classList.contains('matched'))return;if(!selected){selected=x;x.classList.add('selected');return}const ok=selected.dataset.match===x.textContent||x.dataset.match===selected.textContent;if(ok){selected.classList.remove('selected');selected.classList.add('matched');x.classList.add('matched');matched++;c.querySelector('#fb').className='feedback correct';c.querySelector('#fb').textContent='配對正確！';if(matched===q.options.length){submitCurrentAnswer(q,true).then(r=>{c.querySelector('#fb').textContent=`全部配對正確！+${r?.xpEarned??0} XP`;c.querySelector('#next').disabled=false})}}else{selected.classList.remove('selected');c.querySelector('#fb').className='feedback wrong';c.querySelector('#fb').textContent='配對錯誤，再試一次'}selected=null}c.querySelector('#next').onclick=nextQuestion}
+function renderMark(c,q){c.innerHTML=`<div class="question">${q.question}</div><div id="sentence"></div><div id="fb"></div><button class="action" id="next" disabled>下一題</button>`;const s=c.querySelector('#sentence');let found=0;q.options.forEach((ch,i)=>{const span=document.createElement('span');span.className='mark-char';span.textContent=ch;span.onclick=()=>{if(q.answer.includes(i)&&span.dataset.found!=='1'){span.dataset.found='1';span.style.background='#d7ffb8';found++;c.querySelector('#fb').className='feedback correct';c.querySelector('#fb').textContent=`「${ch}」正確！`;if(found===q.answer.length)submitCurrentAnswer(q,true).then(r=>{c.querySelector('#fb').textContent=`全部找到了！+${r?.xpEarned??0} XP`;c.querySelector('#next').disabled=false})}else if(!q.answer.includes(i)){span.style.background='#ffdfe0';c.querySelector('#fb').className='feedback wrong';c.querySelector('#fb').textContent='這個字不是答案，再找找看'}};s.appendChild(span)});c.querySelector('#next').onclick=nextQuestion}
 
-function refreshTopUI() {
-  const state = manager.state;
-  const levelInfo = manager.getLevelInfo();
-  document.getElementById("levelCircle").textContent = levelInfo.level;
-  document.getElementById("xpTotalText").textContent = `共 ${state.totalXp} XP`;
-  document.getElementById("streakCount").textContent = state.streak;
-  document.getElementById("freezeCount").textContent = `❄️×${state.streakFreezes}`;
-  document.getElementById("dailyGoalText").textContent = `${state.todayXp} / ${state.dailyGoalXp} XP`;
-  document.getElementById("dailyBarFill").style.width = `${Math.min(100, Math.round((state.todayXp / state.dailyGoalXp) * 100))}%`;
-  document.getElementById("levelProgressText").textContent = `${levelInfo.currentLevelXp} / ${levelInfo.nextLevelNeeded} XP`;
-  document.getElementById("levelBarFill").style.width = `${levelInfo.progressPercent}%`;
-}
-
-function showStreakToast() {
-  const toast = document.getElementById("streakToast");
-  toast.style.display = "block";
-  setTimeout(() => { toast.style.display = "none"; }, 2200);
-}
-
-function showLevelUp(levelInfo) {
-  document.getElementById("levelupCircle").textContent = levelInfo.level;
-  document.getElementById("levelupSub").textContent = `你已達到 Lv.${levelInfo.level}`;
-  document.getElementById("levelupOverlay").style.display = "flex";
-}
-document.getElementById("levelupCloseBtn").onclick = () => {
-  document.getElementById("levelupOverlay").style.display = "none";
-};
-
-function submitAnswer(q, isCorrect, xpOverride) {
-  const xpGained = xpOverride !== undefined ? xpOverride : (isCorrect ? (q.xp || 8) : Math.min(2, q.xp || 2));
-  const result = manager.recordAnswer({ questionId: q.id, kpId: q.kpId, isCorrect, xpGained });
-  refreshTopUI();
-  if (result.streakIncreased) showStreakToast();
-  if (result.leveledUp) setTimeout(() => showLevelUp(result.levelInfo), 500);
-  return xpGained;
-}
-
-function renderQuiz() {
-  const container = document.getElementById("quizContent");
-  container.innerHTML = "";
-
-  if (currentIndex >= questions.length) {
-    container.innerHTML = `<div class="no-more">今日題目已完成！明天再來挑戰更多題目 🎉</div>`;
-    return;
-  }
-
-  const q = normalizeQuestion(questions[currentIndex]);
-
-  if (q.type === "choice") renderChoice(container, q);
-  else if (q.type === "reorder") renderReorder(container, q);
-  else if (q.type === "match") renderMatch(container, q);
-  else if (q.type === "fill") renderFill(container, q);
-  else if (q.type === "mark") renderMark(container, q);
-  else nextQuestion();
-}
-
-function nextQuestion() {
-  currentIndex += 1;
-  renderQuiz();
-}
-
-function renderChoice(container, q) {
-  container.innerHTML = `
-    <div class="question">${q.question}</div>
-    <div id="optWrap"></div>
-    <div class="feedback" id="fb"></div>
-    <button class="next-btn" id="nextBtn" disabled>下一題</button>
-  `;
-  const optWrap = container.querySelector("#optWrap");
-  q.options.forEach(opt => {
-    const btn = document.createElement("button");
-    btn.className = "option";
-    btn.textContent = opt;
-    btn.onclick = () => {
-      optWrap.querySelectorAll(".option").forEach(b => b.onclick = null);
-      const correct = opt === q.answer;
-      const fb = container.querySelector("#fb");
-      const xp = submitAnswer(q, correct);
-      if (correct) { btn.classList.add("correct"); fb.className = "feedback correct"; fb.textContent = `答對了！+${xp} XP`; }
-      else { btn.classList.add("wrong"); fb.className = "feedback wrong"; fb.textContent = `正確答案：${q.answer}（+${xp} XP）`; }
-      container.querySelector("#nextBtn").disabled = false;
-    };
-    optWrap.appendChild(btn);
-  });
-  container.querySelector("#nextBtn").onclick = nextQuestion;
-}
-
-function renderReorder(container, q) {
-  container.innerHTML = `
-    <div class="question">${q.question}</div>
-    <div class="drop-zone" id="dropZone"></div>
-    <div class="word-bank" id="wordBank"></div>
-    <button class="check-btn" id="checkBtn">檢查答案</button>
-    <div class="feedback" id="fb"></div>
-    <button class="next-btn" id="nextBtn" disabled>下一題</button>
-  `;
-  const bank = container.querySelector("#wordBank");
-  const zone = container.querySelector("#dropZone");
-  q.options.forEach(word => {
-    const tile = document.createElement("div");
-    tile.className = "word-tile";
-    tile.textContent = word;
-    tile.onclick = () => {
-      if (tile.parentElement === bank) zone.appendChild(tile);
-      else bank.appendChild(tile);
-    };
-    bank.appendChild(tile);
-  });
-  container.querySelector("#checkBtn").onclick = () => {
-    const current = [...zone.children].map(t => t.textContent);
-    const correct = JSON.stringify(current) === JSON.stringify(q.answer);
-    const fb = container.querySelector("#fb");
-    const xp = submitAnswer(q, correct);
-    if (correct) { fb.className = "feedback correct"; fb.textContent = `正確！+${xp} XP`; }
-    else { fb.className = "feedback wrong"; fb.textContent = `順序不對，正確語序：${q.answer.join("")}`; }
-    container.querySelector("#nextBtn").disabled = false;
-  };
-  container.querySelector("#nextBtn").onclick = nextQuestion;
-}
-
-function renderMatch(container, q) {
-  container.innerHTML = `
-    <div class="question">${q.question}</div>
-    <div class="match-container"><div class="match-col" id="mLeft"></div><div class="match-col" id="mRight"></div></div>
-    <div class="feedback" id="fb"></div>
-    <button class="next-btn" id="nextBtn" disabled>下一題</button>
-  `;
-  const left = container.querySelector("#mLeft");
-  const right = container.querySelector("#mRight");
-  const shuffledRight = [...q.options].sort(() => Math.random() - 0.5);
-  let selectedLeft = null;
-  let matchedCount = 0;
-
-  function selectItem(item) {
-    if (item.classList.contains("matched")) return;
-    if (!selectedLeft) { selectedLeft = item; item.classList.add("selected"); return; }
-    const a = selectedLeft, b = item;
-    const correct = a.dataset.match === b.textContent || b.dataset.match === a.textContent;
-    const fb = container.querySelector("#fb");
-    if (correct) {
-      a.classList.remove("selected"); a.classList.add("matched"); b.classList.add("matched");
-      matchedCount++;
-      const xp = submitAnswer(q, true, q.xp);
-      fb.className = "feedback correct"; fb.textContent = `配對正確！+${xp} XP`;
-      if (matchedCount === q.options.length) container.querySelector("#nextBtn").disabled = false;
-    } else {
-      a.classList.remove("selected");
-      fb.className = "feedback wrong"; fb.textContent = "配對錯誤，再試一次";
-    }
-    selectedLeft = null;
-  }
-
-  q.options.forEach(pair => {
-    const item = document.createElement("div");
-    item.className = "match-item"; item.textContent = pair[0]; item.dataset.match = pair[1];
-    item.onclick = () => selectItem(item);
-    left.appendChild(item);
-  });
-  shuffledRight.forEach(pair => {
-    const item = document.createElement("div");
-    item.className = "match-item"; item.textContent = pair[1]; item.dataset.match = pair[0];
-    item.onclick = () => selectItem(item);
-    right.appendChild(item);
-  });
-  container.querySelector("#nextBtn").onclick = nextQuestion;
-}
-
-function renderFill(container, q) {
-  container.innerHTML = `
-    <div class="question">${q.question.replace("____________", "")}</div>
-    <input type="text" class="fill-input" id="fillInput" placeholder="請輸入">
-    <button class="check-btn" id="checkBtn">提交</button>
-    <div class="feedback" id="fb"></div>
-    <button class="next-btn" id="nextBtn" disabled>下一題</button>
-  `;
-  function normalize(str) { return str.replace(/[，。、；：！？\s]/g, ""); }
-  container.querySelector("#checkBtn").onclick = () => {
-    const input = container.querySelector("#fillInput").value;
-    const correct = normalize(input) === normalize(q.answer);
-    const fb = container.querySelector("#fb");
-    const xp = submitAnswer(q, correct);
-    if (correct) { fb.className = "feedback correct"; fb.textContent = `默寫正確！+${xp} XP`; }
-    else { fb.className = "feedback wrong"; fb.textContent = `正確答案：${q.answer}`; }
-    container.querySelector("#nextBtn").disabled = false;
-  };
-  container.querySelector("#nextBtn").onclick = nextQuestion;
-}
-
-function renderMark(container, q) {
-  container.innerHTML = `
-    <div class="question">${q.question}</div>
-    <div id="sentence"></div>
-    <div class="feedback" id="fb"></div>
-    <button class="next-btn" id="nextBtn" disabled>下一題</button>
-  `;
-  const sentence = container.querySelector("#sentence");
-  let foundCount = 0;
-  q.options.forEach((ch, i) => {
-    const span = document.createElement("span");
-    span.className = "mark-char";
-    span.textContent = ch;
-    span.onclick = () => {
-      const fb = container.querySelector("#fb");
-      if (q.answer.includes(i) && span.dataset.found !== "1") {
-        span.style.background = "#d7ffb8";
-        span.dataset.found = "1";
-        foundCount++;
-        const xp = submitAnswer(q, true, q.xp);
-        fb.className = "feedback correct"; fb.textContent = `「${ch}」活用正確！+${xp} XP`;
-        if (foundCount === q.answer.length) container.querySelector("#nextBtn").disabled = false;
-      } else if (!q.answer.includes(i)) {
-        span.style.background = "#ffdfe0";
-        fb.className = "feedback wrong"; fb.textContent = "這個字沒有活用，再找找看";
-      }
-    };
-    sentence.appendChild(span);
-  });
-  container.querySelector("#nextBtn").onclick = nextQuestion;
-}
-
-async function init() {
-  const syncEl = document.getElementById("syncStatus");
-  let userId = null;
-  let cloudState = null;
-
-  try {
-    userId = await ensureLogin();
-    if (userId) {
-      cloudState = await fetchUserProgress(userId);
-      const remoteQuestions = await fetchAllQuestions();
-      if (remoteQuestions && remoteQuestions.length) questions = remoteQuestions;
-      syncEl.textContent = "☁️ 已連接雲端，進度自動保存";
-    } else {
-      syncEl.textContent = "⚠️ 離線模式，進度只保存在此裝置";
-    }
-  } catch (e) {
-    console.warn("Firebase 連接失敗，使用離線模式", e);
-    syncEl.textContent = "⚠️ 離線模式，進度只保存在此裝置";
-  }
-
-  if (!questions.length) questions = fallbackQuestions;
-
-  await manager.init(userId, cloudState, saveUserProgress, logAnswerEvent);
-  refreshTopUI();
-  renderQuiz();
-}
-
+async function init(){const status=document.getElementById('syncStatus');let uid=null;try{uid=await ensureLogin();if(uid){const cloud=await fetchUserGamification(uid);await manager.init(uid,cloud);const remote=await fetchAllQuestions();if(remote?.length)questions=remote;status.textContent='☁️ 已連接雲端，學習進度由伺服器管理'}else{await manager.init(null,null);status.textContent='⚠️ 離線模式'}}catch(e){console.warn('Firebase 連接失敗',e);await manager.init(null,null);status.textContent='⚠️ 離線模式，請稍後再試'}if(!questions.length)questions=fallbackQuestions;refreshTopUI();renderQuiz()}
 init();
 </script>
-
 </body>
 </html>
