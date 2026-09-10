@@ -50,3 +50,10 @@ test('local engine merges returned cloud concept mastery without overwriting new
  assert.match(local,/result\.conceptMastery&&result\.conceptMastery\.conceptKey/);
  assert.match(local,/options&&options\.skipConcept\?null:updateConceptMastery/);
 });
+
+test('firestore rules let authenticated users read only their own concept mastery',()=>{
+ const rules=read('firestore.rules');
+ assert.match(rules,/match \/concepts\/\{conceptKey\}/);
+ assert.match(rules,/allow read: if request\.auth != null && request\.auth\.uid == userId/);
+ assert.match(rules,/allow write: if false/);
+});
