@@ -1,7 +1,7 @@
 /**
  * levelSystem.js
- * XP、等級、Streak（含Streak Freeze）核心邏輯
- * 支援 Firebase 雲端同步 + localStorage 離線後備
+ * 前端只負責顯示 server 回傳的 XP、等級、Streak 狀態。
+ * 學習結果及 XP 不再由前端自行計算或寫入雲端。
  */
 
 function getXpNeededForLevel(level) {
@@ -25,11 +25,13 @@ function getLevelFromTotalXp(totalXp) {
     level,
     currentLevelXp,
     nextLevelNeeded,
-    progressPercent: nextLevelNeeded ? Math.round((currentLevelXp / nextLevelNeeded) * 100) : 100
+    progressPercent: nextLevelNeeded
+      ? Math.min(100, Math.round((currentLevelXp / nextLevelNeeded) * 100))
+      : 100
   };
 }
 
-const STORAGE_KEY = "dse_wenyan_progress";
+const STORAGE_KEY = "manjingo_progress_cache";
 
 function defaultState() {
   return {
@@ -38,122 +40,76 @@ function defaultState() {
     streakFreezes: 2,
     lastActiveDate: null,
     todayXp: 0,
+    todayXpDate: null,
     dailyGoalXp: 20,
+    level: 1,
     badges: []
   };
 }
 
 function loadLocalProgress() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) return JSON.parse(raw);
-  return defaultState();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? { ...defaultState(), ...JSON.parse(raw) } : defaultState();
+  } catch (e) {
+    console.warn("讀取離線進度失敗", e);
+    return defaultState();
+  }
 }
 
 function saveLocalProgress(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function daysBetween(d1, d2) {
-  const a = new Date(d1);
-  const b = new Date(d2);
-  return Math.round((b - a) / (1000 * 60 * 60 * 24));
-}
-
-function checkDailyStreak(state) {
-  const today = todayStr();
-  if (state.lastActiveDate === today) return state;
-
-  if (state.lastActiveDate) {
-    const gap = daysBetween(state.lastActiveDate, today);
-    if (gap > 1) {
-      const missedDays = gap - 1;
-      if (state.streakFreezes >= missedDays) {
-        state.streakFreezes -= missedDays;
-      } else {
-        state.streak = 0;
-        state.streakFreezes = 0;
-      }
-    }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.warn("保存離線進度失敗", e);
   }
-  state.todayXp = 0;
-  return state;
+}
+
+function todayStr(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 class ProgressManager {
   constructor() {
     this.state = defaultState();
     this.userId = null;
-    this.cloudSaveFn = null;
-    this.cloudLogFn = null;
   }
 
-  async init(userId, cloudState, cloudSaveFn, cloudLogFn) {
+  async init(userId, cloudState) {
     this.userId = userId;
-    this.cloudSaveFn = cloudSaveFn;
-    this.cloudLogFn = cloudLogFn;
+    this.state = cloudState
+      ? { ...defaultState(), ...cloudState }
+      : loadLocalProgress();
 
-    if (cloudState) {
-      this.state = { ...defaultState(), ...cloudState };
-    } else {
-      this.state = loadLocalProgress();
-    }
-    this.state = checkDailyStreak(this.state);
-    this._persist();
+    // Server is authoritative. Local cache is only a fallback for offline UI.
+    const today = todayStr();
+    if (this.state.todayXpDate !== today) this.state.todayXp = 0;
+    this.state.todayXpDate = today;
+    saveLocalProgress(this.state);
     return this.state;
   }
 
-  _persist() {
+  applyServerState(serverState) {
+    if (!serverState) return this.state;
+    this.state = { ...defaultState(), ...serverState };
+    if (!this.state.todayXpDate) this.state.todayXpDate = todayStr();
     saveLocalProgress(this.state);
-    if (this.userId && this.cloudSaveFn) {
-      this.cloudSaveFn(this.userId, this.state).catch(e => console.warn("雲端同步失敗", e));
-    }
+    return this.state;
   }
 
   getLevelInfo() {
-    return getLevelFromTotalXp(this.state.totalXp);
-  }
-
-  recordAnswer({ questionId, kpId, isCorrect, xpGained }) {
-    this.state = checkDailyStreak(this.state);
-    const today = todayStr();
-
-    const wasGoalMetBefore = this.state.todayXp >= this.state.dailyGoalXp;
-    const prevTotalXp = this.state.totalXp;
-
-    this.state.todayXp += xpGained;
-    this.state.totalXp += xpGained;
-
-    const isGoalMetNow = this.state.todayXp >= this.state.dailyGoalXp;
-    let streakIncreased = false;
-
-    if (!wasGoalMetBefore && isGoalMetNow && this.state.lastActiveDate !== today) {
-      this.state.streak += 1;
-      this.state.lastActiveDate = today;
-      streakIncreased = true;
-    } else if (this.state.lastActiveDate !== today && isGoalMetNow) {
-      this.state.lastActiveDate = today;
-    }
-
-    const levelInfo = getLevelFromTotalXp(this.state.totalXp);
-    const prevLevelInfo = getLevelFromTotalXp(prevTotalXp);
-    const leveledUp = levelInfo.level > prevLevelInfo.level;
-
-    this._persist();
-
-    if (this.userId && this.cloudLogFn) {
-      this.cloudLogFn(this.userId, { questionId, kpId, isCorrect, xpGained }).catch(e => console.warn("答題紀錄寫入失敗", e));
-    }
-
-    return { state: this.state, levelInfo, leveledUp, streakIncreased, goalMetNow: isGoalMetNow };
+    return getLevelFromTotalXp(Number(this.state.totalXp) || 0);
   }
 }
 
 const manager = new ProgressManager();
 
 export {
-  manager, getLevelFromTotalXp, getXpNeededForLevel, todayStr
+  manager,
+  getLevelFromTotalXp,
+  getXpNeededForLevel,
+  todayStr
 };
