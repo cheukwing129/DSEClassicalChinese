@@ -67,6 +67,28 @@ test('learning state gives failed remediation higher priority than ordinary reme
  assert.equal(remedial.key,'remedial');assert.equal(remedial.label,'需要補救');assert.equal(remedial.priority,3);
 });
 
+test('daily plan injects concept reteach before ordinary review and cools effective weak practice',()=>{
+ const histories={
+  reteach:[{strategy:'remedial',beforeMastery:55,afterMastery:48,delta:-7,accuracy:50,conceptKey:'concept_x',conceptLabel:'概念 X',completedAt:'2026-09-10T12:00:00Z'}],
+  remedial:[{strategy:'targeted',delta:2,accuracy:50,completedAt:'2026-09-10T12:00:00Z'},{strategy:'targeted',delta:2,accuracy:60,completedAt:'2026-09-09T12:00:00Z'}],
+  cooled:[{strategy:'remedial',beforeMastery:45,afterMastery:55,delta:10,accuracy:100,completedAt:'2026-09-10T12:00:00Z'}]
+ },knowledge={reteach:{mastery:48,misconceptions:{}},remedial:{mastery:42,misconceptions:{}},review:{mastery:65,misconceptions:{}},cooled:{mastery:55,misconceptions:{}},fresh:{mastery:0,misconceptions:{}}},learning={getKnowledge:id=>knowledge[id]||{mastery:0,misconceptions:{}},getPracticeHistory:({kpId})=>histories[kpId]||[],getMisconceptionConcepts:()=>[],getConceptMastery:()=>({mastery:0})};
+ const base={targetCount:4,items:[{kpId:'review',category:'review',priority:1},{kpId:'cooled',category:'weak',priority:2},{kpId:'remedial',category:'weak',priority:2},{kpId:'fresh',category:'new',priority:3}]};
+ const plan=policy.prioritizeDailyPlan(base,['reteach','remedial','review','cooled','fresh'],4,learning);
+ assert.deepEqual(plan.items.map(x=>x.kpId),['reteach','remedial','review','fresh']);
+ assert.equal(plan.items[0].interventionState,'reteach');assert.equal(plan.items[0].interventionActionable,true);assert.equal(plan.items[1].interventionState,'remedial');
+ assert.equal(plan.items.some(x=>x.kpId==='cooled'),false);assert.equal(plan.interventionAdaptive,true);assert.deepEqual(plan.interventions.map(x=>x.state),['reteach','remedial']);
+});
+
+test('practice policy auto-installs before the first local and cloud daily plan selection',()=>{
+ const initial={knowledge:{urgent:{mastery:48,attempts:4,lastCorrect:false,misconceptions:{}},normal:{mastery:40,attempts:2,lastCorrect:false,misconceptions:{}}},practiceHistory:[{kpId:'urgent',strategy:'remedial',beforeMastery:55,afterMastery:48,delta:-7,accuracy:50,completedAt:'2026-09-10T12:00:00.000Z'}],conceptMastery:{},totalXp:0,todayXp:0,streak:0,todayDate:'2026-09-10'};
+ const store=new Map([['manjingo_progress_cache',JSON.stringify(initial)]]),window={ManjingoContent:{questions:[{id:'u1',kpId:'urgent'},{id:'n1',kpId:'normal'}],getKnowledgePointIds(){return['urgent','normal']},selectQuestionsForPlan(plan,questions,limit){return(plan.items||[]).slice(0,limit).map(item=>questions.find(q=>q.kpId===item.kpId)).filter(Boolean)}}},document={readyState:'loading',addEventListener(){}},context={window,document,localStorage:{getItem:key=>store.get(key)||null,setItem:(key,value)=>store.set(key,String(value)),removeItem:key=>store.delete(key)},Date:class extends Date{constructor(...args){super(...(args.length?args:['2026-09-10T13:00:00Z']))}static now(){return new Date('2026-09-10T13:00:00Z').getTime()}},console,JSON,Math,Number,String,Object,Array,Map,Set,RegExp};
+ vm.createContext(context);vm.runInContext(read('public/practice-effectiveness.js'),context);vm.runInContext(read('public/local-learning.js'),context);
+ const engine=context.window.ManjingoLocalLearning;assert.equal(engine.__practiceEffectivenessInstalled,true);
+ const local=engine.buildDailyPlan(['urgent','normal'],2);assert.equal(local.interventionAdaptive,true);assert.equal(local.items[0].kpId,'urgent');assert.equal(local.items[0].interventionState,'reteach');
+ const remote={targetCount:2,items:[{kpId:'normal',category:'weak',priority:2}]},selected=context.window.ManjingoContent.selectQuestionsForPlan(remote,context.window.ManjingoContent.questions,2);assert.equal(selected[0].kpId,'urgent');assert.equal(selected[0].interventionState,'reteach');
+});
+
 test('installed policy records strategy and concept outcome metadata on local engine',()=>{
  const store=new Map();const context={window:{ManjingoContent:{questions:[]}},localStorage:{getItem:key=>store.get(key)||null,setItem:(key,value)=>store.set(key,String(value))},Date,console,JSON,Math,Number,String,Object,Array,Map,Set};vm.createContext(context);vm.runInContext(read('public/local-learning.js'),context);vm.runInContext(read('public/practice-effectiveness.js'),context);const practice=context.ManjingoPracticeEffectiveness,engine=context.window.ManjingoLocalLearning;
  assert.equal(practice.install(),true);
