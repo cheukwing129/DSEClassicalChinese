@@ -25,11 +25,17 @@ function toQuality({ isCorrect, usedHint = false, attemptCount = 1 }) {
 }
 
 function calculateSM2(quality, prev = {}) {
+  const q = clamp(Math.round(Number(quality)), 0, 5);
   let easeFactor = Number(prev.easeFactor ?? 2.5);
   let repetition = Number(prev.repetition ?? 0);
   let interval = Number(prev.interval ?? 0);
 
-  if (quality < 3) {
+  easeFactor = Number.isFinite(easeFactor) ? easeFactor : 2.5;
+  repetition = Number.isFinite(repetition) && repetition >= 0 ? repetition : 0;
+  interval = Number.isFinite(interval) && interval >= 0 ? interval : 0;
+
+  if (q < 3) {
+    // Lapse：重新進入學習期，下一次在 1 日內重見。
     repetition = 0;
     interval = 1;
   } else {
@@ -39,15 +45,23 @@ function calculateSM2(quality, prev = {}) {
     else interval = Math.max(1, Math.round(interval * easeFactor));
   }
 
-  easeFactor += 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02);
-  easeFactor = Math.max(1.3, easeFactor);
+  // 原版 SM-2 ease factor 更新公式。
+  easeFactor += 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02);
+  easeFactor = clamp(easeFactor, 1.3, 3.0);
 
   return {
     easeFactor,
     repetition,
     interval,
-    lastQuality: quality
+    lastQuality: q
   };
+}
+
+function calculateNextReviewAt(interval, now = new Date()) {
+  const base = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  const timestamp = Number.isFinite(base) ? base : Date.now();
+  const days = Math.max(1, Number(interval) || 1);
+  return new Date(timestamp + days * 86400000);
 }
 
 function calculateMastery({ prevMastery = 0, isCorrect, usedHint = false, attemptCount = 1 }) {
@@ -68,7 +82,7 @@ function calculateXp({ baseXp = 8, isCorrect, usedHint = false, attemptCount = 1
   return Math.max(1, Math.round(baseXp * 0.8));
 }
 
-function calculateLearningUpdate({ prev = {}, isCorrect, usedHint = false, attemptCount = 1, baseXp = 8 }) {
+function calculateLearningUpdate({ prev = {}, isCorrect, usedHint = false, attemptCount = 1, baseXp = 8, now = new Date() }) {
   const quality = toQuality({ isCorrect, usedHint, attemptCount });
   const sm2 = calculateSM2(quality, prev);
   const mastery = calculateMastery({
@@ -78,12 +92,14 @@ function calculateLearningUpdate({ prev = {}, isCorrect, usedHint = false, attem
     attemptCount
   });
   const xpEarned = calculateXp({ baseXp, isCorrect, usedHint, attemptCount });
+  const nextReviewAt = calculateNextReviewAt(sm2.interval, now);
 
   return {
     quality,
     xpEarned,
     ...sm2,
     ...mastery,
+    nextReviewAt,
     correctCount: Number(prev.correctCount ?? 0) + (isCorrect ? 1 : 0),
     wrongCount: Number(prev.wrongCount ?? 0) + (isCorrect ? 0 : 1),
     hintCount: Number(prev.hintCount ?? 0) + (usedHint ? 1 : 0)
@@ -95,6 +111,7 @@ module.exports = {
   masteryStatus,
   toQuality,
   calculateSM2,
+  calculateNextReviewAt,
   calculateMastery,
   calculateXp,
   calculateLearningUpdate
