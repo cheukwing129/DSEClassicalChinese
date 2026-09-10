@@ -28,55 +28,75 @@ function withTimeout(promise, ms, label) {
   ]);
 }
 
-export function ensureLogin() {
-  return withTimeout(new Promise((resolve) => {
-    let settled = false;
-    const finish = (value) => {
-      if (settled) return;
-      settled = true;
-      try { unsubscribe?.(); } catch (_) {}
-      resolve(value);
-    };
-    let unsubscribe = null;
-    unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUserId = user.uid;
-        finish(user.uid);
-        return;
-      }
-      signInAnonymously(auth).catch((e) => {
-        console.warn("匿名登入失敗，將使用離線模式", e);
-        finish(null);
+export async function ensureLogin() {
+  try {
+    return await withTimeout(new Promise((resolve) => {
+      let settled = false;
+      let unsubscribe = null;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        try { unsubscribe?.(); } catch (_) {}
+        resolve(value);
+      };
+      unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (user) {
+          currentUserId = user.uid;
+          finish(user.uid);
+          return;
+        }
+        signInAnonymously(auth).catch((e) => {
+          console.warn("匿名登入失敗，將使用離線模式", e);
+          finish(null);
+        });
       });
-    });
-  }), 8000, 'Firebase authentication');
+    }), 8000, 'Firebase authentication');
+  } catch (error) {
+    console.warn('Firebase authentication unavailable:', error);
+    return null;
+  }
 }
 
 export function getCurrentUserId() { return currentUserId; }
 
 export async function fetchAllQuestions() {
-  return withTimeout(
-    getDocs(collection(db, "questions")).then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-    8000,
-    'questions read'
-  );
+  try {
+    return await withTimeout(
+      getDocs(collection(db, "questions")).then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      8000,
+      'questions read'
+    );
+  } catch (error) {
+    console.warn('questions read unavailable:', error);
+    return [];
+  }
 }
 
 export async function fetchAllKnowledgePoints() {
-  return withTimeout(
-    getDocs(collection(db, "knowledgePoints")).then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-    8000,
-    'knowledge points read'
-  );
+  try {
+    return await withTimeout(
+      getDocs(collection(db, "knowledgePoints")).then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      8000,
+      'knowledge points read'
+    );
+  } catch (error) {
+    console.warn('knowledge points read unavailable:', error);
+    return [];
+  }
 }
 
 export async function fetchUserKnowledgeState(userId) {
   if (!userId) return {};
-  return withTimeout(
-    getDocs(collection(db, "users", userId, "knowledge")).then((snap) => Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))),
-    8000,
-    'user knowledge read'
-  );
+  try {
+    return await withTimeout(
+      getDocs(collection(db, "users", userId, "knowledge")).then((snap) => Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))),
+      8000,
+      'user knowledge read'
+    );
+  } catch (error) {
+    console.warn('user knowledge read unavailable:', error);
+    return {};
+  }
 }
 
 export async function submitAnswer(answer) {
@@ -96,12 +116,22 @@ export async function getDailyLearningPlan() {
 
 export async function fetchUserGamification(userId) {
   if (!userId) return null;
-  const snap = await withTimeout(getDoc(doc(db, "users", userId, "gamification", "state")), 8000, 'gamification read');
-  return snap.exists() ? snap.data() : null;
+  try {
+    const snap = await withTimeout(getDoc(doc(db, "users", userId, "gamification", "state")), 8000, 'gamification read');
+    return snap.exists() ? snap.data() : null;
+  } catch (error) {
+    console.warn('gamification read unavailable:', error);
+    return null;
+  }
 }
 
 export async function fetchUserKnowledge(userId, kpId) {
   if (!userId || !kpId) return null;
-  const snap = await withTimeout(getDoc(doc(db, "users", userId, "knowledge", kpId)), 8000, 'knowledge read');
-  return snap.exists() ? snap.data() : null;
+  try {
+    const snap = await withTimeout(getDoc(doc(db, "users", userId, "knowledge", kpId)), 8000, 'knowledge read');
+    return snap.exists() ? snap.data() : null;
+  } catch (error) {
+    console.warn('knowledge read unavailable:', error);
+    return null;
+  }
 }
