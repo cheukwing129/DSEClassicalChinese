@@ -56,7 +56,39 @@ test('legacy practice records remain valid remediation evidence',()=>{
  assert.equal(result.needsRemediation,true);
 });
 
-test('installed policy records strategy metadata and patches remediation status on local engine',()=>{
+test('successful remedial verification is measured as effective without escalating',()=>{
+ const result=policy.interventionOutcome([{strategy:'remedial',beforeMastery:90,afterMastery:92,delta:2,accuracy:100,conceptBeforeMastery:60,conceptAfterMastery:69,conceptDelta:9,completedAt:'2026-09-10T12:00:00Z'}],{currentMastery:92});
+ assert.equal(result.hasIntervention,true);
+ assert.equal(result.strategy,'remedial');
+ assert.equal(result.effective,true);
+ assert.equal(result.conceptDelta,9);
+ assert.equal(result.needsConceptReteach,false);
+});
+
+test('failed latest remedial verification escalates to concept reteaching',()=>{
+ const result=policy.interventionOutcome([{strategy:'remedial',beforeMastery:55,afterMastery:48,delta:-7,accuracy:50,conceptBeforeMastery:40,conceptAfterMastery:28,conceptDelta:-12,completedAt:'2026-09-10T12:00:00Z'}],{currentMastery:48});
+ assert.equal(result.strategy,'remedial');
+ assert.equal(result.effective,false);
+ assert.equal(result.needsConceptReteach,true);
+});
+
+test('newer targeted evidence clears a stale failed remedial escalation',()=>{
+ const result=policy.interventionOutcome([
+  {strategy:'targeted',delta:8,accuracy:100,completedAt:'2026-09-10T13:00:00Z'},
+  {strategy:'remedial',delta:-6,accuracy:50,completedAt:'2026-09-10T12:00:00Z'}
+ ],{currentMastery:60});
+ assert.equal(result.hasIntervention,false);
+ assert.equal(result.needsConceptReteach,false);
+});
+
+test('reteach completion is measured but never recursively requests another reteach',()=>{
+ const result=policy.interventionOutcome([{strategy:'reteach',delta:-5,accuracy:33,conceptDelta:-8,completedAt:'2026-09-10T12:00:00Z'}],{currentMastery:40});
+ assert.equal(result.strategy,'reteach');
+ assert.equal(result.effective,false);
+ assert.equal(result.needsConceptReteach,false);
+});
+
+test('installed policy records strategy and concept outcome metadata on local engine',()=>{
  const store=new Map();
  const context={window:{ManjingoContent:{questions:[]}},localStorage:{getItem:key=>store.get(key)||null,setItem:(key,value)=>store.set(key,String(value))},Date,console,JSON,Math,Number,String,Object,Array,Map,Set};
  vm.createContext(context);
@@ -68,14 +100,21 @@ test('installed policy records strategy metadata and patches remediation status 
  const second=engine.recordPracticeSession({kpId:'kp_high',beforeMastery:92,afterMastery:94,correctCount:5,questionCount:5,strategy:'targeted'});
  assert.equal(first.strategy,'targeted');
  assert.equal(second.strategy,'targeted');
- const saved=JSON.parse(store.get('manjingo_progress_cache'));
+ let saved=JSON.parse(store.get('manjingo_progress_cache'));
  assert.equal(saved.practiceHistory[0].strategy,'targeted');
  assert.equal(saved.practiceHistory[1].strategy,'targeted');
  const status=engine.getRemediationStatus('kp_high');
  assert.equal(status.currentMastery,94);
  assert.equal(status.ceilingProtected,true);
  assert.equal(status.needsRemediation,false);
- const remedial=engine.recordPracticeSession({kpId:'kp_high',beforeMastery:94,afterMastery:95,correctCount:2,questionCount:2,strategy:'remedial'});
+ const remedial=engine.recordPracticeSession({kpId:'kp_high',beforeMastery:94,afterMastery:95,correctCount:2,questionCount:2,strategy:'remedial',conceptKey:'concept_x',conceptLabel:'概念 X',conceptBeforeMastery:70,conceptAfterMastery:78,conceptDelta:8});
  assert.equal(remedial.strategy,'remedial');
+ assert.equal(remedial.conceptDelta,8);
+ saved=JSON.parse(store.get('manjingo_progress_cache'));
+ assert.equal(saved.practiceHistory[0].conceptKey,'concept_x');
+ assert.equal(saved.practiceHistory[0].conceptBeforeMastery,70);
+ assert.equal(saved.practiceHistory[0].conceptAfterMastery,78);
  assert.equal(engine.getRemediationStatus('kp_high').sessions,0);
+ assert.equal(engine.getRemediationStatus('kp_high').remedialEffective,true);
+ assert.equal(engine.getRemediationStatus('kp_high').needsConceptReteach,false);
 });
