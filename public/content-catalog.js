@@ -77,7 +77,20 @@ function misconceptionConcept(q){
 const questions=rawQuestions.map(q=>{const concept=misconceptionConcept(q);return concept?{...q,misconceptionKey:concept.key,misconceptionLabel:concept.label}:{...q};});
 
 function getKnowledgePointIds(options){const teachableOnly=!options||options.teachableOnly!==false;return knowledgePoints.filter(kp=>!teachableOnly||kp.teachable).map(kp=>kp.kpId);}
-function selectQuestionsForPlan(plan,sourceQuestions,limit){const source=Array.isArray(sourceQuestions)?sourceQuestions:[];const items=Array.isArray(plan&&plan.items)?plan.items:[];const max=Math.max(0,Number(limit)||Number(plan&&plan.targetCount)||10);const byKp=new Map();source.forEach(q=>{if(!q||!q.id||!q.kpId)return;if(!byKp.has(q.kpId))byKp.set(q.kpId,[]);byKp.get(q.kpId).push(q)});const used=new Set(),queue=[];items.forEach(item=>{if(queue.length>=max)return;const available=(byKp.get(item.kpId)||[]).filter(q=>!used.has(q.id));if(!available.length)return;const preferred=Array.isArray(item.misconceptionQuestionIds)?item.misconceptionQuestionIds:[];let candidate=null;for(const id of preferred){candidate=available.find(q=>q.id===id);if(candidate)break;}if(!candidate)candidate=available[Math.floor(Math.random()*available.length)];used.add(candidate.id);queue.push({...candidate,category:item.category||'new',priority:item.priority??3,misconceptionReview:preferred.includes(candidate.id)});});return queue;}
+function selectQuestionsForPlan(plan,sourceQuestions,limit){
+ const source=Array.isArray(sourceQuestions)?sourceQuestions:[],items=Array.isArray(plan&&plan.items)?plan.items:[],max=Math.max(0,Number(limit)||Number(plan&&plan.targetCount)||10),byKp=new Map();
+ source.forEach(q=>{if(!q||!q.id||!q.kpId)return;if(!byKp.has(q.kpId))byKp.set(q.kpId,[]);byKp.get(q.kpId).push(q)});
+ const used=new Set(),queue=[];
+ items.forEach(item=>{
+   if(queue.length>=max)return;
+   const available=(byKp.get(item.kpId)||[]).filter(q=>!used.has(q.id));if(!available.length)return;
+   const conceptPreferred=Array.isArray(item.conceptQuestionIds)?item.conceptQuestionIds.map(String):[],misconceptionPreferred=Array.isArray(item.misconceptionQuestionIds)?item.misconceptionQuestionIds.map(String):[],preferred=Array.from(new Set([...conceptPreferred,...misconceptionPreferred]));let candidate=null;
+   for(const id of preferred){candidate=available.find(q=>String(q.id)===id);if(candidate)break;}
+   if(!candidate)candidate=available[Math.floor(Math.random()*available.length)];
+   used.add(candidate.id);queue.push({...candidate,category:item.category||'new',priority:item.priority??3,conceptReview:conceptPreferred.includes(String(candidate.id)),conceptKey:item.conceptKey||candidate.misconceptionKey||null,conceptLabel:item.conceptLabel||candidate.misconceptionLabel||null,conceptMastery:item.conceptMastery??null,misconceptionReview:misconceptionPreferred.includes(String(candidate.id))});
+ });
+ return queue;
+}
 window.ManjingoContent={knowledgePoints:knowledgePoints.map(x=>({...x})),questions:questions.map(x=>({...x})),getKnowledgePointIds,selectQuestionsForPlan,misconceptionConcept};
 if(typeof document!=='undefined'&&document.readyState==='loading'){document.write('<script src="./learning-path.js"><\/script><script src="./learning-path-ui.js"><\/script><script src="./weakness-panel.js"><\/script><script src="./mastery-dashboard.js"><\/script>');}
 })();
