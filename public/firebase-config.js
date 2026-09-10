@@ -19,77 +19,15 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const functions = getFunctions(app);
-
 let currentUserId = null;
 
-export function ensureLogin() {
-  return new Promise((resolve) => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUserId = user.uid;
-        unsubscribe();
-        resolve(user.uid);
-        return;
-      }
-      signInAnonymously(auth).catch((e) => {
-        console.warn("匿名登入失敗，將使用離線模式", e);
-        unsubscribe();
-        resolve(null);
-      });
-    });
-  });
-}
-
-export function getCurrentUserId() {
-  return currentUserId;
-}
-
-export async function fetchAllQuestions() {
-  const snap = await getDocs(collection(db, "questions"));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
-
-export async function fetchAllKnowledgePoints() {
-  const snap = await getDocs(collection(db, "knowledgePoints"));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
-
-export async function fetchUserKnowledgeState(userId) {
-  if (!userId) return {};
-  const snap = await getDocs(collection(db, "users", userId, "knowledge"));
-  return Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]));
-}
-
-// v2：學習狀態只由 server-side functions 寫入。
-export async function submitAnswer(answer) {
-  const callable = httpsCallable(functions, "submitAnswer");
-  const result = await callable(answer);
-  return result.data;
-}
-
-export async function getDueKnowledgePoints() {
-  const callable = httpsCallable(functions, "getDueKnowledgePoints");
-  const result = await callable({});
-  return result.data;
-}
-
-export async function getDailyLearningPlan() {
-  const callable = httpsCallable(functions, "getDailyLearningPlan");
-  const result = await callable({});
-  return result.data;
-}
-
-// 只讀取新版個人化學習狀態；前端不直接寫入。
-export async function fetchUserGamification(userId) {
-  if (!userId) return null;
-  const ref = doc(db, "users", userId, "gamification", "state");
-  const snap = await getDoc(ref);
-  return snap.exists() ? snap.data() : null;
-}
-
-export async function fetchUserKnowledge(userId, kpId) {
-  if (!userId || !kpId) return null;
-  const ref = doc(db, "users", userId, "knowledge", kpId);
-  const snap = await getDoc(ref);
-  return snap.exists() ? snap.data() : null;
-}
+export function ensureLogin() { return new Promise((resolve) => { const unsubscribe = onAuthStateChanged(auth, (user) => { if (user) { currentUserId = user.uid; unsubscribe(); resolve(user.uid); return; } signInAnonymously(auth).catch((e) => { console.warn("匿名登入失敗，將使用離線模式", e); unsubscribe(); resolve(null); }); }); }); }
+export function getCurrentUserId() { return currentUserId; }
+export async function fetchAllQuestions() { const snap = await getDocs(collection(db, "questions")); return snap.docs.map((d) => ({ id: d.id, ...d.data() })); }
+export async function fetchAllKnowledgePoints() { const snap = await getDocs(collection(db, "knowledgePoints")); return snap.docs.map((d) => ({ id: d.id, ...d.data() })); }
+export async function fetchUserKnowledgeState(userId) { if (!userId) return {}; const snap = await getDocs(collection(db, "users", userId, "knowledge")); return Object.fromEntries(snap.docs.map((d) => [d.id, d.data()])); }
+export async function submitAnswer(answer) { const result = await httpsCallable(functions, "submitAnswer")(answer); return result.data; }
+export async function getDueKnowledgePoints() { const result = await httpsCallable(functions, "getDueKnowledgePoints")({}); return result.data; }
+export async function getDailyLearningPlan() { const result = await httpsCallable(functions, "getDailyLearningPlan")({}); return result.data; }
+export async function fetchUserGamification(userId) { if (!userId) return null; const snap = await getDoc(doc(db, "users", userId, "gamification", "state")); return snap.exists() ? snap.data() : null; }
+export async function fetchUserKnowledge(userId, kpId) { if (!userId || !kpId) return null; const snap = await getDoc(doc(db, "users", userId, "knowledge", kpId)); return snap.exists() ? snap.data() : null; }
