@@ -13,6 +13,7 @@ function normalizeState(raw){const today=localDate();const state={
  lastGoalDate:raw.lastGoalDate||null,
  knowledge:raw.knowledge&&typeof raw.knowledge==='object'?raw.knowledge:{}
 };
+ Object.keys(state.knowledge).forEach(kpId=>{const record=state.knowledge[kpId];if(record&&typeof record==='object'&&!record.misconceptions)record.misconceptions={}});
  if(state.todayDate!==today){state.todayXp=0;state.todayDate=today;}
  return state;
 }
@@ -23,6 +24,7 @@ function load(){
    const legacy=readRaw(LEGACY_KEY);
    if(legacy&&typeof legacy==='object'&&!Array.isArray(legacy)&&Object.keys(legacy).length){
      state.knowledge=legacy;
+     Object.keys(state.knowledge).forEach(kpId=>{const record=state.knowledge[kpId];if(record&&typeof record==='object'&&!record.misconceptions)record.misconceptions={}});
      persist(state);
    }
  }
@@ -31,7 +33,7 @@ function load(){
 function getProgress(){const data=load();persist(data);return{totalXp:data.totalXp,todayXp:data.todayXp,streak:data.streak,todayDate:data.todayDate,lastGoalDate:data.lastGoalDate}}
 function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
 function emptyKnowledge(){return{mastery:0,repetition:0,easeFactor:2.5,interval:0,nextReviewAt:null,attempts:0,correctCount:0,lastCorrect:null,lastAnsweredAt:null,misconceptions:{}}}
-function getKnowledge(kpId){const data=load();const current=data.knowledge[kpId];return current?{...emptyKnowledge(),...current,misconceptions:current.misconceptions&&typeof current.misconceptions==='object'?current.misconceptions:{}}:emptyKnowledge()}
+function getKnowledge(kpId){const data=load();return data.knowledge[kpId]||emptyKnowledge()}
 function status(mastery){if(mastery>=90)return'mastered';if(mastery>=75)return'stable';if(mastery>=60)return'familiar';if(mastery>=35)return'unstable';if(mastery>0)return'learning';return'unlearned'}
 function isDue(record){return !record.nextReviewAt||new Date(record.nextReviewAt).getTime()<=Date.now()}
 function updateStreak(state){
@@ -45,7 +47,7 @@ function updateStreak(state){
  state.lastGoalDate=today;
 }
 function reviewUpdate(previous,correct){
- const p={...emptyKnowledge(),...previous,misconceptions:previous&&previous.misconceptions&&typeof previous.misconceptions==='object'?{...previous.misconceptions}:{}};
+ const p={...emptyKnowledge(),...previous,misconceptions:{...(previous&&previous.misconceptions||{})}};
  p.attempts+=1;
  p.lastAnsweredAt=new Date().toISOString();
  p.lastCorrect=!!correct;
@@ -64,11 +66,17 @@ function reviewUpdate(previous,correct){
  const d=new Date();d.setDate(d.getDate()+p.interval);p.nextReviewAt=d.toISOString();
  return p;
 }
-function misconceptionKey(meta){const q=meta&&meta.questionId?String(meta.questionId):'unknown';const selected=meta&&meta.selectedAnswer!==undefined?String(meta.selectedAnswer):'unknown';return q+'::'+selected}
-function recordMisconception(record,meta){if(!meta||meta.selectedAnswer===undefined||meta.selectedAnswer===null)return record;const key=misconceptionKey(meta);const now=new Date().toISOString();const previous=record.misconceptions[key]||{};record.misconceptions[key]={questionId:meta.questionId||null,selectedAnswer:String(meta.selectedAnswer),correctAnswer:meta.correctAnswer!==undefined&&meta.correctAnswer!==null?String(meta.correctAnswer):null,count:(Number(previous.count)||0)+1,lastAt:now};return record}
-function submit(kpId,correct,meta){
- const data=load(),previous=data.knowledge[kpId]||getKnowledge(kpId),next=reviewUpdate(previous,correct);
- if(!correct)recordMisconception(next,meta);
+function recordMisconception(record,detail){
+ if(!detail||!detail.questionId||detail.selectedAnswer==null||detail.correctAnswer==null)return record;
+ const p={...record,misconceptions:{...(record.misconceptions||{})}};
+ const questionId=String(detail.questionId),selectedAnswer=String(detail.selectedAnswer),correctAnswer=String(detail.correctAnswer);
+ const key=questionId+'::'+selectedAnswer,previous=p.misconceptions[key]||{};
+ p.misconceptions[key]={questionId,selectedAnswer,correctAnswer,count:(Number(previous.count)||0)+1,lastAt:new Date().toISOString()};
+ return p;
+}
+function submit(kpId,correct,detail){
+ const data=load(),previous=data.knowledge[kpId]||getKnowledge(kpId);let next=reviewUpdate(previous,correct);
+ if(!correct)next=recordMisconception(next,detail);
  data.knowledge[kpId]=next;
  if(correct){data.totalXp+=8;data.todayXp+=8;updateStreak(data)}
  persist(data);
@@ -81,6 +89,7 @@ function syncRemoteResult(kpId,result){
    const previous=data.knowledge[kpId]||getKnowledge(kpId);
    const next={...previous};
    ['mastery','repetition','easeFactor','interval','nextReviewAt','attempts','correctCount','lastCorrect','lastAnsweredAt','misconceptions'].forEach(key=>{if(result[key]!==undefined&&result[key]!==null)next[key]=result[key]});
+   if(!next.misconceptions)next.misconceptions={};
    data.knowledge[kpId]=next;
  }
  if(result.totalXp!==undefined)data.totalXp=Number(result.totalXp)||0;
@@ -92,16 +101,21 @@ function syncRemoteResult(kpId,result){
  return{...getProgress(),...(kpId?{kpId,...data.knowledge[kpId],status:status(data.knowledge[kpId].mastery)}:{})};
 }
 function syncGamification(game){return syncRemoteResult(null,game)}
-function records(){const data=load();return Object.keys(data.knowledge).map(kpId=>({kpId,...getKnowledge(kpId),status:status(getKnowledge(kpId).mastery)}))}
+function records(){const data=load();return Object.keys(data.knowledge).map(kpId=>({kpId,...data.knowledge[kpId],misconceptions:{...(data.knowledge[kpId].misconceptions||{})},status:status(data.knowledge[kpId].mastery)}))}
 function getDueKnowledgePoints(limit){return records().filter(isDue).sort((a,b)=>(a.mastery||0)-(b.mastery||0)).slice(0,limit||10)}
 function getWeakKnowledgePoints(limit){return records().filter(r=>r.mastery<60||r.lastCorrect===false).sort((a,b)=>{const wrongA=a.lastCorrect===false?1:0,wrongB=b.lastCorrect===false?1:0;if(wrongA!==wrongB)return wrongB-wrongA;return(a.mastery||0)-(b.mastery||0)}).slice(0,limit||10)}
+function misconceptionQuestionIds(record){
+ const grouped=new Map();
+ Object.values(record&&record.misconceptions||{}).forEach(entry=>{if(!entry||!entry.questionId)return;const id=String(entry.questionId),current=grouped.get(id)||0;grouped.set(id,current+(Number(entry.count)||0))});
+ return Array.from(grouped.entries()).sort((a,b)=>b[1]-a[1]).map(([id])=>id);
+}
 function buildDailyPlan(kpIds,targetCount){
  const ids=Array.from(new Set((kpIds||[]).map(String))),known=new Map(records().map(r=>[r.kpId,r]));
  const due=ids.filter(id=>known.has(id)&&isDue(known.get(id))).sort((a,b)=>(known.get(a).mastery||0)-(known.get(b).mastery||0));
  const weak=ids.filter(id=>known.has(id)&&!due.includes(id)&&(known.get(id).mastery<60||known.get(id).lastCorrect===false)).sort((a,b)=>{const A=known.get(a),B=known.get(b),wa=A.lastCorrect===false?1:0,wb=B.lastCorrect===false?1:0;return wb-wa||(A.mastery||0)-(B.mastery||0)});
  const fresh=ids.filter(id=>!known.has(id));
  const items=[],used=new Set();
- function add(list,category,count){for(const id of list){if(used.has(id)||items.length>=targetCount||items.filter(x=>x.category===category).length>=count)continue;used.add(id);items.push({kpId:id,category,priority:category==='review'?1:category==='weak'?2:3})}}
+ function add(list,category,count){for(const id of list){if(used.has(id)||items.length>=targetCount||items.filter(x=>x.category===category).length>=count)continue;used.add(id);const record=known.get(id);items.push({kpId:id,category,priority:category==='review'?1:category==='weak'?2:3,...(record?{misconceptionQuestionIds:misconceptionQuestionIds(record)}:{})})}}
  add(due,'review',5);add(weak,'weak',3);add(fresh,'new',2);add(due,'review',targetCount);add(weak,'weak',targetCount);add(fresh,'new',targetCount);
  return{targetCount:items.length,items,review:items.filter(x=>x.category==='review').map(x=>x.kpId),weak:items.filter(x=>x.category==='weak').map(x=>x.kpId),newKnowledgePoints:items.filter(x=>x.category==='new').map(x=>x.kpId),totalRecommended:items.length};
 }
