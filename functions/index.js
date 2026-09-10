@@ -1,289 +1,58 @@
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-const { calculateLearningUpdate, calculateConceptMasteryUpdate, masteryStatus } = require("./learningEngine");
-
+const functions=require('firebase-functions');
+const admin=require('firebase-admin');
+const{calculateLearningUpdate,calculateConceptMasteryUpdate,masteryStatus}=require('./learningEngine');
 admin.initializeApp();
-const db = admin.firestore();
+const db=admin.firestore();
 
-function optionalText(value, maxLength, field) {
-  if (value == null || value === "") return null;
-  const text = String(value);
-  if (text.length > maxLength) throw new functions.https.HttpsError("invalid-argument", `${field} 過長`);
-  return text;
+function optionalText(value,maxLength,field){if(value==null||value==='')return null;const text=String(value);if(text.length>maxLength)throw new functions.https.HttpsError('invalid-argument',`${field} 過長`);return text;}
+function assertConceptKey(value){if(value&&!/^[A-Za-z0-9:_-]+$/.test(value))throw new functions.https.HttpsError('invalid-argument','conceptKey 無效');return value;}
+function assertAnswerData(data){
+ if(!data||!data.kpId)throw new functions.https.HttpsError('invalid-argument','缺少 kpId');
+ if(typeof data.isCorrect!=='boolean')throw new functions.https.HttpsError('invalid-argument','isCorrect 必須是 boolean');
+ const attemptCount=Number(data.attemptCount??1);if(!Number.isInteger(attemptCount)||attemptCount<1||attemptCount>10)throw new functions.https.HttpsError('invalid-argument','attemptCount 必須是 1–10');
+ const responseTimeMs=data.responseTimeMs==null?null:Number(data.responseTimeMs);if(responseTimeMs!=null&&(!Number.isFinite(responseTimeMs)||responseTimeMs<0||responseTimeMs>10*60*1000))throw new functions.https.HttpsError('invalid-argument','responseTimeMs 無效');
+ const localDate=data.localDate?String(data.localDate):new Date().toISOString().slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(localDate))throw new functions.https.HttpsError('invalid-argument','localDate 必須為 YYYY-MM-DD');
+ const answerId=data.answerId?String(data.answerId):null;if(answerId&&!/^[A-Za-z0-9_-]{8,128}$/.test(answerId))throw new functions.https.HttpsError('invalid-argument','answerId 無效');
+ return{answerId,kpId:String(data.kpId),questionId:data.questionId?String(data.questionId):null,textId:data.textId?String(data.textId):null,conceptKey:assertConceptKey(optionalText(data.conceptKey,128,'conceptKey')),conceptLabel:optionalText(data.conceptLabel,160,'conceptLabel'),selectedAnswer:optionalText(data.selectedAnswer,500,'selectedAnswer'),correctAnswer:optionalText(data.correctAnswer,500,'correctAnswer'),isCorrect:data.isCorrect,usedHint:Boolean(data.usedHint),attemptCount,responseTimeMs,localDate};
 }
+function calculateLevel(totalXp){let level=1,cumulative=0;while(level<99){const needed=level===1?50:50+(level-1)*30;if(cumulative+needed>totalXp)break;cumulative+=needed;level+=1}return level;}
 
-function assertAnswerData(data) {
-  if (!data || !data.kpId) throw new functions.https.HttpsError("invalid-argument", "缺少 kpId");
-  if (typeof data.isCorrect !== "boolean") throw new functions.https.HttpsError("invalid-argument", "isCorrect 必須是 boolean");
-  const attemptCount = Number(data.attemptCount ?? 1);
-  if (!Number.isInteger(attemptCount) || attemptCount < 1 || attemptCount > 10) throw new functions.https.HttpsError("invalid-argument", "attemptCount 必須是 1–10");
-  const responseTimeMs = data.responseTimeMs == null ? null : Number(data.responseTimeMs);
-  if (responseTimeMs != null && (!Number.isFinite(responseTimeMs) || responseTimeMs < 0 || responseTimeMs > 10 * 60 * 1000)) throw new functions.https.HttpsError("invalid-argument", "responseTimeMs 無效");
-  const localDate = data.localDate ? String(data.localDate) : new Date().toISOString().slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(localDate)) throw new functions.https.HttpsError("invalid-argument", "localDate 必須為 YYYY-MM-DD");
-  const answerId = data.answerId ? String(data.answerId) : null;
-  if (answerId && !/^[A-Za-z0-9_-]{8,128}$/.test(answerId)) throw new functions.https.HttpsError("invalid-argument", "answerId 無效");
-  const conceptKey = optionalText(data.conceptKey, 128, "conceptKey");
-  if (conceptKey && !/^[A-Za-z0-9:_-]+$/.test(conceptKey)) throw new functions.https.HttpsError("invalid-argument", "conceptKey 無效");
-  return {
-    answerId,
-    kpId: String(data.kpId),
-    questionId: data.questionId ? String(data.questionId) : null,
-    textId: data.textId ? String(data.textId) : null,
-    conceptKey,
-    conceptLabel: optionalText(data.conceptLabel, 160, "conceptLabel"),
-    selectedAnswer: optionalText(data.selectedAnswer, 500, "selectedAnswer"),
-    correctAnswer: optionalText(data.correctAnswer, 500, "correctAnswer"),
-    isCorrect: data.isCorrect,
-    usedHint: Boolean(data.usedHint),
-    attemptCount,
-    responseTimeMs,
-    localDate
-  };
-}
-
-function calculateLevel(totalXp) {
-  let level = 1; let cumulative = 0;
-  while (level < 99) {
-    const needed = level === 1 ? 50 : 50 + (level - 1) * 30;
-    if (cumulative + needed > totalXp) break;
-    cumulative += needed; level += 1;
-  }
-  return level;
-}
-
-exports.submitAnswer = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "請先登入");
-  const userId = context.auth.uid;
-  const answer = assertAnswerData(data);
-  const userRef = db.collection("users").doc(userId);
-  const kpRef = userRef.collection("knowledge").doc(answer.kpId);
-  const gamificationRef = userRef.collection("gamification").doc("state");
-  const logRef = answer.answerId ? userRef.collection("answerLogs").doc(answer.answerId) : userRef.collection("answerLogs").doc();
-
-  const result = await db.runTransaction(async (transaction) => {
-    const kpSnap = await transaction.get(kpRef);
-    const gameSnap = await transaction.get(gamificationRef);
-    const existingLogSnap = answer.answerId ? await transaction.get(logRef) : null;
-    if (existingLogSnap && existingLogSnap.exists) {
-      const existing = existingLogSnap.data();
-      if (existing.kpIds?.[0] && existing.kpIds[0] !== answer.kpId) throw new functions.https.HttpsError("already-exists", "answerId 已用於另一個 Knowledge Point");
-      return {
-        quality: existing.quality,
-        xpEarned: Number(existing.xpEarned ?? 0),
-        mastery: Number(existing.mastery ?? 0),
-        status: existing.status ?? null,
-        nextReviewAt: existing.nextReviewAt ?? null,
-        totalXp: Number(existing.totalXp ?? gameSnap.data()?.totalXp ?? 0),
-        todayXp: Number(existing.todayXp ?? gameSnap.data()?.todayXp ?? 0),
-        streak: Number(existing.streak ?? gameSnap.data()?.streak ?? 0),
-        streakFreezes: Number(existing.streakFreezes ?? gameSnap.data()?.streakFreezes ?? 0),
-        streakIncreased: Boolean(existing.streakIncreased),
-        level: Number(existing.level ?? gameSnap.data()?.level ?? 1),
-        conceptMastery: existing.conceptMastery ?? null,
-        duplicate: true
-      };
-    }
-
-    let baseXp = 8;
-    let conceptKey = answer.conceptKey;
-    let conceptLabel = answer.conceptLabel;
-    if (answer.questionId) {
-      const questionSnap = await transaction.get(db.collection("questions").doc(answer.questionId));
-      if (questionSnap.exists) {
-        const question = questionSnap.data();
-        const questionKpId = question.kpId ? String(question.kpId) : null;
-        if (questionKpId && questionKpId !== answer.kpId) throw new functions.https.HttpsError("invalid-argument", "questionId 與 kpId 不一致");
-        if (Number.isFinite(Number(question.baseXp ?? question.xp))) baseXp = Math.max(1, Math.min(50, Number(question.baseXp ?? question.xp)));
-        if (!conceptKey && question.misconceptionKey) conceptKey = String(question.misconceptionKey);
-        if (!conceptLabel && question.misconceptionLabel) conceptLabel = String(question.misconceptionLabel);
-      }
-    }
-
-    const now = new Date();
-    let conceptRef = null;
-    let conceptUpdate = null;
-    let conceptResult = null;
-    if (conceptKey) {
-      conceptRef = userRef.collection("concepts").doc(conceptKey);
-      const conceptSnap = await transaction.get(conceptRef);
-      conceptUpdate = calculateConceptMasteryUpdate({
-        prev: conceptSnap.exists ? conceptSnap.data() : {},
-        conceptKey,
-        conceptLabel,
-        kpId: answer.kpId,
-        questionId: answer.questionId,
-        isCorrect: answer.isCorrect,
-        now
-      });
-      conceptResult = {
-        ...conceptUpdate,
-        status: masteryStatus(conceptUpdate.mastery),
-        lastAnsweredAt: conceptUpdate.lastAnsweredAt.toISOString()
-      };
-    }
-
-    const prev = kpSnap.exists ? kpSnap.data() : {};
-    const rawGame = gameSnap.exists ? gameSnap.data() : {};
-    const gameDate = rawGame.todayXpDate || answer.localDate;
-    const game = gameDate === answer.localDate ? rawGame : { ...rawGame, todayXp: 0, todayXpDate: answer.localDate };
-    const update = calculateLearningUpdate({ prev, ...answer, baseXp, now });
-    const totalXp = Number(game.totalXp ?? 0) + update.xpEarned;
-    const todayXp = Number(game.todayXp ?? 0) + update.xpEarned;
-    const dailyGoalXp = Number(game.dailyGoalXp ?? 20);
-    const previousActiveDate = game.lastActiveDate || null;
-    let streak = Number(game.streak ?? 0);
-    let streakFreezes = Number(game.streakFreezes ?? 2);
-    let streakIncreased = false;
-    if (todayXp >= dailyGoalXp && previousActiveDate !== answer.localDate) {
-      const previousDate = previousActiveDate ? new Date(`${previousActiveDate}T00:00:00Z`) : null;
-      const currentDate = new Date(`${answer.localDate}T00:00:00Z`);
-      const gap = previousDate ? Math.round((currentDate - previousDate) / 86400000) : null;
-      if (gap === 1) streak += 1;
-      else if (gap == null || gap > 1) {
-        const missedDays = gap == null ? 0 : gap - 1;
-        if (missedDays > 0 && streakFreezes >= missedDays) { streakFreezes -= missedDays; streak += 1; }
-        else { streak = 1; streakFreezes = missedDays > 0 ? 0 : streakFreezes; }
-      }
-      streakIncreased = true;
-    }
-    const level = calculateLevel(totalXp);
-
-    transaction.set(kpRef, { ...update, lastAnsweredAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    if (conceptRef && conceptUpdate) {
-      transaction.set(conceptRef, { ...conceptUpdate, lastAnsweredAt: admin.firestore.Timestamp.fromDate(now), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    }
-    transaction.set(gamificationRef, { totalXp, todayXp, todayXpDate: answer.localDate, dailyGoalXp, streak, streakFreezes, lastActiveDate: todayXp >= dailyGoalXp ? answer.localDate : previousActiveDate, level, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    transaction.set(logRef, {
-      answerId: answer.answerId,
-      questionId: answer.questionId,
-      kpIds: [answer.kpId],
-      textId: answer.textId,
-      conceptKey,
-      conceptLabel,
-      selectedAnswer: answer.selectedAnswer,
-      correctAnswer: answer.correctAnswer,
-      conceptMastery: conceptResult,
-      isCorrect: answer.isCorrect,
-      usedHint: answer.usedHint,
-      attemptCount: answer.attemptCount,
-      responseTimeMs: answer.responseTimeMs,
-      localDate: answer.localDate,
-      quality: update.quality,
-      xpEarned: update.xpEarned,
-      mastery: update.mastery,
-      status: update.status,
-      nextReviewAt: update.nextReviewAt,
-      interval: update.interval,
-      easeFactor: update.easeFactor,
-      repetition: update.repetition,
-      totalXp,
-      todayXp,
-      streak,
-      streakFreezes,
-      streakIncreased,
-      level,
-      answeredAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-    return {
-      quality: update.quality,
-      xpEarned: update.xpEarned,
-      mastery: update.mastery,
-      status: update.status,
-      nextReviewAt: update.nextReviewAt,
-      interval: update.interval,
-      easeFactor: update.easeFactor,
-      repetition: update.repetition,
-      totalXp,
-      todayXp,
-      streak,
-      streakFreezes,
-      streakIncreased,
-      level,
-      conceptMastery: conceptResult,
-      duplicate: false
-    };
-  });
-  return { success: true, ...result };
+exports.submitAnswer=functions.https.onCall(async(data,context)=>{
+ if(!context.auth)throw new functions.https.HttpsError('unauthenticated','請先登入');
+ const userId=context.auth.uid,answer=assertAnswerData(data),userRef=db.collection('users').doc(userId),kpRef=userRef.collection('knowledge').doc(answer.kpId),gamificationRef=userRef.collection('gamification').doc('state'),logRef=answer.answerId?userRef.collection('answerLogs').doc(answer.answerId):userRef.collection('answerLogs').doc();
+ const result=await db.runTransaction(async transaction=>{
+  const kpSnap=await transaction.get(kpRef),gameSnap=await transaction.get(gamificationRef),existingLogSnap=answer.answerId?await transaction.get(logRef):null;
+  if(existingLogSnap&&existingLogSnap.exists){const existing=existingLogSnap.data();if(existing.kpIds?.[0]&&existing.kpIds[0]!==answer.kpId)throw new functions.https.HttpsError('already-exists','answerId 已用於另一個 Knowledge Point');return{quality:existing.quality,xpEarned:Number(existing.xpEarned??0),mastery:Number(existing.mastery??0),status:existing.status??null,nextReviewAt:existing.nextReviewAt??null,totalXp:Number(existing.totalXp??gameSnap.data()?.totalXp??0),todayXp:Number(existing.todayXp??gameSnap.data()?.todayXp??0),streak:Number(existing.streak??gameSnap.data()?.streak??0),streakFreezes:Number(existing.streakFreezes??gameSnap.data()?.streakFreezes??0),streakIncreased:Boolean(existing.streakIncreased),level:Number(existing.level??gameSnap.data()?.level??1),conceptMastery:existing.conceptMastery??null,duplicate:true};}
+  let baseXp=8,conceptKey=answer.conceptKey,conceptLabel=answer.conceptLabel;
+  if(answer.questionId){const questionSnap=await transaction.get(db.collection('questions').doc(answer.questionId));if(questionSnap.exists){const question=questionSnap.data(),questionKpId=question.kpId?String(question.kpId):null;if(questionKpId&&questionKpId!==answer.kpId)throw new functions.https.HttpsError('invalid-argument','questionId 與 kpId 不一致');if(Number.isFinite(Number(question.baseXp??question.xp)))baseXp=Math.max(1,Math.min(50,Number(question.baseXp??question.xp)));if(!conceptKey&&question.misconceptionKey)conceptKey=String(question.misconceptionKey);if(!conceptLabel&&question.misconceptionLabel)conceptLabel=String(question.misconceptionLabel);}}
+  assertConceptKey(conceptKey);
+  const now=new Date();let conceptRef=null,conceptUpdate=null,conceptResult=null;
+  if(conceptKey){conceptRef=userRef.collection('concepts').doc(conceptKey);const conceptSnap=await transaction.get(conceptRef);conceptUpdate=calculateConceptMasteryUpdate({prev:conceptSnap.exists?conceptSnap.data():{},conceptKey,conceptLabel,kpId:answer.kpId,questionId:answer.questionId,selectedAnswer:answer.selectedAnswer,correctAnswer:answer.correctAnswer,isCorrect:answer.isCorrect,now});conceptResult={...conceptUpdate,status:masteryStatus(conceptUpdate.mastery),lastAnsweredAt:conceptUpdate.lastAnsweredAt.toISOString()};}
+  const prev=kpSnap.exists?kpSnap.data():{},rawGame=gameSnap.exists?gameSnap.data():{},gameDate=rawGame.todayXpDate||answer.localDate,game=gameDate===answer.localDate?rawGame:{...rawGame,todayXp:0,todayXpDate:answer.localDate},update=calculateLearningUpdate({prev,...answer,baseXp,now}),totalXp=Number(game.totalXp??0)+update.xpEarned,todayXp=Number(game.todayXp??0)+update.xpEarned,dailyGoalXp=Number(game.dailyGoalXp??20),previousActiveDate=game.lastActiveDate||null;
+  let streak=Number(game.streak??0),streakFreezes=Number(game.streakFreezes??2),streakIncreased=false;
+  if(todayXp>=dailyGoalXp&&previousActiveDate!==answer.localDate){const previousDate=previousActiveDate?new Date(`${previousActiveDate}T00:00:00Z`):null,currentDate=new Date(`${answer.localDate}T00:00:00Z`),gap=previousDate?Math.round((currentDate-previousDate)/86400000):null;if(gap===1)streak+=1;else if(gap==null||gap>1){const missedDays=gap==null?0:gap-1;if(missedDays>0&&streakFreezes>=missedDays){streakFreezes-=missedDays;streak+=1}else{streak=1;streakFreezes=missedDays>0?0:streakFreezes}}streakIncreased=true;}
+  const level=calculateLevel(totalXp);
+  transaction.set(kpRef,{...update,lastAnsweredAt:admin.firestore.FieldValue.serverTimestamp(),updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
+  if(conceptRef&&conceptUpdate)transaction.set(conceptRef,{...conceptUpdate,lastAnsweredAt:admin.firestore.Timestamp.fromDate(now),updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
+  transaction.set(gamificationRef,{totalXp,todayXp,todayXpDate:answer.localDate,dailyGoalXp,streak,streakFreezes,lastActiveDate:todayXp>=dailyGoalXp?answer.localDate:previousActiveDate,level,updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
+  transaction.set(logRef,{answerId:answer.answerId,questionId:answer.questionId,kpIds:[answer.kpId],textId:answer.textId,conceptKey,conceptLabel,selectedAnswer:answer.selectedAnswer,correctAnswer:answer.correctAnswer,conceptMastery:conceptResult,isCorrect:answer.isCorrect,usedHint:answer.usedHint,attemptCount:answer.attemptCount,responseTimeMs:answer.responseTimeMs,localDate:answer.localDate,quality:update.quality,xpEarned:update.xpEarned,mastery:update.mastery,status:update.status,nextReviewAt:update.nextReviewAt,interval:update.interval,easeFactor:update.easeFactor,repetition:update.repetition,totalXp,todayXp,streak,streakFreezes,streakIncreased,level,answeredAt:admin.firestore.FieldValue.serverTimestamp()});
+  return{quality:update.quality,xpEarned:update.xpEarned,mastery:update.mastery,status:update.status,nextReviewAt:update.nextReviewAt,interval:update.interval,easeFactor:update.easeFactor,repetition:update.repetition,totalXp,todayXp,streak,streakFreezes,streakIncreased,level,conceptMastery:conceptResult,duplicate:false};
+ });
+ return{success:true,...result};
 });
 
-exports.getDueKnowledgePoints = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "請先登入");
-  const snap = await db.collection("users").doc(context.auth.uid).collection("knowledge").where("nextReviewAt", "<=", admin.firestore.Timestamp.now()).orderBy("nextReviewAt").limit(50).get();
-  return { dueKpIds: snap.docs.map((doc) => doc.id), count: snap.size };
-});
+exports.getDueKnowledgePoints=functions.https.onCall(async(data,context)=>{if(!context.auth)throw new functions.https.HttpsError('unauthenticated','請先登入');const snap=await db.collection('users').doc(context.auth.uid).collection('knowledge').where('nextReviewAt','<=',admin.firestore.Timestamp.now()).orderBy('nextReviewAt').limit(50).get();return{dueKpIds:snap.docs.map(doc=>doc.id),count:snap.size};});
 
-exports.getDailyLearningPlan = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "請先登入");
-  const uid = context.auth.uid;
-  const userRef = db.collection("users").doc(uid);
-  const knowledgeRef = userRef.collection("knowledge");
-  const now = admin.firestore.Timestamp.now();
-  const targetCount = 10;
-  const [dueSnap, weakSnap, learnedSnap, kpSnap, conceptSnap] = await Promise.all([
-    knowledgeRef.where("nextReviewAt", "<=", now).orderBy("nextReviewAt").limit(30).get(),
-    knowledgeRef.where("mastery", "<", 61).orderBy("mastery").limit(30).get(),
-    knowledgeRef.limit(500).get(),
-    db.collection("knowledgePoints").limit(500).get(),
-    userRef.collection("concepts").limit(500).get()
-  ]);
-  const learned = new Set(learnedSnap.docs.map((d) => d.id));
-  const kpUniverse = new Set(kpSnap.docs.map((d) => d.id));
-  const due = dueSnap.docs.map((d) => ({ id: d.id, data: d.data() }));
-  const weak = weakSnap.docs.map((d) => ({ id: d.id, data: d.data() }));
-  const dueIds = new Set(due.map((x) => x.id));
-  const weakOnly = weak.filter((x) => !dueIds.has(x.id));
-  const fresh = kpSnap.docs.filter((d) => !learned.has(d.id)).map((d) => ({ id: d.id, data: d.data() }));
-  const conceptByKp = new Map();
-  conceptSnap.docs
-    .map((d) => ({ id: d.id, data: d.data() }))
-    .filter((x) => Number(x.data.attempts || 0) > 0 && (Number(x.data.mastery || 0) < 60 || x.data.lastCorrect === false))
-    .sort((a, b) => (a.data.lastCorrect === false ? -1 : 1) - (b.data.lastCorrect === false ? -1 : 1) || Number(a.data.mastery || 0) - Number(b.data.mastery || 0))
-    .forEach((concept) => {
-      const kpId = (Array.isArray(concept.data.kpIds) ? concept.data.kpIds.map(String) : []).find((id) => kpUniverse.has(id));
-      if (!kpId || conceptByKp.has(kpId)) return;
-      conceptByKp.set(kpId, { ...concept.data, conceptKey: concept.id });
-    });
-
-  const selected = [];
-  const conceptExtra = (kpId) => {
-    const concept = conceptByKp.get(kpId);
-    if (!concept) return {};
-    return {
-      conceptReview: true,
-      conceptKey: concept.conceptKey,
-      conceptLabel: concept.conceptLabel || concept.conceptKey,
-      conceptMastery: Number(concept.mastery || 0),
-      conceptQuestionIds: Array.isArray(concept.questionIds) ? concept.questionIds.map(String) : []
-    };
-  };
-  const push = (item, category, priority, extra = {}) => {
-    if (selected.length >= targetCount || selected.some((x) => x.kpId === item.id)) return;
-    selected.push({ kpId: item.id, category, priority, ...conceptExtra(item.id), ...extra });
-  };
-
-  due.slice(0, 5).forEach((x) => push(x, "review", 100));
-  Array.from(conceptByKp.entries()).forEach(([kpId, concept]) => push({ id: kpId }, "weak", 90, {
-    conceptReview: true,
-    conceptKey: concept.conceptKey,
-    conceptLabel: concept.conceptLabel || concept.conceptKey,
-    conceptMastery: Number(concept.mastery || 0),
-    conceptQuestionIds: Array.isArray(concept.questionIds) ? concept.questionIds.map(String) : []
-  }));
-  weakOnly.slice(0, 3).forEach((x) => push(x, "weak", 80));
-  fresh.slice(0, 2).forEach((x) => push(x, "new", 60));
-  [...due, ...weakOnly, ...fresh].forEach((x) => {
-    if (selected.length >= targetCount) return;
-    const category = dueIds.has(x.id) ? "review" : weakOnly.some((w) => w.id === x.id) ? "weak" : "new";
-    push(x, category, category === "review" ? 100 : category === "weak" ? 80 : 60);
-  });
-  return {
-    targetCount,
-    items: selected,
-    review: selected.filter((x) => x.category === "review").map((x) => x.kpId),
-    weak: selected.filter((x) => x.category === "weak").map((x) => x.kpId),
-    newKnowledgePoints: selected.filter((x) => x.category === "new").map((x) => x.kpId),
-    conceptReview: selected.filter((x) => x.conceptReview).map((x) => ({ kpId: x.kpId, conceptKey: x.conceptKey, conceptMastery: x.conceptMastery })),
-    totalRecommended: selected.length
-  };
+exports.getDailyLearningPlan=functions.https.onCall(async(data,context)=>{
+ if(!context.auth)throw new functions.https.HttpsError('unauthenticated','請先登入');
+ const uid=context.auth.uid,userRef=db.collection('users').doc(uid),knowledgeRef=userRef.collection('knowledge'),now=admin.firestore.Timestamp.now(),targetCount=10;
+ const[dueSnap,weakSnap,learnedSnap,kpSnap,conceptSnap]=await Promise.all([knowledgeRef.where('nextReviewAt','<=',now).orderBy('nextReviewAt').limit(30).get(),knowledgeRef.where('mastery','<',61).orderBy('mastery').limit(30).get(),knowledgeRef.limit(500).get(),db.collection('knowledgePoints').limit(500).get(),userRef.collection('concepts').limit(500).get()]);
+ const learned=new Set(learnedSnap.docs.map(d=>d.id)),kpUniverse=new Set(kpSnap.docs.map(d=>d.id)),due=dueSnap.docs.map(d=>({id:d.id,data:d.data()})),weak=weakSnap.docs.map(d=>({id:d.id,data:d.data()})),dueIds=new Set(due.map(x=>x.id)),weakOnly=weak.filter(x=>!dueIds.has(x.id)),fresh=kpSnap.docs.filter(d=>!learned.has(d.id)).map(d=>({id:d.id,data:d.data()})),conceptByKp=new Map();
+ conceptSnap.docs.map(d=>({id:d.id,data:d.data()})).filter(x=>Number(x.data.attempts||0)>0&&(Number(x.data.mastery||0)<60||x.data.lastCorrect===false)).sort((a,b)=>{const aw=a.data.lastCorrect===false?1:0,bw=b.data.lastCorrect===false?1:0;return bw-aw||Number(a.data.mastery||0)-Number(b.data.mastery||0)}).forEach(concept=>{const kpId=(Array.isArray(concept.data.kpIds)?concept.data.kpIds.map(String):[]).find(id=>kpUniverse.has(id));if(!kpId||conceptByKp.has(kpId))return;conceptByKp.set(kpId,{...concept.data,conceptKey:concept.id});});
+ const selected=[],conceptExtra=kpId=>{const concept=conceptByKp.get(kpId);return concept?{conceptReview:true,conceptKey:concept.conceptKey,conceptLabel:concept.conceptLabel||concept.conceptKey,conceptMastery:Number(concept.mastery||0),conceptQuestionIds:Array.isArray(concept.questionIds)?concept.questionIds.map(String):[]}:{}};
+ const push=(item,category,priority,extra={})=>{if(selected.length>=targetCount||selected.some(x=>x.kpId===item.id))return;selected.push({kpId:item.id,category,priority,...conceptExtra(item.id),...extra});};
+ due.slice(0,5).forEach(x=>push(x,'review',100));
+ Array.from(conceptByKp.entries()).forEach(([kpId,concept])=>push({id:kpId},'weak',90,{conceptReview:true,conceptKey:concept.conceptKey,conceptLabel:concept.conceptLabel||concept.conceptKey,conceptMastery:Number(concept.mastery||0),conceptQuestionIds:Array.isArray(concept.questionIds)?concept.questionIds.map(String):[]}));
+ weakOnly.slice(0,3).forEach(x=>push(x,'weak',80));fresh.slice(0,2).forEach(x=>push(x,'new',60));[...due,...weakOnly,...fresh].forEach(x=>{if(selected.length>=targetCount)return;const category=dueIds.has(x.id)?'review':weakOnly.some(w=>w.id===x.id)?'weak':'new';push(x,category,category==='review'?100:category==='weak'?80:60);});
+ return{targetCount,items:selected,review:selected.filter(x=>x.category==='review').map(x=>x.kpId),weak:selected.filter(x=>x.category==='weak').map(x=>x.kpId),newKnowledgePoints:selected.filter(x=>x.category==='new').map(x=>x.kpId),conceptReview:selected.filter(x=>x.conceptReview).map(x=>({kpId:x.kpId,conceptKey:x.conceptKey,conceptMastery:x.conceptMastery})),totalRecommended:selected.length};
 });
