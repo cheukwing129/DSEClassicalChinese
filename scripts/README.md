@@ -1,4 +1,4 @@
-# Firebase 內容匯入說明
+# Firebase 內容同步說明
 
 ## 正式題庫來源
 
@@ -12,37 +12,62 @@ Manjingo 現在以 `public/` 下的 reviewed catalog 為唯一正式題庫來源
 
 `data/questions_v2_template.csv`、`data/questions_generated_01.csv` 與更早的 template CSV 都屬於 **legacy / historical files**。它們包含早期測試題、舊 KP ID、舊題型格式，以及已知錯字／錯誤內容，**不可再作為 production Firestore 題庫來源**。
 
-## 前置準備
+## 推薦：用 GitHub Actions 同步 production
 
-1. 確認 Firebase project：`manjingo-95d9a`
-2. 到 Firebase Console → Project settings → Service accounts 取得 service account JSON
-3. 把檔案只放在本機 `scripts/serviceAccountKey.json`，不要 commit
-4. 在 `scripts/` 安裝 `firebase-admin` 與 `csv-parser`
+正式環境請使用 **Actions → Firebase Content Sync → Run workflow**。
 
-## 匯入 reviewed catalog
+Workflow 有兩個 operation：
 
-```bash
-cd scripts
-node import_to_firestore.js
+- `check`：只讀 Firestore，顯示 create / update / unchanged / stale 數量，不修改資料。
+- `sync-and-prune`：先 preview，再同步 reviewed catalog，刪除 `questions` / `knowledgePoints` 中不屬於目前 catalog 的舊文件，最後 strict verify。
+
+選擇 `sync-and-prune` 時，`confirmation` 必須輸入：
+
+```text
+PRUNE_REVIEWED_CONTENT
 ```
 
-這會 upsert：
+部署使用既有 GitHub Actions secret `FIREBASE_SERVICE_ACCOUNT_MANJINGO`，經 `google-github-actions/auth` 建立 Application Default Credentials。不要把 service-account JSON commit 到 repository。
 
-- `data/texts_template.csv` → `texts`
-- reviewed JS catalog → `knowledgePoints`
-- reviewed JS catalog → `questions`
+每次正式同步都會先執行完整 `npm test`。同步成功後亦會寫入：
 
-預設 **不會刪除** Firestore 中的舊文件。
-
-## 清除已淘汰的舊題
-
-確認 reviewed catalog 無誤後才使用：
-
-```bash
-node import_to_firestore.js --prune
+```text
+contentMeta/catalog
 ```
 
-`--prune` 會刪除 `questions` 與 `knowledgePoints` collection 中不在目前 reviewed catalog 的文件。因此 production 使用前應先確認目前 catalog／測試均通過。
+其中記錄 `catalogVersion`、題目數、KP 數、同步模式與 server timestamp，方便確認 production 目前使用哪一版內容。
+
+## 本機安全模式
+
+本機使用前先安裝 Functions dependencies：
+
+```bash
+npm install --prefix functions
+```
+
+然後使用 Google Application Default Credentials，或以 `FIREBASE_SERVICE_ACCOUNT_PATH` 指向只存在本機的 service-account JSON。
+
+預設執行是 **read-only check**：
+
+```bash
+node scripts/import_to_firestore.js
+# 等同 --check
+```
+
+其他模式：
+
+```bash
+node scripts/import_to_firestore.js --check
+node scripts/import_to_firestore.js --apply
+node scripts/import_to_firestore.js --prune
+node scripts/import_to_firestore.js --verify
+```
+
+- `--apply`：upsert reviewed docs，但保留 stale docs。
+- `--prune`：upsert reviewed docs，並刪除 stale question / KP docs。
+- `--verify`：只讀；只要 Firestore 與 reviewed catalog 有 create / update / stale drift 就失敗。
+
+`texts` 會同步內容，但 `--prune` **不會刪除額外 text 文件**，避免題庫清理誤刪歷史文章資料。
 
 ## 新增或修改題目的規則
 
@@ -58,4 +83,4 @@ node import_to_firestore.js --prune
 
 ## 舊 CSV 的定位
 
-Legacy CSV 目前只保留作版本追溯與舊 Firestore 資料辨識用途。`scripts/import_to_firestore.js` 已不再讀取它們，因此不會因誤執行匯入腳本而把舊測試題重新寫回 production。
+Legacy CSV 目前只保留作版本追溯與舊 Firestore 資料辨識用途。`scripts/import_to_firestore.js` 已不再讀取它們，因此不會因誤執行同步腳本而把舊測試題重新寫回 production。
