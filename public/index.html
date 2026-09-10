@@ -11,10 +11,10 @@
 </head>
 <body>
 <h1 class="main-title">Manjingo</h1>
-<div class="sync-status" id="syncStatus">連接中...</div>
+<div class="sync-status" id="syncStatus">正在載入本地學習內容…</div>
 <div class="top-bar"><div class="level-badge"><div class="level-circle" id="levelCircle">1</div><div class="xp-total" id="xpTotalText">共 0 XP</div></div><div class="streak">🔥 <span id="streakCount">0</span> 日 <span class="freeze" id="freezeCount">❄️×2</span></div></div>
 <div class="progress-card"><div class="progress-label"><span>今日目標</span><span id="dailyGoalText">0 / 20 XP</span></div><div class="bar"><div class="fill" id="dailyBarFill" style="width:0"></div></div><div class="progress-label"><span>等級進度</span><span id="levelProgressText">0 / 50 XP</span></div><div class="bar"><div class="fill level-fill" id="levelBarFill" style="width:0"></div></div></div>
-<div class="daily-card" id="dailyPlanCard"><div class="daily-plan-title">今日學習</div><div class="daily-plan-subtitle">正在為你安排學習內容……</div></div>
+<div class="daily-card" id="dailyPlanCard"><div class="daily-plan-title">今日學習</div><div class="daily-plan-subtitle">準備好了，先用本地題目開始學習。</div></div>
 <div class="quiz-card" id="quizCard" style="display:none"><div id="quizContent"></div></div>
 <div class="toast" id="toast">🔥 連續學習日 +1！</div>
 <div class="levelup" id="levelup"><div class="levelup-box"><div class="levelup-num" id="levelupNum">2</div><h2>升級了！</h2><p id="levelupText">你已達到 Lv.2</p><button class="action" id="levelupClose">繼續學習</button></div></div>
@@ -24,7 +24,8 @@ import { ensureLogin, fetchAllQuestions, fetchUserGamification, submitAnswer } f
 import { loadDailyPlan, buildDailyQueue, renderDailyPlanCard } from './dailyPlan.js';
 
 const fallbackQuestions=[{id:'q001',type:'choice',kpId:'kp_yueyang_001',question:'『謫守巴陵郡』中『謫』字的意思是？',options:['提拔','貶官','辭職','退休'],answer:'貶官'},{id:'q004',type:'choice',kpId:'kp_virtual_zhi',question:'『輟耕之壟上』中『之』字的用法是？',options:['代詞','結構助詞（的）','動詞（到／往）','語氣助詞'],answer:'動詞（到／往）'},{id:'q005',type:'choice',kpId:'sx_001',question:'『廉頗者，趙之良將也』屬於哪種句式？',options:['判斷句','被動句','省略句','倒裝句'],answer:'判斷句'},{id:'q010',type:'choice',kpId:'sx_006',question:'『微斯人，吾誰與歸』的正確白話翻譯是？',options:['如果沒有這樣的人，我要跟從誰呢？','如果沒有這樣的人，誰會跟從我呢？','沒有這樣的人，我不知道去哪裡。','這個人不存在，我們一起回去。'],answer:'如果沒有這樣的人，我要跟從誰呢？'},{id:'q008',type:'fill',kpId:'kp_yueyang_004',question:'先天下之憂而憂，____________。',answer:'後天下之樂而樂'},{id:'q006',type:'reorder',kpId:'sx_006',question:'將詞塊排成正確語序（岳陽樓記）',options:['吾','誰','與','歸'],answer:['吾','誰','與','歸']}];
-let questions=[];let currentIndex=0;let currentStartedAt=Date.now();let attemptCount=1;let submitting=false;let dailyPlan=null;
+const localPlan=()=>({targetCount:Math.min(10,fallbackQuestions.length),items:fallbackQuestions.map(q=>({kpId:q.kpId,category:'mixed',priority:40})),review:[],weak:[],newKnowledgePoints:fallbackQuestions.map(q=>q.kpId),totalRecommended:fallbackQuestions.length});
+let questions=[...fallbackQuestions];let currentIndex=0;let currentStartedAt=Date.now();let attemptCount=1;let submitting=false;let dailyPlan=localPlan();
 const todayStr=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 function refreshTopUI(){const s=manager.state;const li=manager.getLevelInfo();document.getElementById('levelCircle').textContent=li.level;document.getElementById('xpTotalText').textContent=`共 ${s.totalXp||0} XP`;document.getElementById('streakCount').textContent=s.streak||0;document.getElementById('freezeCount').textContent=`❄️×${s.streakFreezes??2}`;const goal=s.dailyGoalXp||20;document.getElementById('dailyGoalText').textContent=`${s.todayXp||0} / ${goal} XP`;document.getElementById('dailyBarFill').style.width=`${Math.min(100,Math.round(((s.todayXp||0)/goal)*100))}%`;document.getElementById('levelProgressText').textContent=`${li.currentLevelXp} / ${li.nextLevelNeeded} XP`;document.getElementById('levelBarFill').style.width=`${li.progressPercent}%`}
 function toast(){const el=document.getElementById('toast');el.style.display='block';setTimeout(()=>el.style.display='none',2200)}
@@ -36,14 +37,49 @@ function nextQuestion(){currentIndex++;currentStartedAt=Date.now();attemptCount=
 function renderQuiz(){const c=document.getElementById('quizContent');c.innerHTML='';if(currentIndex>=questions.length){c.innerHTML='<div class="no-more">今日學習完成！🎉<br><small>明天再來繼續你的文言文學習吧！</small></div>';return}const q=normalizeQuestion(questions[currentIndex]);if(q.type==='choice')renderChoice(c,q);else if(q.type==='reorder')renderReorder(c,q);else if(q.type==='match')renderMatch(c,q);else if(q.type==='fill')renderFill(c,q);else if(q.type==='mark')renderMark(c,q);else nextQuestion()}
 function renderChoice(c,q){c.innerHTML=`<div class="question">${q.question}</div><div id="opts"></div><div id="fb"></div><button class="action" id="next" disabled>下一題</button>`;const opts=c.querySelector('#opts');q.options.forEach(opt=>{const b=document.createElement('button');b.className='option';b.textContent=opt;b.onclick=async()=>{opts.querySelectorAll('button').forEach(x=>x.disabled=true);const correct=opt===q.answer;const r=await submitCurrentAnswer(q,correct);const xp=r?.xpEarned??0;b.classList.add(correct?'correct':'wrong');c.querySelector('#fb').className=`feedback ${correct?'correct':'wrong'}`;c.querySelector('#fb').textContent=correct?`答對了！+${xp} XP`:`正確答案：${q.answer}（+${xp} XP）`;c.querySelector('#next').disabled=false};opts.appendChild(b)});c.querySelector('#next').onclick=nextQuestion}
 function renderReorder(c,q){c.innerHTML=`<div class="question">${q.question}</div><div class="drop-zone" id="zone"></div><div class="word-bank" id="bank"></div><button class="action" id="check">檢查答案</button><div id="fb"></div><button class="action" id="next" disabled>下一題</button>`;const bank=c.querySelector('#bank'),zone=c.querySelector('#zone');q.options.forEach(w=>{const t=document.createElement('div');t.className='word-tile';t.textContent=w;t.onclick=()=>t.parentElement===bank?zone.appendChild(t):bank.appendChild(t);bank.appendChild(t)});c.querySelector('#check').onclick=async()=>{c.querySelector('#check').disabled=true;const current=[...zone.children].map(x=>x.textContent);const correct=JSON.stringify(current)===JSON.stringify(q.answer);const r=await submitCurrentAnswer(q,correct);c.querySelector('#fb').className=`feedback ${correct?'correct':'wrong'}`;c.querySelector('#fb').textContent=correct?`正確！+${r?.xpEarned??0} XP`:`順序不對，正確語序：${q.answer.join('')}`;c.querySelector('#next').disabled=false};c.querySelector('#next').onclick=nextQuestion}
-function renderFill(c,q){c.innerHTML=`<div class="question">${q.question.replace('____________','')}</div><input class="fill-input" id="input" placeholder="請輸入答案"><button class="action" id="check">提交</button><div id="fb"></div><button class="action" id="next" disabled>下一題</button>`;const normalize=s=>String(s).replace(/[，。、；：！？\s]/g,'');c.querySelector('#check').onclick=async()=>{c.querySelector('#check').disabled=true;const correct=normalize(c.querySelector('#input').value)===normalize(q.answer);const r=await submitCurrentAnswer(q,correct);c.querySelector('#fb').className=`feedback ${correct?'correct':'wrong'}`;c.querySelector('#fb').textContent=correct?`默寫正確！+${r?.xpEarned??0} XP`:`正確答案：${q.answer}`;c.querySelector('#next').disabled=false};c.querySelector('#next').onclick=nextQuestion}
+function renderFill(c,q){c.innerHTML=`<div class="question">${q.question.replace('____________','')}</div><input class="fill-input" id="input" placeholder="請輸入答案"><button class="action" id="check">提交</button><div id="fb"></div><button class="action" id="next" disabled>下一題</button>`;const normalize=s=>String(s).replace(/[，。、；：！？\s]/g,'');c.querySelector('#check').onclick=async()=>{c.querySelector('#check').disabled=true;const correct=normalize(c.querySelector('#input').value)===normalize(q.answer);const r=await submitCurrentAnswer(q,correct);c.querySelector('#fb').className=`feedback ${correct?'correct':'wrong'}`;c.querySelector('#fb').textContent=correct?`默寫正確！+${r?.xpEarned??0}`:`正確答案：${q.answer}`;c.querySelector('#next').disabled=false};c.querySelector('#next').onclick=nextQuestion}
 function renderMatch(c,q){c.innerHTML=`<div class="question">${q.question}</div><div class="match-container"><div class="match-col" id="left"></div><div class="match-col" id="right"></div></div><div id="fb"></div><button class="action" id="next" disabled>下一題</button>`;const left=c.querySelector('#left'),right=c.querySelector('#right');const pairs=Array.isArray(q.options)?q.options:[];let selected=null,matched=0;pairs.forEach((p,i)=>{const a=document.createElement('div');a.className='match-item';a.textContent=p[0];a.dataset.i=i;a.onclick=()=>{if(a.classList.contains('matched'))return;selected=i;left.querySelectorAll('.match-item').forEach(x=>x.classList.remove('selected'));a.classList.add('selected')};left.appendChild(a);const b=document.createElement('div');b.className='match-item';b.textContent=p[1];b.dataset.i=i;b.onclick=async()=>{if(b.classList.contains('matched')||selected===null)return;if(Number(b.dataset.i)===selected){a.classList.add('matched');b.classList.add('matched');a.classList.remove('selected');selected=null;matched++;if(matched===pairs.length){const r=await submitCurrentAnswer(q,true);c.querySelector('#fb').className='feedback correct';c.querySelector('#fb').textContent=`全部配對成功！+${r?.xpEarned??0} XP`;c.querySelector('#next').disabled=false}}else{const r=await submitCurrentAnswer(q,false);c.querySelector('#fb').className='feedback wrong';c.querySelector('#fb').textContent=`配對錯誤（+${r?.xpEarned??0} XP），再試一次`}}};right.appendChild(b)})
 c.querySelector('#next').onclick=nextQuestion}
 function renderMark(c,q){c.innerHTML=`<div class="question">${q.question}</div><div id="sentence"></div><div id="fb"></div><button class="action" id="next" disabled>下一題</button>`;const s=c.querySelector('#sentence');let found=0;q.options.forEach((ch,i)=>{const span=document.createElement('span');span.className='mark-char';span.textContent=ch;span.onclick=()=>{if(q.answer.includes(i)&&span.dataset.found!=='1'){span.dataset.found='1';span.style.background='#d7ffb8';found++;c.querySelector('#fb').className='feedback correct';c.querySelector('#fb').textContent=`「${ch}」正確！`;if(found===q.answer.length)submitCurrentAnswer(q,true).then(r=>{c.querySelector('#fb').textContent=`全部找到了！+${r?.xpEarned??0} XP`;c.querySelector('#next').disabled=false})}else if(!q.answer.includes(i)){span.style.background='#ffdfe0';c.querySelector('#fb').className='feedback wrong';c.querySelector('#fb').textContent='這個字不是答案，再找找看'}};s.appendChild(span)});c.querySelector('#next').onclick=nextQuestion}
 
 async function startDailyLearning(){document.getElementById('dailyPlanCard').style.display='none';document.getElementById('quizCard').style.display='block';currentIndex=0;questions=buildDailyQueue(dailyPlan,questions);if(!questions.length){document.getElementById('quizContent').innerHTML='<div class="no-more">暫時沒有可用題目。</div>';return}renderQuiz()}
 
-async function init(){const status=document.getElementById('syncStatus');let uid=null;try{uid=await ensureLogin();if(uid){const cloud=await fetchUserGamification(uid);await manager.init(uid,cloud);const remote=await fetchAllQuestions();if(remote?.length)questions=remote;dailyPlan=await loadDailyPlan();status.textContent='☁️ 已連接雲端，學習進度由伺服器管理'}else{await manager.init(null,null);status.textContent='⚠️ 離線模式'}}catch(e){console.warn('Firebase 連接失敗',e);await manager.init(null,null);status.textContent='⚠️ 離線模式，請稍後再試'}if(!questions.length)questions=fallbackQuestions;if(!dailyPlan)dailyPlan={targetCount:10,items:[],review:[],weak:[],newKnowledgePoints:[],totalRecommended:0};renderDailyPlanCard(document.getElementById('dailyPlanCard'),dailyPlan,startDailyLearning);refreshTopUI()}
+async function syncCloud(){
+  const status=document.getElementById('syncStatus');
+  try{
+    const [uid,remoteQuestions]=await Promise.all([ensureLogin(),fetchAllQuestions()]);
+    if(remoteQuestions?.length)questions=remoteQuestions;
+    if(uid){
+      const cloud=await fetchUserGamification(uid);
+      await manager.init(uid,cloud);
+      try{
+        const remotePlan=await loadDailyPlan(questions);
+        if(remotePlan?.items?.length){
+          dailyPlan=remotePlan;
+          renderDailyPlanCard(document.getElementById('dailyPlanCard'),dailyPlan,startDailyLearning);
+        }
+      }catch(e){console.warn('雲端學習計劃暫時不可用，保留本地計劃',e)}
+      status.textContent='☁️ 已連接雲端，學習進度由伺服器管理';
+    }else{
+      status.textContent='⚠️ 離線模式，可先正常學習';
+    }
+    refreshTopUI();
+  }catch(e){
+    console.warn('雲端同步失敗，繼續使用本地模式',e);
+    status.textContent='⚠️ 雲端同步暫時不可用，可先正常學習';
+    refreshTopUI();
+  }
+}
+
+async function init(){
+  // 先初始化本地狀態並立即顯示可用題目；任何 Firebase 問題都不能阻塞首頁。
+  await manager.init(null,null);
+  renderDailyPlanCard(document.getElementById('dailyPlanCard'),dailyPlan,startDailyLearning);
+  refreshTopUI();
+  // Firebase 在背景同步，不再成為首頁進入條件。
+  void syncCloud();
+}
+
 init();
 </script>
 </body>
