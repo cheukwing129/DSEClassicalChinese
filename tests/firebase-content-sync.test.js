@@ -2,7 +2,12 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
+const childProcess=require('node:child_process');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
+
+test('Firestore content sync runtime parses before production use',()=>{
+  childProcess.execFileSync(process.execPath,['--check',path.join(__dirname,'..','scripts','import_to_firestore.js')]);
+});
 
 test('Firestore content sync defaults to read-only review and supports ADC',()=>{
   const source=read('scripts/import_to_firestore.js');
