@@ -36,7 +36,20 @@ function normal(v){return String(v||'').replace(/[，。、；：！？\s]/g,'')
 function cloudModule(){return import('./firebase-config.js')}
 function cloudSubmit(q,correct,answerId){return cloudModule().then(m=>m.ensureLogin().then(uid=>uid?m.submitAnswer({answerId:answerId,questionId:q.id,kpId:q.kpId,isCorrect:correct,attemptCount:1,responseTimeMs:0,usedHint:false,localDate:new Date().toLocaleDateString('en-CA')}):null)).catch(function(){return null})}
 function createAnswerId(){try{if(window.crypto&&typeof window.crypto.randomUUID==='function')return window.crypto.randomUUID().replace(/-/g,'');}catch(e){}return 'ans_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,14);}
-function parseQuestion(raw){if(!raw||!raw.id||!raw.kpId)return null;const q={...raw,id:String(raw.id),kpId:String(raw.kpId)};if(q.type==='fill'||q.type==='choice')return q;if(Array.isArray(q.options)&&q.options.length){q.type='choice';q.o=q.options;q.a=q.answer??q.correctAnswer??q.correct;}return q.q&&q.a?{...q,type:q.type||'choice'}:null;}
+function parseQuestion(raw){
+ if(!raw||!raw.id||!raw.kpId)return null;
+ const q={...raw,id:String(raw.id),kpId:String(raw.kpId)};
+ const options=Array.isArray(q.o)?q.o:(Array.isArray(q.options)?q.options:(Array.isArray(q.choices)?q.choices:null));
+ const answer=q.a??q.answer??q.correctAnswer??q.correct;
+ const type=String(q.type||'').toLowerCase().replace(/[-_\s]/g,'');
+ const fillTypes=['fill','input','text','textinput','shortanswer'];
+ const choiceTypes=['choice','multiplechoice','mcq','singlechoice','singleanswer'];
+ if(fillTypes.includes(type)){if(answer==null||!q.q)return null;q.type='fill';q.a=String(answer);return q;}
+ if(options&&options.length){if(answer==null||!q.q)return null;q.type='choice';q.o=options.map(String);q.a=String(answer);return q;}
+ if(choiceTypes.includes(type)||!type)return null;
+ if(q.q&&answer!=null){q.a=String(answer);return q;}
+ return null;
+}
 function showPlan(items,source){planItems=items;const review=items.filter(x=>x.category==='review').length,weak=items.filter(x=>x.category==='weak').length,news=items.filter(x=>x.category==='new').length;document.getElementById('reviewCount').textContent=review;document.getElementById('weakCount').textContent=weak;document.getElementById('newCount').textContent=news;document.getElementById('planSub').textContent=source==='cloud'?'今日計劃已根據你的掌握度安排：複習 → 弱項 → 新知識。':'雲端未連線，先用本地題目開始學習。';document.getElementById('status').textContent=source==='cloud'?'☁️ 已載入今日學習計劃':'本地學習模式已準備';}
 async function loadCloudPlan(){
 try{
@@ -50,7 +63,7 @@ try{
 }
 function finish(){document.getElementById('quiz').innerHTML='<div class="done">🎉 今日學習完成！<br><span class="small">你已完成本次文言文練習。</span></div>';document.getElementById('status').textContent='學習完成';}
 function next(){index++;if(index>=questions.length)return finish();renderQuestion();}
-function renderQuestion(){const q=questions[index],box=document.getElementById('quiz');box.innerHTML='<div class="category">'+(q.category==='review'?'複習':q.category==='weak'?'弱項':'新知識')+' · '+(index+1)+' / '+questions.length+'</div><div class="question">'+q.q+'</div><div id="answers"></div><div id="feedback"></div><button class="action" id="next" disabled>下一題</button>';const answers=box.querySelector('#answers');if(q.type==='fill'){answers.innerHTML='<input class="input" id="input" placeholder="請輸入答案"><button class="action" id="check">提交答案</button>';box.querySelector('#check').onclick=function(){answer(box,q,box.querySelector('#input').value)}}else{(q.o||[]).forEach(function(x){const b=document.createElement('button');b.className='option';b.textContent=x;b.onclick=function(){answer(box,q,x)};answers.appendChild(b)})}box.querySelector('#next').onclick=next;}
+function renderQuestion(){const q=questions[index],box=document.getElementById('quiz');box.innerHTML='<div class="category">'+(q.category==='review'?'複習':q.category==='weak'?'弱項':'新知識')+' · '+(index+1)+' / '+questions.length+'</div><div class="question">'+q.q+'</div><div id="answers"></div><div id="feedback"></div><button class="action" id="next" disabled>下一題</button>';const answers=box.querySelector('#answers');const options=Array.isArray(q.o)?q.o:[];if(q.type==='fill'){answers.innerHTML='<input class="input" id="input" placeholder="請輸入答案"><button class="action" id="check">提交答案</button>';box.querySelector('#check').onclick=function(){answer(box,q,box.querySelector('#input').value)}}else if(options.length){options.forEach(function(x){const b=document.createElement('button');b.className='option';b.textContent=x;b.onclick=function(){answer(box,q,x)};answers.appendChild(b)})}else{answers.innerHTML='<div class="feedback wrong">這題資料不完整，已跳過。</div>';box.querySelector('#next').disabled=false}box.querySelector('#next').onclick=next;}
 function answer(box,q,value){if(box.dataset.answered)return;box.dataset.answered='1';const answerId=createAnswerId();box.dataset.answerId=answerId;const correct=normal(value)===normal(q.a);box.querySelectorAll('.option').forEach(function(b){b.disabled=true;if(b.textContent===String(value))b.classList.add(correct?'correct':'wrong')});const fb=box.querySelector('#feedback');fb.className='feedback '+(correct?'correct':'wrong');fb.textContent=correct?'答對了！':'正確答案：'+q.a;if(correct){state.totalXp+=10;state.todayXp+=10;save();render()}cloudSubmit(q,correct,answerId).then(function(result){if(result&&typeof result.xpEarned==='number'){state.totalXp=result.totalXp||state.totalXp;state.todayXp=result.todayXp||state.todayXp;state.streak=result.streak||state.streak;save();render();document.getElementById('status').textContent=result.duplicate?'☁️ 答案已存在，沒有重複計分':'☁️ 已同步雲端';}});box.querySelector('#next').disabled=false;}
 document.getElementById('start').onclick=function(){document.getElementById('plan').classList.add('hidden');document.getElementById('quiz').classList.remove('hidden');index=0;renderQuestion()};
 render();showPlan(localQuestions.map((q,i)=>({kpId:q.kpId,category:'new',priority:60})), 'local');void loadCloudPlan();
