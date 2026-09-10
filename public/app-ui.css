@@ -124,6 +124,21 @@ body .feedback-ui.wrong,#lessonApp .feedback-ui.wrong{border-color:#ffc5c5}
 .feedback-progress-rows span{display:inline-flex;align-items:center;min-height:28px;padding:5px 8px;border-radius:999px;background:var(--ui-surface-soft);color:var(--ui-text);font-size:11px;font-weight:800}
 .feedback-next{padding:9px 14px;border-top:1px solid var(--ui-border);color:var(--ui-muted);font-size:11px;font-weight:800;background:#fcfdfb}
 
+/* Learning session completion */
+.session-summary.done{padding:10px 0 2px!important;text-align:center;font-weight:inherit}
+.session-summary-icon{width:62px;height:62px;margin:0 auto 10px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--ui-green-soft);font-size:32px}
+.session-summary h3{margin:0;color:var(--ui-ink);font-size:24px;line-height:1.25;letter-spacing:-.02em}
+.session-summary-lead{margin:6px 0 16px;color:var(--ui-muted);font-size:13px;font-weight:800}
+.session-summary-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 14px}
+.session-summary-metrics>div{min-width:0;padding:12px 6px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface-soft)}
+.session-summary-metrics strong{display:block;color:var(--ui-ink);font-size:19px;line-height:1.1;white-space:nowrap}
+.session-summary-metrics span{display:block;margin-top:5px;color:var(--ui-muted);font-size:9px;font-weight:850;line-height:1.25}
+.session-summary-impact{text-align:left;padding:12px 13px;border-radius:14px;background:#f7fff1;border:1px solid #dcedd0}
+.session-summary-impact>strong{display:block;color:var(--ui-green-dark);font-size:11px;margin-bottom:4px}
+.session-summary-impact p{margin:3px 0;color:var(--ui-text);font-size:12px;font-weight:750;line-height:1.5}
+.session-summary-action{margin-top:14px!important;text-decoration:none}
+#lessonApp .session-summary{max-width:520px;margin:0 auto}
+
 /* Lesson consistency */
 #lessonApp{width:100%}
 #lessonApp .lesson-head,#lessonApp .lesson-content{padding:20px;margin-bottom:14px}
@@ -153,6 +168,7 @@ body .feedback-ui.wrong,#lessonApp .feedback-ui.wrong{border-color:#ffc5c5}
   #lessonApp .lesson-step h3,#lessonApp .lesson-complete h3{font-size:20px}
   #lessonApp .action,#lessonApp .option,body .action,body .option{min-height:50px}
   .feedback-result{padding:12px}.feedback-teaching{padding:12px}.feedback-progress,.feedback-next{padding-left:12px;padding-right:12px}
+  .session-summary h3{font-size:22px}.session-summary-metrics>div{padding:11px 4px}.session-summary-metrics strong{font-size:17px}
 }
 @media(max-width:370px){
   body{padding-left:10px!important;padding-right:10px!important}
@@ -165,6 +181,7 @@ body .feedback-ui.wrong,#lessonApp .feedback-ui.wrong{border-color:#ffc5c5}
   #lessonApp .lesson-head,#lessonApp .lesson-content{padding:14px}
   .feedback-result{grid-template-columns:32px minmax(0,1fr)}
   .feedback-result-icon{width:30px;height:30px;font-size:17px}
+  .session-summary-metrics{gap:5px}.session-summary-metrics strong{font-size:15px}.session-summary-metrics span{font-size:8px}
 }
 
 @media(prefers-reduced-motion:reduce){
