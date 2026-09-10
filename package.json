@@ -4,6 +4,7 @@
   "description": "DSE 文言文自主學習平台（字詞、句式為主軸）",
   "scripts": {
     "dev": "wrangler pages dev public",
+    "test": "node --test functions/*.test.js tests/*.test.js",
     "deploy": "wrangler pages deploy public"
   },
   "devDependencies": {
