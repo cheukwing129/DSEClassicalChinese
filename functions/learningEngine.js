@@ -35,7 +35,6 @@ function calculateSM2(quality, prev = {}) {
   interval = Number.isFinite(interval) && interval >= 0 ? interval : 0;
 
   if (q < 3) {
-    // Lapse：重新進入學習期，下一次在 1 日內重見。
     repetition = 0;
     interval = 1;
   } else {
@@ -45,16 +44,10 @@ function calculateSM2(quality, prev = {}) {
     else interval = Math.max(1, Math.round(interval * easeFactor));
   }
 
-  // 原版 SM-2 ease factor 更新公式。
   easeFactor += 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02);
   easeFactor = clamp(easeFactor, 1.3, 3.0);
 
-  return {
-    easeFactor,
-    repetition,
-    interval,
-    lastQuality: q
-  };
+  return { easeFactor, repetition, interval, lastQuality: q };
 }
 
 function calculateNextReviewAt(interval, now = new Date()) {
@@ -73,6 +66,28 @@ function calculateMastery({ prevMastery = 0, isCorrect, usedHint = false, attemp
 
   const mastery = clamp(Math.round(Number(prevMastery) + delta), 0, 100);
   return { mastery, status: masteryStatus(mastery) };
+}
+
+function calculateConceptMasteryUpdate({ prev = {}, conceptKey, conceptLabel, kpId, questionId, isCorrect, now = new Date() }) {
+  const previousMastery = clamp(Number(prev.mastery) || 0, 0, 100);
+  const mastery = isCorrect
+    ? clamp(Math.round(previousMastery + (100 - previousMastery) * 0.22), 0, 100)
+    : clamp(Math.round(previousMastery * 0.7), 0, 100);
+  const kpIds = Array.from(new Set([...(Array.isArray(prev.kpIds) ? prev.kpIds.map(String) : []), ...(kpId ? [String(kpId)] : [])]));
+  const questionIds = Array.from(new Set([...(Array.isArray(prev.questionIds) ? prev.questionIds.map(String) : []), ...(questionId ? [String(questionId)] : [])]));
+  const answeredAt = now instanceof Date ? new Date(now.getTime()) : new Date(now);
+
+  return {
+    conceptKey: String(conceptKey || prev.conceptKey || ""),
+    conceptLabel: String(conceptLabel || prev.conceptLabel || conceptKey || ""),
+    mastery,
+    attempts: Number(prev.attempts || 0) + 1,
+    correctCount: Number(prev.correctCount || 0) + (isCorrect ? 1 : 0),
+    lastCorrect: Boolean(isCorrect),
+    lastAnsweredAt: Number.isNaN(answeredAt.getTime()) ? new Date() : answeredAt,
+    kpIds,
+    questionIds
+  };
 }
 
 function calculateXp({ baseXp = 8, isCorrect, usedHint = false, attemptCount = 1 }) {
@@ -113,6 +128,7 @@ module.exports = {
   calculateSM2,
   calculateNextReviewAt,
   calculateMastery,
+  calculateConceptMasteryUpdate,
   calculateXp,
   calculateLearningUpdate
 };
