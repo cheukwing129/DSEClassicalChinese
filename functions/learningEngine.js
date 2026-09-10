@@ -29,24 +29,13 @@ function calculateSM2(quality, prev = {}) {
   let easeFactor = Number(prev.easeFactor ?? 2.5);
   let repetition = Number(prev.repetition ?? 0);
   let interval = Number(prev.interval ?? 0);
-
   easeFactor = Number.isFinite(easeFactor) ? easeFactor : 2.5;
   repetition = Number.isFinite(repetition) && repetition >= 0 ? repetition : 0;
   interval = Number.isFinite(interval) && interval >= 0 ? interval : 0;
-
-  if (q < 3) {
-    repetition = 0;
-    interval = 1;
-  } else {
-    repetition += 1;
-    if (repetition === 1) interval = 1;
-    else if (repetition === 2) interval = 6;
-    else interval = Math.max(1, Math.round(interval * easeFactor));
-  }
-
+  if (q < 3) { repetition = 0; interval = 1; }
+  else { repetition += 1; if (repetition === 1) interval = 1; else if (repetition === 2) interval = 6; else interval = Math.max(1, Math.round(interval * easeFactor)); }
   easeFactor += 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02);
   easeFactor = clamp(easeFactor, 1.3, 3.0);
-
   return { easeFactor, repetition, interval, lastQuality: q };
 }
 
@@ -63,31 +52,37 @@ function calculateMastery({ prevMastery = 0, isCorrect, usedHint = false, attemp
   else if (usedHint) delta = 3;
   else if (attemptCount === 1) delta = 8;
   else delta = 5;
-
   const mastery = clamp(Math.round(Number(prevMastery) + delta), 0, 100);
   return { mastery, status: masteryStatus(mastery) };
 }
 
-function calculateConceptMasteryUpdate({ prev = {}, conceptKey, conceptLabel, kpId, questionId, isCorrect, now = new Date() }) {
+function calculateConceptMasteryUpdate({ prev = {}, conceptKey, conceptLabel, kpId, questionId, selectedAnswer, correctAnswer, isCorrect, now = new Date() }) {
   const previousMastery = clamp(Number(prev.mastery) || 0, 0, 100);
-  const mastery = isCorrect
-    ? clamp(Math.round(previousMastery + (100 - previousMastery) * 0.22), 0, 100)
-    : clamp(Math.round(previousMastery * 0.7), 0, 100);
+  const mastery = isCorrect ? clamp(Math.round(previousMastery + (100 - previousMastery) * 0.22), 0, 100) : clamp(Math.round(previousMastery * 0.7), 0, 100);
   const kpIds = Array.from(new Set([...(Array.isArray(prev.kpIds) ? prev.kpIds.map(String) : []), ...(kpId ? [String(kpId)] : [])]));
   const questionIds = Array.from(new Set([...(Array.isArray(prev.questionIds) ? prev.questionIds.map(String) : []), ...(questionId ? [String(questionId)] : [])]));
   const answeredAt = now instanceof Date ? new Date(now.getTime()) : new Date(now);
-
-  return {
+  const result = {
     conceptKey: String(conceptKey || prev.conceptKey || ""),
     conceptLabel: String(conceptLabel || prev.conceptLabel || conceptKey || ""),
     mastery,
     attempts: Number(prev.attempts || 0) + 1,
     correctCount: Number(prev.correctCount || 0) + (isCorrect ? 1 : 0),
+    wrongCount: Number(prev.wrongCount || 0) + (isCorrect ? 0 : 1),
     lastCorrect: Boolean(isCorrect),
     lastAnsweredAt: Number.isNaN(answeredAt.getTime()) ? new Date() : answeredAt,
     kpIds,
-    questionIds
+    questionIds,
+    lastWrongQuestionId: prev.lastWrongQuestionId || null,
+    lastSelectedAnswer: prev.lastSelectedAnswer || null,
+    lastCorrectAnswer: prev.lastCorrectAnswer || null
   };
+  if (!isCorrect) {
+    result.lastWrongQuestionId = questionId ? String(questionId) : result.lastWrongQuestionId;
+    result.lastSelectedAnswer = selectedAnswer == null ? result.lastSelectedAnswer : String(selectedAnswer);
+    result.lastCorrectAnswer = correctAnswer == null ? result.lastCorrectAnswer : String(correctAnswer);
+  }
+  return result;
 }
 
 function calculateXp({ baseXp = 8, isCorrect, usedHint = false, attemptCount = 1 }) {
@@ -100,15 +95,9 @@ function calculateXp({ baseXp = 8, isCorrect, usedHint = false, attemptCount = 1
 function calculateLearningUpdate({ prev = {}, isCorrect, usedHint = false, attemptCount = 1, baseXp = 8, now = new Date() }) {
   const quality = toQuality({ isCorrect, usedHint, attemptCount });
   const sm2 = calculateSM2(quality, prev);
-  const mastery = calculateMastery({
-    prevMastery: prev.mastery ?? 0,
-    isCorrect,
-    usedHint,
-    attemptCount
-  });
+  const mastery = calculateMastery({ prevMastery: prev.mastery ?? 0, isCorrect, usedHint, attemptCount });
   const xpEarned = calculateXp({ baseXp, isCorrect, usedHint, attemptCount });
   const nextReviewAt = calculateNextReviewAt(sm2.interval, now);
-
   return {
     quality,
     xpEarned,
