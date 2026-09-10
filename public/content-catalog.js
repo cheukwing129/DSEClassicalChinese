@@ -1,10 +1,11 @@
 (function(){
 'use strict';
 
-// Keep content packs separate from the planner. During normal page parsing this
-// synchronously loads the static pack before the catalog is consumed by index.html.
-if(!window.ManjingoQuestionPack02&&typeof document!=='undefined'&&document.readyState==='loading'){
- document.write('<script src="./question-pack-02.js"><\/script>');
+// Keep large content packs separate from planning logic. While index.html is
+// being parsed, load the static packs synchronously before the catalog is read.
+if(typeof document!=='undefined'&&document.readyState==='loading'){
+ if(!window.ManjingoQuestionPack02)document.write('<script src="./question-pack-02.js"><\/script>');
+ if(!window.ManjingoQuestionPack03)document.write('<script src="./question-pack-03.js"><\/script>');
 }
 
 const baseKnowledgePoints=[
@@ -43,8 +44,9 @@ const baseQuestions=[
 ];
 
 const pack02=window.ManjingoQuestionPack02||{knowledgePoints:[],questions:[]};
-const knowledgePoints=[...baseKnowledgePoints,...pack02.knowledgePoints];
-const questions=[...baseQuestions,...pack02.questions];
+const pack03=window.ManjingoQuestionPack03||{knowledgePoints:[],questions:[]};
+const knowledgePoints=[...baseKnowledgePoints,...pack02.knowledgePoints,...pack03.knowledgePoints];
+const questions=[...baseQuestions,...pack02.questions,...pack03.questions];
 
 function getKnowledgePointIds(options){
  const teachableOnly=!options||options.teachableOnly!==false;
