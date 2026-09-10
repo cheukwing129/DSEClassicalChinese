@@ -25,10 +25,10 @@ test('lesson page loads browser flow dependencies in safe order',()=>{
   assert.match(html,/ManjingoLocalLesson\.open\(kpId,app\)/);
 });
 
-test('local lesson practice submits exact KP result into learning engine',()=>{
+test('local lesson practice submits exact KP result and answer metadata into learning engine',()=>{
   const source=read('public/local-lesson.js');
   assert.match(source,/filter\(q=>q\.kpId===kpId\)/);
-  assert.match(source,/ManjingoLocalLearning\.submit\(q\.kpId,correct\)/);
+  assert.match(source,/ManjingoLocalLearning\.submit\(q\.kpId,correct,\{questionId:q\.id,selectedAnswer:value,correctAnswer:q\.a\}\)/);
   assert.match(source,/getKnowledge\(state\.kp\.kpId\)/);
   assert.match(source,/state\.questions\.length/);
 });
