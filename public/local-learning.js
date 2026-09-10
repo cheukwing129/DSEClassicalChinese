@@ -89,6 +89,11 @@ function resolveMisconceptions(record,detail){
  });
  return{record:p,resolvedCount,remainingWeight};
 }
+function resolveQuestionMisconceptions(kpId,questionId){
+ const data=load(),previous=data.knowledge[kpId]||getKnowledge(kpId),resolved=resolveMisconceptions(previous,{questionId});
+ data.knowledge[kpId]=resolved.record;persist(data);
+ return{kpId,resolvedMisconceptions:resolved.resolvedCount,remainingMisconceptionWeight:resolved.remainingWeight,misconceptions:{...(resolved.record.misconceptions||{})}};
+}
 function submit(kpId,correct,detail){
  const data=load(),previous=data.knowledge[kpId]||getKnowledge(kpId);let next=reviewUpdate(previous,correct),resolvedCount=0,remainingMisconceptionWeight=0;
  if(correct){const resolved=resolveMisconceptions(next,detail);next=resolved.record;resolvedCount=resolved.resolvedCount;remainingMisconceptionWeight=resolved.remainingWeight}else next=recordMisconception(next,detail);
@@ -134,5 +139,5 @@ function buildDailyPlan(kpIds,targetCount){
  add(due,'review',5);add(weak,'weak',3);add(fresh,'new',2);add(due,'review',targetCount);add(weak,'weak',targetCount);add(fresh,'new',targetCount);
  return{targetCount:items.length,items,review:items.filter(x=>x.category==='review').map(x=>x.kpId),weak:items.filter(x=>x.category==='weak').map(x=>x.kpId),newKnowledgePoints:items.filter(x=>x.category==='new').map(x=>x.kpId),totalRecommended:items.length};
 }
-window.ManjingoLocalLearning={getProgress,getKnowledge,submit,syncRemoteResult,syncGamification,getDueKnowledgePoints,getWeakKnowledgePoints,buildDailyPlan,status,isDue};
+window.ManjingoLocalLearning={getProgress,getKnowledge,submit,resolveQuestionMisconceptions,syncRemoteResult,syncGamification,getDueKnowledgePoints,getWeakKnowledgePoints,buildDailyPlan,status,isDue};
 })();
