@@ -74,13 +74,28 @@ function recordMisconception(record,detail){
  p.misconceptions[key]={questionId,selectedAnswer,correctAnswer,count:(Number(previous.count)||0)+1,lastAt:new Date().toISOString()};
  return p;
 }
+function resolveMisconceptions(record,detail){
+ if(!detail||!detail.questionId)return{record,resolvedCount:0,remainingWeight:0};
+ const questionId=String(detail.questionId),p={...record,misconceptions:{...(record.misconceptions||{})}};
+ let resolvedCount=0,remainingWeight=0;
+ Object.keys(p.misconceptions).forEach(key=>{
+   const entry=p.misconceptions[key];
+   if(!entry||String(entry.questionId)!==questionId)return;
+   const nextCount=Math.max(0,(Number(entry.count)||0)-1);
+   resolvedCount+=1;
+   if(nextCount===0){delete p.misconceptions[key];return;}
+   p.misconceptions[key]={...entry,count:nextCount,lastResolvedAt:new Date().toISOString()};
+   remainingWeight+=nextCount;
+ });
+ return{record:p,resolvedCount,remainingWeight};
+}
 function submit(kpId,correct,detail){
- const data=load(),previous=data.knowledge[kpId]||getKnowledge(kpId);let next=reviewUpdate(previous,correct);
- if(!correct)next=recordMisconception(next,detail);
+ const data=load(),previous=data.knowledge[kpId]||getKnowledge(kpId);let next=reviewUpdate(previous,correct),resolvedCount=0,remainingMisconceptionWeight=0;
+ if(correct){const resolved=resolveMisconceptions(next,detail);next=resolved.record;resolvedCount=resolved.resolvedCount;remainingMisconceptionWeight=resolved.remainingWeight}else next=recordMisconception(next,detail);
  data.knowledge[kpId]=next;
  if(correct){data.totalXp+=8;data.todayXp+=8;updateStreak(data)}
  persist(data);
- return {...next,kpId,status:status(next.mastery),xpEarned:correct?8:0,totalXp:data.totalXp,todayXp:data.todayXp,streak:data.streak};
+ return {...next,kpId,status:status(next.mastery),xpEarned:correct?8:0,totalXp:data.totalXp,todayXp:data.todayXp,streak:data.streak,resolvedMisconceptions:resolvedCount,remainingMisconceptionWeight};
 }
 function syncRemoteResult(kpId,result){
  if(!result||typeof result!=='object')return getProgress();
