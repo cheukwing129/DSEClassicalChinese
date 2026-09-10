@@ -2,6 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
+const vm=require('node:vm');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
 test('learning path links unlocked stages into lesson route',()=>{
@@ -32,16 +33,30 @@ test('local lesson practice submits exact KP result into learning engine',()=>{
   assert.match(source,/state\.questions\.length/);
 });
 
-test('wrong answers reteach the KP instead of only revealing the answer',()=>{
+test('wrong answers prefer per-question feedback and fall back to KP lesson',()=>{
   const source=read('public/local-lesson.js');
-  assert.match(source,/function teachingFeedback\(state\)/);
-  assert.match(source,/為甚麼？/);
-  assert.match(source,/判斷提示：/);
-  assert.match(source,/相似例子：/);
+  assert.match(source,/function teachingFeedback\(state,q,value\)/);
+  assert.match(source,/q&&q\.explanation/);
+  assert.match(source,/q&&q\.misconception/);
+  assert.match(source,/q&&q\.example/);
   assert.match(source,/lesson\.explanation/);
   assert.match(source,/lesson\.tip/);
   assert.match(source,/lesson\.examples/);
+  assert.match(source,/你可能混淆了：/);
   assert.match(source,/!correct&&normal\(b\.textContent\)===normal\(q\.a\)/);
+});
+
+test('core particle pack carries question-level teaching metadata',()=>{
+  const context={window:{}};
+  vm.createContext(context);
+  vm.runInContext(read('public/question-pack-03.js'),context);
+  const qs=context.window.ManjingoQuestionPack03.questions;
+  const rich=qs.filter(q=>q.explanation);
+  assert.ok(rich.length>=20);
+  const yi=qs.find(q=>q.q.includes('不以物喜'));
+  assert.ok(yi.explanation);
+  assert.ok(yi.misconception);
+  assert.ok(yi.example);
 });
 
 test('lesson completion returns learner to learning path',()=>{
