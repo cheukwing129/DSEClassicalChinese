@@ -92,5 +92,5 @@ function selectQuestionsForPlan(plan,sourceQuestions,limit){
  return queue;
 }
 window.ManjingoContent={knowledgePoints:knowledgePoints.map(x=>({...x})),questions:questions.map(x=>({...x})),getKnowledgePointIds,selectQuestionsForPlan,misconceptionConcept};
-if(typeof document!=='undefined'&&document.readyState==='loading'){document.write('<script src="./learning-path.js"><\/script><script src="./learning-path-ui.js"><\/script><script src="./weakness-panel.js"><\/script><script src="./mastery-dashboard.js"><\/script><script src="./feedback-ui.js"><\/script><script src="./session-summary.js"><\/script>');}
+if(typeof document!=='undefined'&&document.readyState==='loading'){document.write('<script src="./learning-path.js"><\/script><script src="./practice-effectiveness.js"><\/script><script src="./learning-path-ui.js"><\/script><script src="./weakness-panel.js"><\/script><script src="./mastery-dashboard.js"><\/script><script src="./feedback-ui.js"><\/script><script src="./session-summary.js"><\/script>');}
 })();
