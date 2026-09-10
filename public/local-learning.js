@@ -17,7 +17,7 @@ function reviewUpdate(previous,correct){
    if(p.repetition===1)p.interval=1;
    else if(p.repetition===2)p.interval=6;
    else p.interval=Math.max(1,Math.round(p.interval*p.easeFactor));
-   p.easeFactor=clamp(p.easeFactor+(0.1-(5-5*1+0)*0.08),1.3,3.0);
+   p.easeFactor=clamp(p.easeFactor+0.1,1.3,3.0);
    p.mastery=clamp(Math.round(p.mastery+(100-p.mastery)*0.22),0,100);
  }else{
    p.repetition=0;p.interval=1;p.easeFactor=clamp(p.easeFactor-0.2,1.3,3.0);
@@ -26,11 +26,7 @@ function reviewUpdate(previous,correct){
  p.nextReviewAt=addDays(p.interval);
  return p;
 }
-function submit(kpId,correct){
- const data=load();const previous=getKnowledge(kpId);const next=reviewUpdate(previous,correct);data[kpId]=next;save(data);return {...next,kpId,status:status(next.mastery)}
-}
-function getDueKnowledgePoints(limit){
- const data=load(),now=Date.now();return Object.keys(data).filter(k=>!data[k].nextReviewAt||new Date(data[k].nextReviewAt).getTime()<=now).sort((a,b)=>(data[a].mastery||0)-(data[b].mastery||0)).slice(0,limit||10).map(k=>({kpId:k,...data[k],status:status(data[k].mastery)}));
-}
+function submit(kpId,correct){const data=load();const previous=getKnowledge(kpId);const next=reviewUpdate(previous,correct);data[kpId]=next;save(data);return {...next,kpId,status:status(next.mastery),xpEarned:correct?8:0}}
+function getDueKnowledgePoints(limit){const data=load(),now=Date.now();return Object.keys(data).filter(k=>!data[k].nextReviewAt||new Date(data[k].nextReviewAt).getTime()<=now).sort((a,b)=>(data[a].mastery||0)-(data[b].mastery||0)).slice(0,limit||10).map(k=>({kpId:k,...data[k],status:status(data[k].mastery)}))}
 window.ManjingoLocalLearning={getKnowledge,submit,getDueKnowledgePoints,status};
 })();
