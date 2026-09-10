@@ -4,6 +4,11 @@ const api=factory(root);
 if(typeof module==='object'&&module.exports)module.exports=api;
 root.ManjingoQuestionRotation=api;
 if(root.window&&root.window!==root)root.window.ManjingoQuestionRotation=api;
+const doc=root.document||(root.window&&root.window.document);
+const catalog=root.ManjingoContent||(root.window&&root.window.ManjingoContent);
+if(doc&&doc.readyState==='loading'&&catalog){
+ doc.write('<script src="./question-pack-adaptive-01.js"><\/script><script src="./question-difficulty.js"><\/script>');
+}
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
 'use strict';
 const KEY='manjingo_question_rotation_v1';
