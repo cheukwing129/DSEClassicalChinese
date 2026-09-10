@@ -24,20 +24,22 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { createRequire } = require('module');
 
 const root = path.join(__dirname, '..');
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'manjingo-95d9a';
 const args = new Set(process.argv.slice(2));
 const mode = args.has('--prune') ? 'prune' : args.has('--apply') ? 'apply' : args.has('--verify') ? 'verify' : 'check';
+const functionsRequire = createRequire(path.join(root, 'functions', 'package.json'));
 
 function requireFirebaseAdmin(moduleName) {
   try {
     return require(`firebase-admin/${moduleName}`);
   } catch (firstError) {
     try {
-      return require(path.join(root, 'functions', 'node_modules', 'firebase-admin', moduleName));
-    } catch (_) {
-      throw new Error(`firebase-admin is unavailable. Run npm install --prefix functions first. (${firstError.message})`);
+      return functionsRequire(`firebase-admin/${moduleName}`);
+    } catch (fallbackError) {
+      throw new Error(`firebase-admin is unavailable. Run npm install --prefix functions first. (${fallbackError.message || firstError.message})`);
     }
   }
 }
