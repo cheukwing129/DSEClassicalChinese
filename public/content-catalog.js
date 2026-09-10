@@ -35,12 +35,12 @@ const baseKnowledgePoints=[
 ];
 
 const baseQuestions=[
- {id:'q001',kpId:'kp_yueyang_001',type:'choice',q:'『謫守巴陵郡』中『謫』字的意思是？',o:['提拔','貶官','辭職','退休'],a:'貶官'},
- {id:'q004',kpId:'kp_virtual_zhi',type:'choice',q:'『輟耕之壟上』中『之』字的用法是？',o:['代詞','結構助詞（的）','動詞（到／往）','語氣助詞'],a:'動詞（到／往）'},
- {id:'q005',kpId:'sx_001',type:'choice',q:'『廉頗者，趙之良將也』屬於哪種句式？',o:['判斷句','被動句','省略句','倒裝句'],a:'判斷句'},
- {id:'q010',kpId:'sx_006',type:'choice',q:'『微斯人，吾誰與歸』的正確白話翻譯是？',o:['如果沒有這樣的人，我要跟從誰呢？','如果沒有這樣的人，誰會跟從我呢？','沒有這樣的人，我不知道去哪裡。','這個人不存在，我們一起回去。'],a:'如果沒有這樣的人，我要跟從誰呢？'},
- {id:'q008',kpId:'kp_yueyang_004',type:'fill',q:'先天下之憂而憂，____________。',a:'後天下之樂而樂'},
- {id:'q006',kpId:'sx_006',type:'choice',q:'『吾誰與歸』中『歸』的意思是？',o:['歸還','歸依、歸附','歸來','回家'],a:'歸依、歸附'}
+ {id:'q001',kpId:'kp_yueyang_001',textId:'yueyanglou',type:'choice',q:'「謫守巴陵郡」中「謫」字的意思是？',o:['提拔','貶官','辭職','退休'],a:'貶官',explanation:'「謫」指官員因過失受到貶降或外放；「謫守巴陵郡」即被貶後出任巴陵郡太守。'},
+ {id:'q004',kpId:'kp_virtual_zhi',textId:'CROSS',type:'choice',q:'「輟耕之壟上」中「之」字的用法是？',o:['代詞','結構助詞（的）','動詞（到／往）','語氣助詞'],a:'動詞（到／往）',explanation:'「之」後接地點「壟上」，整句表示到田壟上去，所以「之」作動詞，意思是「往／到」。'},
+ {id:'q005',kpId:'sx_001',textId:'CROSS',type:'choice',q:'「廉頗者，趙之良將也」屬於哪種句式？',o:['判斷句','被動句','省略句','倒裝句'],a:'判斷句',explanation:'「者……也」在此判定廉頗的身分是趙國良將，屬於典型判斷句。'},
+ {id:'q010',kpId:'kp_translation_001',textId:'yueyanglou',type:'choice',q:'「微斯人，吾誰與歸」的正確白話翻譯是？',o:['如果沒有這樣的人，我要跟從誰呢？','如果沒有這樣的人，誰會跟從我呢？','沒有這樣的人，我不知道去哪裡。','這個人不存在，我們一起回去。'],a:'如果沒有這樣的人，我要跟從誰呢？',explanation:'「微」是「如果沒有」；「吾誰與歸」是賓語前置，還原為「吾與誰歸」，即「我跟從／歸依誰呢」。'},
+ {id:'q008',kpId:'kp_yueyang_004',textId:'yueyanglou',type:'fill',q:'先天下之憂而憂，____________。',a:'後天下之樂而樂',explanation:'《岳陽樓記》原句是「先天下之憂而憂，後天下之樂而樂」。'},
+ {id:'q006',kpId:'kp_translation_001',textId:'yueyanglou',type:'choice',q:'「吾誰與歸」中「歸」最接近哪個意思？',o:['歸還','歸依／一道','回家','歸來'],a:'歸依／一道',explanation:'這裡「歸」不是回家的「歸」，而是「歸依、一道」的意思；整句問「我同誰一道呢」。'}
 ];
 
 const pack02=window.ManjingoQuestionPack02||{knowledgePoints:[],questions:[]};
@@ -61,7 +61,7 @@ function misconceptionConcept(q){
  if(/(?:kp_virtual|kp_p3)_zhi$/.test(kp)){
    if(/動詞|往|到/.test(answer))return{key:'zhi_verb_vs_particle',label:'「之」：動詞「往／到」vs 助詞'};
    if(/結構助詞|的/.test(answer))return{key:'zhi_attributive_vs_pronoun',label:'「之」：結構助詞 vs 代詞'};
-   if(/代詞/.test(answer))return{key:'zhi_pronoun_vs_particle',label:'「之」：代詞 vs 助詞'};
+   if(/代詞|這件事/.test(answer))return{key:'zhi_pronoun_vs_particle',label:'「之」：代詞 vs 助詞'};
  }
  if(/(?:kp_virtual|kp_p3)_er$/.test(kp))return{key:'er_semantic_relation',label:'「而」：前後分句語意關係'};
  if(/(?:kp_virtual|kp_p3)_yu$/.test(kp)){
@@ -93,6 +93,6 @@ function selectQuestionsForPlan(plan,sourceQuestions,limit){
  });
  return queue;
 }
-window.ManjingoContent={knowledgePoints:knowledgePoints.map(x=>({...x})),questions:questions.map(x=>({...x})),getKnowledgePointIds,selectQuestionsForPlan,misconceptionConcept};
+window.ManjingoContent={catalogVersion:'reviewed-v1',knowledgePoints:knowledgePoints.map(x=>({...x})),questions:questions.map(x=>({...x})),getKnowledgePointIds,selectQuestionsForPlan,misconceptionConcept};
 if(typeof document!=='undefined'&&document.readyState==='loading'){document.write('<script src="./question-rotation.js"><\/script><script src="./learning-path.js"><\/script><script src="./practice-effectiveness.js"><\/script><script src="./learning-path-ui.js"><\/script><script src="./weakness-panel.js"><\/script><script src="./mastery-dashboard.js"><\/script><script src="./feedback-ui.js"><\/script><script src="./session-summary.js"><\/script><script src="./account-sync.js"><\/script><script src="./account-ui.js"><\/script>');}
 })();
