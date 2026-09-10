@@ -57,6 +57,7 @@ test('concept mastery mirrors local exponential update and keeps cross-KP covera
   assert.equal(first.mastery, 22);
   assert.equal(first.attempts, 1);
   assert.equal(first.correctCount, 1);
+  assert.equal(first.wrongCount, 0);
   assert.equal(first.lastCorrect, true);
   assert.equal(first.lastAnsweredAt.toISOString(), '2026-09-10T12:00:00.000Z');
 
@@ -65,15 +66,37 @@ test('concept mastery mirrors local exponential update and keeps cross-KP covera
     conceptKey: 'yi_reason_vs_tool',
     kpId: 'kp_virtual_yi',
     questionId: 'q_virtual_yi_reason',
+    selectedAnswer: '用',
+    correctAnswer: '因為',
     isCorrect: false,
     now: new Date('2026-09-10T13:00:00.000Z')
   });
   assert.equal(second.mastery, 15);
   assert.equal(second.attempts, 2);
   assert.equal(second.correctCount, 1);
+  assert.equal(second.wrongCount, 1);
   assert.equal(second.lastCorrect, false);
+  assert.equal(second.lastWrongQuestionId, 'q_virtual_yi_reason');
+  assert.equal(second.lastSelectedAnswer, '用');
+  assert.equal(second.lastCorrectAnswer, '因為');
   assert.deepEqual(second.kpIds.sort(), ['kp_p3_yi', 'kp_virtual_yi']);
   assert.deepEqual(second.questionIds.sort(), ['p3q009', 'q_virtual_yi_reason']);
+});
+
+test('later correct concept answer keeps last misconception summary for cross-device remediation', () => {
+  const wrong = calculateConceptMasteryUpdate({
+    prev: {}, conceptKey: 'yi_reason_vs_tool', kpId: 'kp_p3_yi', questionId: 'p3q009',
+    selectedAnswer: '用', correctAnswer: '因為', isCorrect: false,
+    now: new Date('2026-09-10T12:00:00.000Z')
+  });
+  const repaired = calculateConceptMasteryUpdate({
+    prev: wrong, conceptKey: 'yi_reason_vs_tool', kpId: 'kp_p3_yi', questionId: 'p3q009',
+    isCorrect: true, now: new Date('2026-09-10T13:00:00.000Z')
+  });
+  assert.equal(repaired.lastCorrect, true);
+  assert.equal(repaired.lastWrongQuestionId, 'p3q009');
+  assert.equal(repaired.lastSelectedAnswer, '用');
+  assert.equal(repaired.lastCorrectAnswer, '因為');
 });
 
 test('ease factor stays within 1.3–3.0', () => {
