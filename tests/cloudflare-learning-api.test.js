@@ -2,10 +2,12 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const source=fs.readFileSync(path.join(__dirname,'..','public','_worker.js'),'utf8');
+const{pathToFileURL}=require('node:url');
+const workerPath=path.join(__dirname,'..','public','_worker.js');
+const source=fs.readFileSync(workerPath,'utf8');
 let modulePromise=null;
 function loadWorker(){
- if(!modulePromise)modulePromise=import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+ if(!modulePromise)modulePromise=import(pathToFileURL(workerPath).href);
  return modulePromise;
 }
 
@@ -34,6 +36,7 @@ test('health endpoint reports whether server credentials are configured without 
  assert.equal(body.ok,true);
  assert.equal(body.configured,false);
  assert.equal(body.firestoreProject,'manjingo-95d9a');
+ assert.equal(body.learningPolicy,'shared-v1');
  assert.equal(JSON.stringify(body).includes('PRIVATE KEY'),false);
 });
 
