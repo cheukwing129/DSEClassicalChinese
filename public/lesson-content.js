@@ -2,10 +2,12 @@
 'use strict';
 const typeLessons={
  '實詞':{title:'先看語境，再定詞義',explanation:'文言實詞常有多個意思。不要只背單一翻譯，先看它在句中的人物、動作與上下文，再選最合理的古義。',tip:'把詞放回原句讀一次，再用白話替換測試是否通順。'},
+ '實詞語境':{title:'詞義要放回篇章判斷',explanation:'同一個字在不同文章中可能有不同意思。先理解句子和事件，再判斷最合適的古義。',tip:'不要只背字典第一義；用上下文驗證翻譯。'},
  '古今異義':{title:'小心「看起來很熟」的詞',explanation:'古今異義詞字形沒有變，但古代意思可能和今天不同。考題常利用現代直覺設陷阱。',tip:'看到熟悉的雙音詞，先問：古文裡真的是今天這個意思嗎？'},
  '虛詞用法':{title:'虛詞要看前後關係',explanation:'之、而、以、於、其等虛詞沒有固定單一翻譯。判斷時要看它連接甚麼成分，以及前後語意關係。',tip:'先判斷功能，再翻譯；不要一看到同一個字就套同一答案。'},
  '詞類活用':{title:'詞性會隨句子改變',explanation:'文言文常把名詞、形容詞臨時當作動詞、使動或意動使用。判斷關鍵是它在句中負責甚麼動作。',tip:'如果照原本詞性翻譯不通，就檢查是否出現活用。'},
  '句式':{title:'先還原語序',explanation:'判斷句、被動句、省略句和倒裝句都有固定線索。翻譯前先找主語、動詞、賓語，再把特殊語序還原。',tip:'疑問代詞作賓語時，特別留意賓語前置。'},
+ '句式手法':{title:'句式也能服務篇章效果',explanation:'辨認特殊句式後，還要理解它在文章中的語氣、結構或主旨作用。',tip:'先還原句式，再回答作者為何這樣寫。'},
  '翻譯':{title:'翻譯不是逐字硬搬',explanation:'好的文言翻譯要同時做到關鍵字落實、特殊句式還原，以及整句白話通順。',tip:'完成後反問自己：關鍵實詞、虛詞和省略成分有沒有漏掉？'},
  '翻譯策略':{title:'三步完成文言翻譯',explanation:'第一步抓關鍵詞，第二步還原特殊句式，第三步按上下文補足必要省略，最後整理成自然白話。',tip:'先求準確，再求流暢；不要為了好聽而增加原文沒有的意思。'},
  '篇章理解':{title:'答案要回到文章脈絡',explanation:'篇章題不是只靠一句名句。要辨認人物處境、前後事件和作者安排，才能判斷一句話在全文的作用。',tip:'回答「為甚麼」時，至少連起原因與結果兩個位置。'},
@@ -47,6 +49,6 @@ const dedicated={
  kp_argument_003:{title:'比喻論證：用熟悉事物說明抽象道理',explanation:'比喻論證不是一般修辭辨識而已，而是借具體、熟悉的事物關係說明抽象論點。',tip:'先寫「把甚麼比作甚麼」，再說這個比喻如何引出或證明論點。',examples:[{sentence:'魚，我所欲也；熊掌，亦我所欲也',explanation:'用魚與熊掌不可兼得的取捨，比喻生與義不可兼得時應舍生取義。'}]},
  kp_p3_argument:{title:'論證辨析：方法＋材料＋論點',explanation:'辨認舉例、比喻、對比只是第一步。完整分析要說明作者用了甚麼材料，以及材料如何把讀者推向中心論點。',tip:'用三格檢查：方法是甚麼？文本證據是甚麼？它證明哪個觀點？',examples:[{sentence:'舜、傅說等人成才',explanation:'舉例論證：具體支持逆境磨煉人才。'},{sentence:'魚與熊掌',explanation:'比喻論證：以取捨說明義重於生。'}]}
 };
-function build(kp){const focus=kp&&kp.content?String(kp.content):'';const specific=kp&&dedicated[kp.kpId];if(specific)return{...specific,focus,examples:specific.examples||[]};const base=typeLessons[kp&&kp.type]||{title:'先理解，再練習',explanation:'先掌握這個知識點的核心概念，再用題目檢查是否真正理解。',tip:'答題後回看原因，而不只記答案。'};return{...base,focus,examples:focus?[{sentence:focus,explanation:'本課的核心焦點。答題時留意它在具體語境中的功能與意思。'}]:[]}}
+function build(kp){const focus=kp&&kp.content?String(kp.content):'';const reading=kp&&window.ManjingoReadingLessons&&window.ManjingoReadingLessons[kp.kpId];const specific=reading||(kp&&dedicated[kp.kpId]);if(specific)return{...specific,focus,examples:specific.examples||[]};const base=typeLessons[kp&&kp.type]||{title:'先理解，再練習',explanation:'先掌握這個知識點的核心概念，再用題目檢查是否真正理解。',tip:'答題後回看原因，而不只記答案。'};return{...base,focus,examples:focus?[{sentence:focus,explanation:'本課的核心焦點。答題時留意它在具體語境中的功能與意思。'}]:[]}}
 window.ManjingoLessonContent={build};
 })();
