@@ -32,6 +32,18 @@ test('local lesson practice submits exact KP result into learning engine',()=>{
   assert.match(source,/state\.questions\.length/);
 });
 
+test('wrong answers reteach the KP instead of only revealing the answer',()=>{
+  const source=read('public/local-lesson.js');
+  assert.match(source,/function teachingFeedback\(state\)/);
+  assert.match(source,/為甚麼？/);
+  assert.match(source,/判斷提示：/);
+  assert.match(source,/相似例子：/);
+  assert.match(source,/lesson\.explanation/);
+  assert.match(source,/lesson\.tip/);
+  assert.match(source,/lesson\.examples/);
+  assert.match(source,/!correct&&normal\(b\.textContent\)===normal\(q\.a\)/);
+});
+
 test('lesson completion returns learner to learning path',()=>{
   const source=read('public/local-lesson.js');
   assert.match(source,/href="\.\/index\.html"/);
