@@ -19,10 +19,10 @@ function loadCatalog() {
   return context.window.ManjingoContent;
 }
 
-test('local catalog contains 207 questions and an explicit knowledge point universe', () => {
+test('local catalog contains 213 questions and an explicit knowledge point universe', () => {
   const catalog = loadCatalog();
   const kpIds = catalog.getKnowledgePointIds({ teachableOnly: true });
-  assert.equal(catalog.questions.length, 207);
+  assert.equal(catalog.questions.length, 213);
   assert.equal(kpIds.length, 59);
   assert.ok(kpIds.includes('sx_006'));
   assert.ok(kpIds.includes('kp_caogui_strategy'));
