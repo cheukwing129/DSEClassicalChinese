@@ -1,8 +1,6 @@
 (function(){
 'use strict';
 
-// Keep large content packs separate from planning logic. While index.html is
-// being parsed, load the static packs synchronously before the catalog is read.
 if(typeof document!=='undefined'&&document.readyState==='loading'){
  if(!window.ManjingoQuestionPack02)document.write('<script src="./question-pack-02.js"><\/script>');
  if(!window.ManjingoQuestionPack03)document.write('<script src="./question-pack-03.js"><\/script>');
@@ -77,4 +75,8 @@ window.ManjingoContent={
  getKnowledgePointIds,
  selectQuestionsForPlan
 };
+
+if(typeof document!=='undefined'&&document.readyState==='loading'){
+ document.write('<script src="./learning-path.js"><\/script><script src="./learning-path-ui.js"><\/script>');
+}
 })();
