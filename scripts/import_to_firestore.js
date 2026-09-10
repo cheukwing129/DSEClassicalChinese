@@ -9,6 +9,7 @@
  *   public/content-catalog.js
  *   public/question-pack-adaptive-01.js
  *   public/question-pack-adaptive-02.js
+ *   public/question-pack-adaptive-03.js
  *   public/question-difficulty.js
  *
  * Safe modes:
@@ -84,6 +85,7 @@ function loadReviewedCatalog() {
     'content-catalog.js',
     'question-pack-adaptive-01.js',
     'question-pack-adaptive-02.js',
+    'question-pack-adaptive-03.js',
     'question-difficulty.js'
   ]) {
     const source = fs.readFileSync(path.join(root, 'public', file), 'utf8');
