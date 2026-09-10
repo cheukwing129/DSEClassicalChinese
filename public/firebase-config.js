@@ -1,6 +1,6 @@
 // firebase-config.js
-// Firebase client initialization and server-side learning API.
-// Firebase SDK 改為 lazy load：即使 CDN / Firebase 暫時不可用，首頁仍可先載入本地題目。
+// Firebase client initialization for authentication + Firestore reads.
+// Server-authoritative learning writes now go through same-origin Cloudflare Pages API.
 
 const firebaseConfig = {
   apiKey: "AIzaSyCGhpSFHy3MDf75fhAJtrHTQJoa18SjqAM",
@@ -13,30 +13,27 @@ const firebaseConfig = {
 
 let db = null;
 let auth = null;
-let functions = null;
 let firebaseReadyPromise = null;
 let currentUserId = null;
 
 async function getFirebase() {
   if (firebaseReadyPromise) return firebaseReadyPromise;
   firebaseReadyPromise = (async () => {
-    const [appModule, firestoreModule, authModule, functionsModule] = await Promise.all([
+    const [appModule, firestoreModule, authModule] = await Promise.all([
       import("https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"),
       import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"),
-      import("https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"),
-      import("https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js")
+      import("https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js")
     ]);
     const app = appModule.initializeApp(firebaseConfig);
     db = firestoreModule.getFirestore(app);
     auth = authModule.getAuth(app);
-    functions = functionsModule.getFunctions(app);
-    return { firestoreModule, authModule, functionsModule };
+    return { firestoreModule, authModule };
   })().catch(error => { firebaseReadyPromise = null; throw error; });
   return firebaseReadyPromise;
 }
 
 export { getFirebase };
-export { db, auth, functions };
+export { db, auth };
 
 function withTimeout(promise, ms, label) {
   return Promise.race([promise,new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout`)), ms))]);
@@ -71,6 +68,24 @@ export async function ensureLogin() {
 }
 
 export function getCurrentUserId() { return currentUserId; }
+
+async function authorizedApi(path, options = {}) {
+  const uid = await ensureLogin();
+  if (!uid || !auth || !auth.currentUser) throw new Error('Firebase authentication unavailable');
+  const idToken = await withTimeout(auth.currentUser.getIdToken(), 8000, 'Firebase ID token');
+  const response = await withTimeout(fetch(path, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'content-type': 'application/json' } : {}),
+      ...(options.headers || {}),
+      authorization: `Bearer ${idToken}`
+    }
+  }), 12000, 'learning API');
+  let data = null;
+  try { data = await response.json(); } catch (_) {}
+  if (!response.ok) throw new Error(data && data.error ? data.error : `learning API ${response.status}`);
+  return data;
+}
 
 export async function fetchAllQuestions() {
   try {
@@ -120,21 +135,16 @@ function enrichConcept(answer) {
 }
 
 export async function submitAnswer(answer) {
-  const { functionsModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
-  const result = await withTimeout(functionsModule.httpsCallable(functions, "submitAnswer")(enrichConcept(answer)),10000,'submit answer');
-  return result.data;
+  const payload = enrichConcept(answer);
+  return authorizedApi('/api/submit-answer', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function getDueKnowledgePoints() {
-  const { functionsModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
-  const result = await withTimeout(functionsModule.httpsCallable(functions, "getDueKnowledgePoints")({}),10000,'due knowledge points');
-  return result.data;
+  return authorizedApi('/api/due-knowledge-points');
 }
 
 export async function getDailyLearningPlan() {
-  const { functionsModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
-  const result = await withTimeout(functionsModule.httpsCallable(functions, "getDailyLearningPlan")({}),10000,'daily learning plan');
-  return result.data;
+  return authorizedApi('/api/daily-plan');
 }
 
 export async function fetchUserGamification(userId) {
