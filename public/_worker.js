@@ -1,0 +1,372 @@
+const PROJECT_FALLBACK = 'manjingo-95d9a';
+const TOKEN_SCOPE = 'https://www.googleapis.com/auth/datastore';
+const FIRESTORE_ROOT = 'https://firestore.googleapis.com/v1';
+const FIREBASE_JWKS = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+let serviceTokenCache = null;
+let firebaseJwksCache = null;
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+}
+function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+function base64Url(bytes) {
+  let binary = '';
+  const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  for (const b of view) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+function decodeBase64Url(value) {
+  const padded = String(value).replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((String(value).length + 3) % 4);
+  const binary = atob(padded);
+  return Uint8Array.from(binary, c => c.charCodeAt(0));
+}
+function decodeJwtPart(value) { return JSON.parse(new TextDecoder().decode(decodeBase64Url(value))); }
+function pemToArrayBuffer(pem) {
+  const base64 = String(pem).replace(/\\n/g, '\n').replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, '');
+  const binary = atob(base64);
+  return Uint8Array.from(binary, c => c.charCodeAt(0)).buffer;
+}
+function projectId(env) { return String(env.FIREBASE_PROJECT_ID || PROJECT_FALLBACK); }
+function requireServerCredentials(env) {
+  if (!env.FIREBASE_CLIENT_EMAIL || !env.FIREBASE_PRIVATE_KEY) throw new Error('Cloud learning API is not configured');
+}
+
+async function getServiceAccessToken(env) {
+  requireServerCredentials(env);
+  const now = Math.floor(Date.now() / 1000);
+  if (serviceTokenCache && serviceTokenCache.expiresAt > now + 60) return serviceTokenCache.token;
+  const header = base64Url(new TextEncoder().encode(JSON.stringify({ alg: 'RS256', typ: 'JWT' })));
+  const claims = base64Url(new TextEncoder().encode(JSON.stringify({
+    iss: String(env.FIREBASE_CLIENT_EMAIL),
+    scope: TOKEN_SCOPE,
+    aud: GOOGLE_TOKEN_ENDPOINT,
+    iat: now,
+    exp: now + 3600
+  })));
+  const signingInput = `${header}.${claims}`;
+  const key = await crypto.subtle.importKey('pkcs8', pemToArrayBuffer(env.FIREBASE_PRIVATE_KEY), { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(signingInput));
+  const assertion = `${signingInput}.${base64Url(signature)}`;
+  const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion })
+  });
+  if (!response.ok) throw new Error(`Google OAuth failed (${response.status})`);
+  const data = await response.json();
+  serviceTokenCache = { token: data.access_token, expiresAt: now + Number(data.expires_in || 3600) };
+  return serviceTokenCache.token;
+}
+
+async function getFirebaseJwks() {
+  const now = Date.now();
+  if (firebaseJwksCache && firebaseJwksCache.expiresAt > now) return firebaseJwksCache.keys;
+  const response = await fetch(FIREBASE_JWKS, { headers: { accept: 'application/json' } });
+  if (!response.ok) throw new Error(`Firebase public keys unavailable (${response.status})`);
+  const data = await response.json();
+  const cacheControl = response.headers.get('cache-control') || '';
+  const match = cacheControl.match(/max-age=(\d+)/i);
+  firebaseJwksCache = { keys: Array.isArray(data.keys) ? data.keys : [], expiresAt: now + (Number(match && match[1]) || 3600) * 1000 };
+  return firebaseJwksCache.keys;
+}
+async function verifyFirebaseIdToken(request, env) {
+  const auth = request.headers.get('authorization') || '';
+  if (!auth.startsWith('Bearer ')) throw Object.assign(new Error('Missing Firebase ID token'), { status: 401 });
+  const token = auth.slice(7).trim();
+  const parts = token.split('.');
+  if (parts.length !== 3) throw Object.assign(new Error('Invalid Firebase ID token'), { status: 401 });
+  let header, payload;
+  try { header = decodeJwtPart(parts[0]); payload = decodeJwtPart(parts[1]); } catch (_) { throw Object.assign(new Error('Invalid Firebase ID token'), { status: 401 }); }
+  const pid = projectId(env);
+  const now = Math.floor(Date.now() / 1000);
+  if (header.alg !== 'RS256' || !header.kid || payload.aud !== pid || payload.iss !== `https://securetoken.google.com/${pid}` || !payload.sub || String(payload.sub).length > 128 || Number(payload.exp) <= now || Number(payload.iat) > now + 300) throw Object.assign(new Error('Firebase ID token claims rejected'), { status: 401 });
+  const jwks = await getFirebaseJwks();
+  const jwk = jwks.find(x => x.kid === header.kid);
+  if (!jwk) throw Object.assign(new Error('Firebase signing key not found'), { status: 401 });
+  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+  const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, decodeBase64Url(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
+  if (!valid) throw Object.assign(new Error('Firebase ID token signature rejected'), { status: 401 });
+  return String(payload.sub);
+}
+
+function fsValue(value) {
+  if (value === undefined) return { nullValue: null };
+  if (value === null) return { nullValue: null };
+  if (value instanceof Date) return { timestampValue: value.toISOString() };
+  if (typeof value === 'boolean') return { booleanValue: value };
+  if (typeof value === 'number') return Number.isInteger(value) ? { integerValue: String(value) } : { doubleValue: value };
+  if (typeof value === 'string') return { stringValue: value };
+  if (Array.isArray(value)) return { arrayValue: { values: value.map(fsValue) } };
+  if (typeof value === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined).map(([k, v]) => [k, fsValue(v)])) } };
+  return { stringValue: String(value) };
+}
+function fromFsValue(value) {
+  if (!value) return null;
+  if ('nullValue' in value) return null;
+  if ('booleanValue' in value) return value.booleanValue;
+  if ('integerValue' in value) return Number(value.integerValue);
+  if ('doubleValue' in value) return Number(value.doubleValue);
+  if ('timestampValue' in value) return value.timestampValue;
+  if ('stringValue' in value) return value.stringValue;
+  if ('arrayValue' in value) return (value.arrayValue.values || []).map(fromFsValue);
+  if ('mapValue' in value) return fromFields(value.mapValue.fields || {});
+  return null;
+}
+function fromFields(fields) { return Object.fromEntries(Object.entries(fields || {}).map(([k, v]) => [k, fromFsValue(v)])); }
+function docObject(name, data) { return { name, fields: Object.fromEntries(Object.entries(data || {}).filter(([, v]) => v !== undefined).map(([k, v]) => [k, fsValue(v)])) }; }
+function databaseRoot(env) { return `${FIRESTORE_ROOT}/projects/${encodeURIComponent(projectId(env))}/databases/(default)`; }
+function documentName(env, path) { return `projects/${projectId(env)}/databases/(default)/documents/${path.split('/').map(encodeURIComponent).join('/')}`; }
+function documentUrl(env, path) { return `${databaseRoot(env)}/documents/${path.split('/').map(encodeURIComponent).join('/')}`; }
+async function googleFetch(url, token, init = {}) {
+  const response = await fetch(url, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${token}` } });
+  return response;
+}
+async function getDocument(env, token, path, transaction) {
+  const suffix = transaction ? `?transaction=${encodeURIComponent(transaction)}` : '';
+  const response = await googleFetch(documentUrl(env, path) + suffix, token);
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Firestore read failed (${response.status})`);
+  const doc = await response.json();
+  return { name: doc.name, data: fromFields(doc.fields || {}) };
+}
+async function listDocuments(env, token, path, pageSize = 500) {
+  let pageToken = null;
+  const all = [];
+  do {
+    const params = new URLSearchParams({ pageSize: String(pageSize) });
+    if (pageToken) params.set('pageToken', pageToken);
+    const response = await googleFetch(`${databaseRoot(env)}/documents/${path.split('/').map(encodeURIComponent).join('/')}?${params}`, token);
+    if (response.status === 404) return [];
+    if (!response.ok) throw new Error(`Firestore list failed (${response.status})`);
+    const body = await response.json();
+    for (const doc of body.documents || []) all.push({ id: doc.name.split('/').pop(), data: fromFields(doc.fields || {}) });
+    pageToken = body.nextPageToken || null;
+  } while (pageToken && all.length < 2000);
+  return all;
+}
+async function beginTransaction(env, token) {
+  const response = await googleFetch(`${databaseRoot(env)}/documents:beginTransaction`, token, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  if (!response.ok) throw new Error(`Firestore transaction start failed (${response.status})`);
+  return (await response.json()).transaction;
+}
+async function rollback(env, token, transaction) {
+  try { await googleFetch(`${databaseRoot(env)}/documents:rollback`, token, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ transaction }) }); } catch (_) {}
+}
+async function commit(env, token, transaction, writes) {
+  const response = await googleFetch(`${databaseRoot(env)}/documents:commit`, token, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ transaction, writes }) });
+  if (!response.ok) throw new Error(`Firestore commit failed (${response.status})`);
+  return response.json();
+}
+function updateWrite(env, path, data) { return { update: docObject(documentName(env, path), data) }; }
+
+function masteryStatus(mastery) {
+  if (mastery <= 20) return 'unlearned';
+  if (mastery <= 40) return 'learning';
+  if (mastery <= 60) return 'unstable';
+  if (mastery <= 80) return 'familiar';
+  if (mastery <= 95) return 'stable';
+  return 'mastered';
+}
+function toQuality(answer) {
+  if (!answer.isCorrect) return answer.attemptCount > 1 ? 1 : 0;
+  if (answer.usedHint) return 3;
+  return answer.attemptCount === 1 ? 5 : 4;
+}
+function calculateLearningUpdate(prev, answer, baseXp, now) {
+  const quality = toQuality(answer);
+  let easeFactor = Number(prev.easeFactor ?? 2.5), repetition = Number(prev.repetition ?? 0), interval = Number(prev.interval ?? 0);
+  if (!Number.isFinite(easeFactor)) easeFactor = 2.5;
+  if (!Number.isFinite(repetition) || repetition < 0) repetition = 0;
+  if (!Number.isFinite(interval) || interval < 0) interval = 0;
+  if (quality < 3) { repetition = 0; interval = 1; }
+  else { repetition += 1; if (repetition === 1) interval = 1; else if (repetition === 2) interval = 6; else interval = Math.max(1, Math.round(interval * easeFactor)); }
+  easeFactor = clamp(easeFactor + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02), 1.3, 3.0);
+  const masteryDelta = !answer.isCorrect ? -10 : answer.usedHint ? 3 : answer.attemptCount === 1 ? 8 : 5;
+  const mastery = clamp(Math.round(Number(prev.mastery || 0) + masteryDelta), 0, 100);
+  const xpEarned = !answer.isCorrect ? 0 : answer.usedHint ? Math.max(1, Math.round(baseXp * 0.6)) : answer.attemptCount === 1 ? baseXp : Math.max(1, Math.round(baseXp * 0.8));
+  return {
+    quality, xpEarned, easeFactor, repetition, interval, lastQuality: quality, mastery, status: masteryStatus(mastery),
+    nextReviewAt: new Date(now.getTime() + Math.max(1, interval) * 86400000),
+    correctCount: Number(prev.correctCount || 0) + (answer.isCorrect ? 1 : 0),
+    wrongCount: Number(prev.wrongCount || 0) + (answer.isCorrect ? 0 : 1),
+    hintCount: Number(prev.hintCount || 0) + (answer.usedHint ? 1 : 0)
+  };
+}
+function calculateConceptUpdate(prev, answer, conceptKey, conceptLabel, now) {
+  const previousMastery = clamp(Number(prev.mastery || 0), 0, 100);
+  const mastery = answer.isCorrect ? clamp(Math.round(previousMastery + (100 - previousMastery) * 0.22), 0, 100) : clamp(Math.round(previousMastery * 0.7), 0, 100);
+  const result = {
+    ...prev,
+    conceptKey,
+    conceptLabel: String(conceptLabel || prev.conceptLabel || conceptKey),
+    mastery,
+    attempts: Number(prev.attempts || 0) + 1,
+    correctCount: Number(prev.correctCount || 0) + (answer.isCorrect ? 1 : 0),
+    wrongCount: Number(prev.wrongCount || 0) + (answer.isCorrect ? 0 : 1),
+    lastCorrect: Boolean(answer.isCorrect),
+    lastAnsweredAt: now,
+    kpIds: Array.from(new Set([...(Array.isArray(prev.kpIds) ? prev.kpIds.map(String) : []), answer.kpId])),
+    questionIds: Array.from(new Set([...(Array.isArray(prev.questionIds) ? prev.questionIds.map(String) : []), ...(answer.questionId ? [answer.questionId] : [])]))
+  };
+  if (!answer.isCorrect) {
+    result.lastWrongQuestionId = answer.questionId || result.lastWrongQuestionId || null;
+    result.lastSelectedAnswer = answer.selectedAnswer == null ? result.lastSelectedAnswer || null : String(answer.selectedAnswer);
+    result.lastCorrectAnswer = answer.correctAnswer == null ? result.lastCorrectAnswer || null : String(answer.correctAnswer);
+  }
+  return result;
+}
+function calculateLevel(totalXp) {
+  let level = 1, cumulative = 0;
+  while (level < 99) { const needed = level === 1 ? 50 : 50 + (level - 1) * 30; if (cumulative + needed > totalXp) break; cumulative += needed; level += 1; }
+  return level;
+}
+function optionalText(value, max) { if (value == null || value === '') return null; const text = String(value); if (text.length > max) throw Object.assign(new Error('Input too long'), { status: 400 }); return text; }
+function validateAnswer(raw) {
+  if (!raw || !raw.kpId || typeof raw.isCorrect !== 'boolean') throw Object.assign(new Error('Invalid answer payload'), { status: 400 });
+  const attemptCount = Number(raw.attemptCount ?? 1);
+  const responseTimeMs = raw.responseTimeMs == null ? null : Number(raw.responseTimeMs);
+  const localDate = raw.localDate ? String(raw.localDate) : new Date().toISOString().slice(0, 10);
+  const answerId = raw.answerId ? String(raw.answerId) : crypto.randomUUID().replace(/-/g, '');
+  const conceptKey = optionalText(raw.conceptKey, 128);
+  if (!Number.isInteger(attemptCount) || attemptCount < 1 || attemptCount > 10 || (responseTimeMs != null && (!Number.isFinite(responseTimeMs) || responseTimeMs < 0 || responseTimeMs > 600000)) || !/^\d{4}-\d{2}-\d{2}$/.test(localDate) || !/^[A-Za-z0-9_-]{8,128}$/.test(answerId) || (conceptKey && !/^[A-Za-z0-9:_-]+$/.test(conceptKey))) throw Object.assign(new Error('Invalid answer payload'), { status: 400 });
+  return {
+    answerId, kpId: String(raw.kpId), questionId: raw.questionId ? String(raw.questionId) : null, textId: raw.textId ? String(raw.textId) : null,
+    conceptKey, conceptLabel: optionalText(raw.conceptLabel, 160), selectedAnswer: optionalText(raw.selectedAnswer, 500), correctAnswer: optionalText(raw.correctAnswer, 500),
+    isCorrect: raw.isCorrect, usedHint: Boolean(raw.usedHint), attemptCount, responseTimeMs, localDate
+  };
+}
+
+async function submitAnswer(request, env, uid) {
+  let raw;
+  try { raw = await request.json(); } catch (_) { throw Object.assign(new Error('JSON body required'), { status: 400 }); }
+  const answer = validateAnswer(raw);
+  const token = await getServiceAccessToken(env);
+  let baseXp = 8, conceptKey = answer.conceptKey, conceptLabel = answer.conceptLabel;
+  if (answer.questionId) {
+    const question = await getDocument(env, token, `questions/${answer.questionId}`);
+    if (question) {
+      const questionKpId = question.data.kpId ? String(question.data.kpId) : null;
+      if (questionKpId && questionKpId !== answer.kpId) throw Object.assign(new Error('questionId does not belong to kpId'), { status: 400 });
+      const xp = Number(question.data.baseXp ?? question.data.xp);
+      if (Number.isFinite(xp)) baseXp = clamp(xp, 1, 50);
+      if (!conceptKey && question.data.misconceptionKey) conceptKey = String(question.data.misconceptionKey);
+      if (!conceptLabel && question.data.misconceptionLabel) conceptLabel = String(question.data.misconceptionLabel);
+    }
+  }
+  const tx = await beginTransaction(env, token);
+  try {
+    const kpPath = `users/${uid}/knowledge/${answer.kpId}`;
+    const gamePath = `users/${uid}/gamification/state`;
+    const logPath = `users/${uid}/answerLogs/${answer.answerId}`;
+    const conceptPath = conceptKey ? `users/${uid}/concepts/${conceptKey}` : null;
+    const [kpDoc, gameDoc, logDoc, conceptDoc] = await Promise.all([
+      getDocument(env, token, kpPath, tx), getDocument(env, token, gamePath, tx), getDocument(env, token, logPath, tx), conceptPath ? getDocument(env, token, conceptPath, tx) : Promise.resolve(null)
+    ]);
+    const gameExisting = gameDoc ? gameDoc.data : {};
+    if (logDoc) {
+      await rollback(env, token, tx);
+      const existing = logDoc.data;
+      return json({ success: true, quality: existing.quality, xpEarned: Number(existing.xpEarned || 0), mastery: Number(existing.mastery || 0), status: existing.status || null, nextReviewAt: existing.nextReviewAt || null, totalXp: Number(existing.totalXp ?? gameExisting.totalXp ?? 0), todayXp: Number(existing.todayXp ?? gameExisting.todayXp ?? 0), streak: Number(existing.streak ?? gameExisting.streak ?? 0), streakFreezes: Number(existing.streakFreezes ?? gameExisting.streakFreezes ?? 0), streakIncreased: Boolean(existing.streakIncreased), level: Number(existing.level ?? gameExisting.level ?? 1), conceptMastery: existing.conceptMastery || null, duplicate: true });
+    }
+    const now = new Date();
+    const prev = kpDoc ? kpDoc.data : {};
+    const rawGame = gameExisting;
+    const game = (rawGame.todayXpDate || answer.localDate) === answer.localDate ? rawGame : { ...rawGame, todayXp: 0, todayXpDate: answer.localDate };
+    const update = calculateLearningUpdate(prev, answer, baseXp, now);
+    const totalXp = Number(game.totalXp || 0) + update.xpEarned;
+    const todayXp = Number(game.todayXp || 0) + update.xpEarned;
+    const dailyGoalXp = Number(game.dailyGoalXp || 20);
+    const previousActiveDate = game.lastActiveDate || null;
+    let streak = Number(game.streak || 0), streakFreezes = Number(game.streakFreezes ?? 2), streakIncreased = false;
+    if (todayXp >= dailyGoalXp && previousActiveDate !== answer.localDate) {
+      const previousDate = previousActiveDate ? new Date(`${previousActiveDate}T00:00:00Z`) : null;
+      const currentDate = new Date(`${answer.localDate}T00:00:00Z`);
+      const gap = previousDate ? Math.round((currentDate - previousDate) / 86400000) : null;
+      if (gap === 1) streak += 1;
+      else if (gap == null || gap > 1) {
+        const missedDays = gap == null ? 0 : gap - 1;
+        if (missedDays > 0 && streakFreezes >= missedDays) { streakFreezes -= missedDays; streak += 1; }
+        else { streak = 1; if (missedDays > 0) streakFreezes = 0; }
+      }
+      streakIncreased = true;
+    }
+    const level = calculateLevel(totalXp);
+    let conceptResult = null, conceptUpdate = null;
+    if (conceptKey) {
+      conceptUpdate = calculateConceptUpdate(conceptDoc ? conceptDoc.data : {}, answer, conceptKey, conceptLabel, now);
+      conceptResult = { ...conceptUpdate, status: masteryStatus(conceptUpdate.mastery), lastAnsweredAt: now.toISOString() };
+    }
+    const kpUpdate = { ...prev, ...update, nextReviewAt: update.nextReviewAt, lastAnsweredAt: now, updatedAt: now };
+    const gameUpdate = { ...game, totalXp, todayXp, todayXpDate: answer.localDate, dailyGoalXp, streak, streakFreezes, lastActiveDate: todayXp >= dailyGoalXp ? answer.localDate : previousActiveDate, level, updatedAt: now };
+    const log = {
+      answerId: answer.answerId, questionId: answer.questionId, kpIds: [answer.kpId], textId: answer.textId, conceptKey, conceptLabel,
+      selectedAnswer: answer.selectedAnswer, correctAnswer: answer.correctAnswer, conceptMastery: conceptResult, isCorrect: answer.isCorrect,
+      usedHint: answer.usedHint, attemptCount: answer.attemptCount, responseTimeMs: answer.responseTimeMs, localDate: answer.localDate,
+      quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt,
+      interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, totalXp, todayXp, streak, streakFreezes, streakIncreased, level, answeredAt: now
+    };
+    const writes = [updateWrite(env, kpPath, kpUpdate), updateWrite(env, gamePath, gameUpdate)];
+    if (conceptPath && conceptUpdate) writes.push(updateWrite(env, conceptPath, { ...conceptUpdate, lastAnsweredAt: now, updatedAt: now }));
+    writes.push(updateWrite(env, logPath, log));
+    await commit(env, token, tx, writes);
+    return json({ success: true, quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt.toISOString(), interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, totalXp, todayXp, streak, streakFreezes, streakIncreased, level, conceptMastery: conceptResult, duplicate: false });
+  } catch (error) {
+    await rollback(env, token, tx);
+    throw error;
+  }
+}
+
+function isDue(data, now) { const value = data && data.nextReviewAt; return !value || new Date(value).getTime() <= now.getTime(); }
+async function dailyPlan(env, uid) {
+  const token = await getServiceAccessToken(env);
+  const [knowledge, concepts, kpUniverseDocs] = await Promise.all([
+    listDocuments(env, token, `users/${uid}/knowledge`), listDocuments(env, token, `users/${uid}/concepts`), listDocuments(env, token, 'knowledgePoints')
+  ]);
+  const now = new Date(), targetCount = 10;
+  const kpUniverse = new Set(kpUniverseDocs.map(x => x.id));
+  const known = new Map(knowledge.map(x => [x.id, x.data]));
+  const due = knowledge.filter(x => isDue(x.data, now)).sort((a, b) => new Date(a.data.nextReviewAt || 0) - new Date(b.data.nextReviewAt || 0));
+  const dueIds = new Set(due.map(x => x.id));
+  const weakOnly = knowledge.filter(x => !dueIds.has(x.id) && Number(x.data.mastery || 0) < 61).sort((a, b) => Number(a.data.mastery || 0) - Number(b.data.mastery || 0));
+  const fresh = kpUniverseDocs.filter(x => !known.has(x.id));
+  const conceptByKp = new Map();
+  concepts.filter(x => Number(x.data.attempts || 0) > 0 && (Number(x.data.mastery || 0) < 60 || x.data.lastCorrect === false))
+    .sort((a, b) => (a.data.lastCorrect === false ? -1 : 1) - (b.data.lastCorrect === false ? -1 : 1) || Number(a.data.mastery || 0) - Number(b.data.mastery || 0))
+    .forEach(x => { const kpId = (Array.isArray(x.data.kpIds) ? x.data.kpIds.map(String) : []).find(id => kpUniverse.has(id)); if (kpId && !conceptByKp.has(kpId)) conceptByKp.set(kpId, { ...x.data, conceptKey: x.id }); });
+  const selected = [];
+  const extra = kpId => { const c = conceptByKp.get(kpId); return c ? { conceptReview: true, conceptKey: c.conceptKey, conceptLabel: c.conceptLabel || c.conceptKey, conceptMastery: Number(c.mastery || 0), conceptQuestionIds: Array.isArray(c.questionIds) ? c.questionIds.map(String) : [] } : {}; };
+  const push = (id, category, priority, override = {}) => { if (!id || selected.length >= targetCount || selected.some(x => x.kpId === id)) return; selected.push({ kpId: id, category, priority, ...extra(id), ...override }); };
+  due.slice(0, 5).forEach(x => push(x.id, 'review', 100));
+  for (const [kpId, c] of conceptByKp) push(kpId, 'weak', 90, { conceptReview: true, conceptKey: c.conceptKey, conceptLabel: c.conceptLabel || c.conceptKey, conceptMastery: Number(c.mastery || 0), conceptQuestionIds: Array.isArray(c.questionIds) ? c.questionIds.map(String) : [] });
+  weakOnly.slice(0, 3).forEach(x => push(x.id, 'weak', 80));
+  fresh.slice(0, 2).forEach(x => push(x.id, 'new', 60));
+  [...due, ...weakOnly, ...fresh].forEach(x => push(x.id, dueIds.has(x.id) ? 'review' : weakOnly.some(w => w.id === x.id) ? 'weak' : 'new', dueIds.has(x.id) ? 100 : weakOnly.some(w => w.id === x.id) ? 80 : 60));
+  return json({ targetCount: selected.length, items: selected, review: selected.filter(x => x.category === 'review').map(x => x.kpId), weak: selected.filter(x => x.category === 'weak').map(x => x.kpId), newKnowledgePoints: selected.filter(x => x.category === 'new').map(x => x.kpId), conceptReview: selected.filter(x => x.conceptReview).map(x => ({ kpId: x.kpId, conceptKey: x.conceptKey, conceptMastery: x.conceptMastery })), totalRecommended: selected.length });
+}
+async function dueKnowledge(env, uid) {
+  const token = await getServiceAccessToken(env);
+  const knowledge = await listDocuments(env, token, `users/${uid}/knowledge`);
+  const now = new Date();
+  const due = knowledge.filter(x => isDue(x.data, now)).sort((a, b) => new Date(a.data.nextReviewAt || 0) - new Date(b.data.nextReviewAt || 0)).slice(0, 50).map(x => x.id);
+  return json({ dueKpIds: due, count: due.length });
+}
+
+async function api(request, env) {
+  const url = new URL(request.url);
+  if (url.pathname === '/api/health') return json({ ok: true, service: 'manjingo-learning', firestoreProject: projectId(env), configured: Boolean(env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY) });
+  const uid = await verifyFirebaseIdToken(request, env);
+  if (url.pathname === '/api/submit-answer' && request.method === 'POST') return submitAnswer(request, env, uid);
+  if (url.pathname === '/api/daily-plan' && (request.method === 'GET' || request.method === 'POST')) return dailyPlan(env, uid);
+  if (url.pathname === '/api/due-knowledge-points' && (request.method === 'GET' || request.method === 'POST')) return dueKnowledge(env, uid);
+  return json({ error: 'Not found' }, 404);
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
+    try { return await api(request, env); }
+    catch (error) { console.error('learning api error', error); return json({ error: error && error.message ? error.message : 'Internal server error' }, Number(error && error.status) || 500); }
+  }
+};
