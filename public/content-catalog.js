@@ -4,6 +4,7 @@
 if(typeof document!=='undefined'&&document.readyState==='loading'){
  if(!window.ManjingoQuestionPack02)document.write('<script src="./question-pack-02.js"><\/script>');
  if(!window.ManjingoQuestionPack03)document.write('<script src="./question-pack-03.js"><\/script>');
+ if(!window.ManjingoQuestionPackLesson)document.write('<script src="./question-pack-lesson.js"><\/script>');
 }
 
 const baseKnowledgePoints=[
@@ -43,8 +44,9 @@ const baseQuestions=[
 
 const pack02=window.ManjingoQuestionPack02||{knowledgePoints:[],questions:[]};
 const pack03=window.ManjingoQuestionPack03||{knowledgePoints:[],questions:[]};
+const lessonPack=window.ManjingoQuestionPackLesson||{questions:[]};
 const knowledgePoints=[...baseKnowledgePoints,...pack02.knowledgePoints,...pack03.knowledgePoints];
-const questions=[...baseQuestions,...pack02.questions,...pack03.questions];
+const questions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions];
 
 function getKnowledgePointIds(options){
  const teachableOnly=!options||options.teachableOnly!==false;
