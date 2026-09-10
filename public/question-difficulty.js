@@ -4,10 +4,12 @@ const api=factory(root);
 if(typeof module==='object'&&module.exports)module.exports=api;
 root.ManjingoQuestionDifficulty=api;
 if(root.window&&root.window!==root)root.window.ManjingoQuestionDifficulty=api;
+api.install();
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
 'use strict';
 const TIERS=['foundation','application','transfer'];
 const LABELS={foundation:'基礎辨識',application:'語境應用',transfer:'跨篇遷移'};
+function fromRoot(name){return root[name]||(root.window&&root.window[name])||null}
 function clampMastery(value){const n=Number(value);return Math.max(0,Math.min(100,Number.isFinite(n)?n:0))}
 function tierIndex(tier){const i=TIERS.indexOf(String(tier||''));return i>=0?i:1}
 function tierOf(question){return TIERS.includes(question&&question.difficultyTier)?question.difficultyTier:'application'}
@@ -26,7 +28,7 @@ function recentPosition(rotation,question){
  return ids.map(String).indexOf(String(question.id));
 }
 function rank(list,options){
- const source=Array.isArray(list)?list.slice():[],opts=options||{},rotation=opts.rotation||(root.ManjingoQuestionRotation||(root.window&&root.window.ManjingoQuestionRotation)),target=opts.targetTier||tierForMastery(opts.mastery,opts),targetIndex=tierIndex(target),preferred=new Set((Array.isArray(opts.preferredIds)?opts.preferredIds:[]).map(String)),hasPreferred=preferred.size&&source.some(q=>preferred.has(String(q&&q.id)));
+ const source=Array.isArray(list)?list.slice():[],opts=options||{},rotation=opts.rotation||fromRoot('ManjingoQuestionRotation'),target=opts.targetTier||tierForMastery(opts.mastery,opts),targetIndex=tierIndex(target),preferred=new Set((Array.isArray(opts.preferredIds)?opts.preferredIds:[]).map(String)),hasPreferred=preferred.size&&source.some(q=>preferred.has(String(q&&q.id)));
  return source.map((q,index)=>{
    const position=recentPosition(rotation,q),seen=position>=0,preferredPenalty=hasPreferred&&!preferred.has(String(q&&q.id))?100:0,distance=Math.abs(tierIndex(tierOf(q))-targetIndex),seenPenalty=seen?3:0,recencyPenalty=seen?Math.max(0,1-position/20):0;
    return{q,index,score:preferredPenalty+distance*2+seenPenalty+recencyPenalty};
@@ -35,5 +37,35 @@ function rank(list,options){
 function select(list,limit,options){return rank(list,options).slice(0,Math.max(0,Number(limit)||0))}
 function choose(list,options){return rank(list,options)[0]||null}
 function labelFor(questionOrTier){const tier=typeof questionOrTier==='string'?questionOrTier:tierOf(questionOrTier);return LABELS[tier]||LABELS.application}
-return{TIERS,LABELS,clampMastery,tierIndex,tierOf,tierForMastery,rank,select,choose,labelFor};
+function practiceMode(kpId){
+ const learning=fromRoot('ManjingoLocalLearning'),loc=root.location||(root.window&&root.window.location),search=String(loc&&loc.search||''),targeted=/(?:\?|&)mode=practice(?:&|$)/.test(search);
+ if(!learning||typeof learning.getRemediationStatus!=='function')return targeted?'practice':'normal';
+ let status=null;try{status=learning.getRemediationStatus(kpId)||null}catch(e){}
+ if(targeted&&status&&status.needsConceptReteach)return'reteach';
+ if(status&&(status.needsRemediation||status.needsConceptReteach))return'remedial';
+ return targeted?'practice':'normal';
+}
+function contextFor(list,preferredIds){
+ const source=Array.isArray(list)?list:[],kpId=source.find(q=>q&&q.kpId)&&source.find(q=>q&&q.kpId).kpId,learning=fromRoot('ManjingoLocalLearning');
+ let record={};if(kpId&&learning&&typeof learning.getKnowledge==='function'){try{record=learning.getKnowledge(kpId)||{}}catch(e){}}
+ return{mastery:Number(record.mastery)||0,lastCorrect:record.lastCorrect,mode:practiceMode(kpId),preferredIds};
+}
+function installCatalog(){
+ const catalog=fromRoot('ManjingoContent'),pack=fromRoot('ManjingoQuestionPackAdaptive01');
+ if(!catalog||!Array.isArray(catalog.questions)||!pack||!Array.isArray(pack.questions))return false;
+ const ids=new Set(catalog.questions.map(q=>String(q&&q.id)));
+ pack.questions.forEach(q=>{if(q&&q.id&&!ids.has(String(q.id))){catalog.questions.push({...q});ids.add(String(q.id))}});
+ catalog.catalogVersion='reviewed-v2';
+ return true;
+}
+function installRotation(){
+ const rotation=fromRoot('ManjingoQuestionRotation');if(!rotation||rotation.__difficultyAdaptiveInstalled)return false;
+ rotation.rank=function(list){return rank(list,{...contextFor(list),rotation})};
+ rotation.select=function(list,limit){return rotation.rank(list).slice(0,Math.max(0,Number(limit)||0))};
+ rotation.choose=function(list,preferredIds){return choose(list,{...contextFor(list,preferredIds),preferredIds,rotation})};
+ rotation.__difficultyAdaptiveInstalled=true;
+ return true;
+}
+function install(){const catalogInstalled=installCatalog(),rotationInstalled=installRotation();return catalogInstalled||rotationInstalled}
+return{TIERS,LABELS,clampMastery,tierIndex,tierOf,tierForMastery,rank,select,choose,labelFor,practiceMode,contextFor,installCatalog,installRotation,install};
 });
