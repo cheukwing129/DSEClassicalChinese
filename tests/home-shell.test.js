@@ -35,3 +35,26 @@ test('home shell opens result tab for mastery dashboard return links',()=>{
   assert.match(source,/\[data-home-view\]/);
   assert.match(source,/\[data-home-tab\]/);
 });
+
+test('starting a quiz enters a distraction-free study shell with progress and exit controls',()=>{
+  const source=read('public/home-shell.js');
+  assert.match(source,/const STUDY_CLASS='study-focus'/);
+  assert.match(source,/function focusQuiz\(\)\{enterStudy\(\)/);
+  assert.match(source,/id='studyFocusBar'/);
+  assert.match(source,/退出本輪學習/);
+  assert.match(source,/學習進度/);
+  assert.match(source,/role="progressbar"/);
+  assert.match(source,/body\.'\+STUDY_CLASS\+'>\.home-tabs\{display:none!important\}/);
+  assert.match(source,/body\.'\+STUDY_CLASS\+'>\.card\.top\+\.card/);
+  assert.match(source,/\[data-home-view\]:not\(\[data-home-view="today"\]\)/);
+});
+
+test('study shell tracks question position and restores the homepage after completion',()=>{
+  const source=read('public/home-shell.js');
+  assert.match(source,/text\.match\(\/\(\\d\+\)\\s\*\\\/\\s\*\(\\d\+\)\//);
+  assert.match(source,/updateStudyProgress\(progress\.current,progress\.total\)/);
+  assert.match(source,/if\(progress\.done\)\{exitStudy\(\);return\}/);
+  assert.match(source,/new MutationObserver\(syncStudyProgress\)/);
+  assert.match(source,/document\.body\.classList\.remove\(STUDY_CLASS\)/);
+  assert.match(source,/已完成的進度會保留/);
+});
