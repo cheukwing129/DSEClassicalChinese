@@ -1,3 +1,6 @@
+import './learning-policy.js';
+
+const POLICY=globalThis.ManjingoLearningPolicy;
 const PROJECT_FALLBACK = 'manjingo-95d9a';
 const TOKEN_SCOPE = 'https://www.googleapis.com/auth/datastore';
 const FIRESTORE_ROOT = 'https://firestore.googleapis.com/v1';
@@ -159,63 +162,9 @@ async function commit(env, token, transaction, writes) {
   return response.json();
 }
 function updateWrite(env, path, data) { return { update: docObject(documentName(env, path), data) }; }
-
-function masteryStatus(mastery) {
-  if (mastery <= 20) return 'unlearned';
-  if (mastery <= 40) return 'learning';
-  if (mastery <= 60) return 'unstable';
-  if (mastery <= 80) return 'familiar';
-  if (mastery <= 95) return 'stable';
-  return 'mastered';
-}
-function toQuality(answer) {
-  if (!answer.isCorrect) return answer.attemptCount > 1 ? 1 : 0;
-  if (answer.usedHint) return 3;
-  return answer.attemptCount === 1 ? 5 : 4;
-}
-function calculateLearningUpdate(prev, answer, baseXp, now) {
-  const quality = toQuality(answer);
-  let easeFactor = Number(prev.easeFactor ?? 2.5), repetition = Number(prev.repetition ?? 0), interval = Number(prev.interval ?? 0);
-  if (!Number.isFinite(easeFactor)) easeFactor = 2.5;
-  if (!Number.isFinite(repetition) || repetition < 0) repetition = 0;
-  if (!Number.isFinite(interval) || interval < 0) interval = 0;
-  if (quality < 3) { repetition = 0; interval = 1; }
-  else { repetition += 1; if (repetition === 1) interval = 1; else if (repetition === 2) interval = 6; else interval = Math.max(1, Math.round(interval * easeFactor)); }
-  easeFactor = clamp(easeFactor + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02), 1.3, 3.0);
-  const masteryDelta = !answer.isCorrect ? -10 : answer.usedHint ? 3 : answer.attemptCount === 1 ? 8 : 5;
-  const mastery = clamp(Math.round(Number(prev.mastery || 0) + masteryDelta), 0, 100);
-  const xpEarned = !answer.isCorrect ? 0 : answer.usedHint ? Math.max(1, Math.round(baseXp * 0.6)) : answer.attemptCount === 1 ? baseXp : Math.max(1, Math.round(baseXp * 0.8));
-  return {
-    quality, xpEarned, easeFactor, repetition, interval, lastQuality: quality, mastery, status: masteryStatus(mastery),
-    nextReviewAt: new Date(now.getTime() + Math.max(1, interval) * 86400000),
-    correctCount: Number(prev.correctCount || 0) + (answer.isCorrect ? 1 : 0),
-    wrongCount: Number(prev.wrongCount || 0) + (answer.isCorrect ? 0 : 1),
-    hintCount: Number(prev.hintCount || 0) + (answer.usedHint ? 1 : 0)
-  };
-}
-function calculateConceptUpdate(prev, answer, conceptKey, conceptLabel, now) {
-  const previousMastery = clamp(Number(prev.mastery || 0), 0, 100);
-  const mastery = answer.isCorrect ? clamp(Math.round(previousMastery + (100 - previousMastery) * 0.22), 0, 100) : clamp(Math.round(previousMastery * 0.7), 0, 100);
-  const result = {
-    ...prev,
-    conceptKey,
-    conceptLabel: String(conceptLabel || prev.conceptLabel || conceptKey),
-    mastery,
-    attempts: Number(prev.attempts || 0) + 1,
-    correctCount: Number(prev.correctCount || 0) + (answer.isCorrect ? 1 : 0),
-    wrongCount: Number(prev.wrongCount || 0) + (answer.isCorrect ? 0 : 1),
-    lastCorrect: Boolean(answer.isCorrect),
-    lastAnsweredAt: now,
-    kpIds: Array.from(new Set([...(Array.isArray(prev.kpIds) ? prev.kpIds.map(String) : []), answer.kpId])),
-    questionIds: Array.from(new Set([...(Array.isArray(prev.questionIds) ? prev.questionIds.map(String) : []), ...(answer.questionId ? [answer.questionId] : [])]))
-  };
-  if (!answer.isCorrect) {
-    result.lastWrongQuestionId = answer.questionId || result.lastWrongQuestionId || null;
-    result.lastSelectedAnswer = answer.selectedAnswer == null ? result.lastSelectedAnswer || null : String(answer.selectedAnswer);
-    result.lastCorrectAnswer = answer.correctAnswer == null ? result.lastCorrectAnswer || null : String(answer.correctAnswer);
-  }
-  return result;
-}
+function masteryStatus(mastery) { return POLICY.masteryStatus(mastery); }
+function calculateLearningUpdate(prev, answer, baseXp, now) { return POLICY.calculateLearningUpdate({ prev, isCorrect: answer.isCorrect, usedHint: answer.usedHint, attemptCount: answer.attemptCount, baseXp, now }); }
+function calculateConceptUpdate(prev, answer, conceptKey, conceptLabel, now) { return POLICY.calculateConceptMasteryUpdate({ prev, conceptKey, conceptLabel, kpId: answer.kpId, questionId: answer.questionId, selectedAnswer: answer.selectedAnswer, correctAnswer: answer.correctAnswer, isCorrect: answer.isCorrect, usedHint: answer.usedHint, attemptCount: answer.attemptCount, now }); }
 function calculateLevel(totalXp) {
   let level = 1, cumulative = 0;
   while (level < 99) { const needed = level === 1 ? 50 : 50 + (level - 1) * 30; if (cumulative + needed > totalXp) break; cumulative += needed; level += 1; }
@@ -267,7 +216,7 @@ async function submitAnswer(request, env, uid) {
     if (logDoc) {
       await rollback(env, token, tx);
       const existing = logDoc.data;
-      return json({ success: true, quality: existing.quality, xpEarned: Number(existing.xpEarned || 0), mastery: Number(existing.mastery || 0), status: existing.status || null, nextReviewAt: existing.nextReviewAt || null, totalXp: Number(existing.totalXp ?? gameExisting.totalXp ?? 0), todayXp: Number(existing.todayXp ?? gameExisting.todayXp ?? 0), streak: Number(existing.streak ?? gameExisting.streak ?? 0), streakFreezes: Number(existing.streakFreezes ?? gameExisting.streakFreezes ?? 0), streakIncreased: Boolean(existing.streakIncreased), level: Number(existing.level ?? gameExisting.level ?? 1), conceptMastery: existing.conceptMastery || null, duplicate: true });
+      return json({ success: true, quality: existing.quality, xpEarned: Number(existing.xpEarned || 0), mastery: Number(existing.mastery || 0), status: existing.status || null, nextReviewAt: existing.nextReviewAt || null, attempts: Number(existing.attempts || 0), correctCount: Number(existing.correctCount || 0), wrongCount: Number(existing.wrongCount || 0), hintCount: Number(existing.hintCount || 0), lastCorrect: existing.lastCorrect ?? null, lastAnsweredAt: existing.lastAnsweredAt || existing.answeredAt || null, totalXp: Number(existing.totalXp ?? gameExisting.totalXp ?? 0), todayXp: Number(existing.todayXp ?? gameExisting.todayXp ?? 0), streak: Number(existing.streak ?? gameExisting.streak ?? 0), streakFreezes: Number(existing.streakFreezes ?? gameExisting.streakFreezes ?? 0), streakIncreased: Boolean(existing.streakIncreased), level: Number(existing.level ?? gameExisting.level ?? 1), conceptMastery: existing.conceptMastery || null, duplicate: true });
     }
     const now = new Date();
     const prev = kpDoc ? kpDoc.data : {};
@@ -297,20 +246,21 @@ async function submitAnswer(request, env, uid) {
       conceptUpdate = calculateConceptUpdate(conceptDoc ? conceptDoc.data : {}, answer, conceptKey, conceptLabel, now);
       conceptResult = { ...conceptUpdate, status: masteryStatus(conceptUpdate.mastery), lastAnsweredAt: now.toISOString() };
     }
-    const kpUpdate = { ...prev, ...update, nextReviewAt: update.nextReviewAt, lastAnsweredAt: now, updatedAt: now };
+    const kpUpdate = { ...prev, ...update, nextReviewAt: update.nextReviewAt, lastAnsweredAt: update.lastAnsweredAt, updatedAt: now };
     const gameUpdate = { ...game, totalXp, todayXp, todayXpDate: answer.localDate, dailyGoalXp, streak, streakFreezes, lastActiveDate: todayXp >= dailyGoalXp ? answer.localDate : previousActiveDate, level, updatedAt: now };
     const log = {
       answerId: answer.answerId, questionId: answer.questionId, kpIds: [answer.kpId], textId: answer.textId, conceptKey, conceptLabel,
       selectedAnswer: answer.selectedAnswer, correctAnswer: answer.correctAnswer, conceptMastery: conceptResult, isCorrect: answer.isCorrect,
       usedHint: answer.usedHint, attemptCount: answer.attemptCount, responseTimeMs: answer.responseTimeMs, localDate: answer.localDate,
       quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt,
-      interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, totalXp, todayXp, streak, streakFreezes, streakIncreased, level, answeredAt: now
+      interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, attempts: update.attempts, correctCount: update.correctCount, wrongCount: update.wrongCount, hintCount: update.hintCount, lastCorrect: update.lastCorrect, lastAnsweredAt: update.lastAnsweredAt,
+      totalXp, todayXp, streak, streakFreezes, streakIncreased, level, answeredAt: now
     };
     const writes = [updateWrite(env, kpPath, kpUpdate), updateWrite(env, gamePath, gameUpdate)];
-    if (conceptPath && conceptUpdate) writes.push(updateWrite(env, conceptPath, { ...conceptUpdate, lastAnsweredAt: now, updatedAt: now }));
+    if (conceptPath && conceptUpdate) writes.push(updateWrite(env, conceptPath, { ...conceptUpdate, lastAnsweredAt: conceptUpdate.lastAnsweredAt, updatedAt: now }));
     writes.push(updateWrite(env, logPath, log));
     await commit(env, token, tx, writes);
-    return json({ success: true, quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt.toISOString(), interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, totalXp, todayXp, streak, streakFreezes, streakIncreased, level, conceptMastery: conceptResult, duplicate: false });
+    return json({ success: true, quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt.toISOString(), interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, attempts: update.attempts, correctCount: update.correctCount, wrongCount: update.wrongCount, hintCount: update.hintCount, lastCorrect: update.lastCorrect, lastAnsweredAt: update.lastAnsweredAt.toISOString(), totalXp, todayXp, streak, streakFreezes, streakIncreased, level, conceptMastery: conceptResult, duplicate: false });
   } catch (error) {
     await rollback(env, token, tx);
     throw error;
@@ -354,7 +304,7 @@ async function dueKnowledge(env, uid) {
 
 async function api(request, env) {
   const url = new URL(request.url);
-  if (url.pathname === '/api/health') return json({ ok: true, service: 'manjingo-learning', firestoreProject: projectId(env), configured: Boolean(env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY) });
+  if (url.pathname === '/api/health') return json({ ok: true, service: 'manjingo-learning', firestoreProject: projectId(env), configured: Boolean(env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY), learningPolicy: 'shared-v1' });
   const uid = await verifyFirebaseIdToken(request, env);
   if (url.pathname === '/api/submit-answer' && request.method === 'POST') return submitAnswer(request, env, uid);
   if (url.pathname === '/api/daily-plan' && (request.method === 'GET' || request.method === 'POST')) return dailyPlan(env, uid);
