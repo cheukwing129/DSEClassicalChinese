@@ -64,6 +64,10 @@ test('daily quiz surfaces misconception review and confirms repaired pattern',()
   assert.match(html,/misconceptionReview/);
   assert.match(html,/🔁 錯題重溫/);
   assert.match(html,/你已修正這個錯誤模式/);
+  assert.match(html,/這題仍會保留較低的複習權重/);
+  assert.match(html,/resolvedMisconceptions/);
+  assert.match(html,/remainingMisconceptionWeight/);
+  assert.match(html,/resolveQuestionMisconceptions\(q\.kpId,q\.id\)/);
   assert.match(html,/selectedAnswer:value/);
   assert.match(html,/correctAnswer:q\.a/);
 });
