@@ -183,10 +183,12 @@ async function authorizedApi(path, options = {}) {
 }
 
 export async function fetchAllQuestions() {
-  try {
-    const { firestoreModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
-    return await withTimeout(firestoreModule.getDocs(firestoreModule.collection(db, "questions")).then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))),8000,'questions read');
-  } catch (error) { console.warn('questions read unavailable:', error); return []; }
+  const content = typeof window !== 'undefined' ? window.ManjingoContent : null;
+  if (content && Array.isArray(content.questions) && content.questions.length) {
+    return content.questions.map(question => ({ ...question }));
+  }
+  console.warn('Reviewed local question catalog unavailable; refusing to fall back to legacy Firestore questions.');
+  return [];
 }
 
 export async function fetchAllKnowledgePoints() {
