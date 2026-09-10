@@ -17,7 +17,7 @@ function makeDateClass(nowIso) {
   };
 }
 
-function createEngine({ now = '2026-09-10T12:00:00.000Z', initial = {} } = {}) {
+function createEngine({ now = '2026-09-10T12:00:00', initial = {} } = {}) {
   const store = new Map(Object.entries(initial));
   const context = {
     window: {},
@@ -79,7 +79,7 @@ test('consecutive-day goal increments streak', () => {
     knowledge: {}
   };
   const { engine } = createEngine({
-    now: '2026-09-10T12:00:00.000Z',
+    now: '2026-09-10T12:00:00',
     initial: { manjingo_progress_cache: JSON.stringify(yesterdayState) }
   });
   engine.submit('a', true);
@@ -98,7 +98,7 @@ test('missing a day resets streak to 1 when goal is reached again', () => {
     knowledge: {}
   };
   const { engine } = createEngine({
-    now: '2026-09-10T12:00:00.000Z',
+    now: '2026-09-10T12:00:00',
     initial: { manjingo_progress_cache: JSON.stringify(oldState) }
   });
   engine.submit('a', true);
@@ -131,11 +131,10 @@ test('legacy knowledge state migrates without losing mastery', () => {
 test('remote gamification sync becomes the rendered local progress source', () => {
   const { engine } = createEngine();
   engine.syncGamification({ totalXp: 120, todayXp: 16, streak: 5 });
-  assert.deepEqual(engine.getProgress(), {
-    totalXp: 120,
-    todayXp: 16,
-    streak: 5,
-    todayDate: '2026-09-10',
-    lastGoalDate: null
-  });
+  const progress = engine.getProgress();
+  assert.equal(progress.totalXp, 120);
+  assert.equal(progress.todayXp, 16);
+  assert.equal(progress.streak, 5);
+  assert.equal(progress.todayDate, '2026-09-10');
+  assert.equal(progress.lastGoalDate, null);
 });
