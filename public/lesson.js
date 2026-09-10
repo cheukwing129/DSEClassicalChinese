@@ -1,5 +1,5 @@
 // Manjingo lesson flow: explanation → examples → practice → mastery feedback.
-import { fetchKnowledgePoints, fetchUserKnowledge, ensureLogin, getCurrentUserId, submitAnswer } from './firebase-config.js';
+import { fetchAllKnowledgePoints, fetchAllQuestions, fetchUserKnowledge, ensureLogin, getCurrentUserId, submitAnswer } from './firebase-config.js';
 
 const state = { kp: null, questions: [], index: 0, startedAt: 0, answered: false };
 
@@ -7,9 +7,13 @@ function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function normaliseQuestions(kp) {
+function normaliseQuestions(kp, allQuestions = []) {
   const raw = kp.questions || kp.questionIds || [];
-  return Array.isArray(raw) ? raw.map(q => typeof q === 'string' ? { id: q } : q).filter(Boolean) : [];
+  if (!Array.isArray(raw)) return [];
+  return raw.map(q => {
+    if (typeof q === 'object' && q) return q;
+    return allQuestions.find(item => item.id === q) || null;
+  }).filter(Boolean);
 }
 
 function masteryStatus(value) {
@@ -25,13 +29,13 @@ export async function openLesson(kpId, container, options = {}) {
   container.innerHTML = '<div class="lesson-loading">正在載入課堂……</div>';
   try {
     await ensureLogin();
-    const points = await fetchKnowledgePoints();
+    const [points, allQuestions] = await Promise.all([fetchAllKnowledgePoints(), fetchAllQuestions()]);
     const kp = points.find(x => x.id === kpId);
     if (!kp) throw new Error('找不到知識點');
     const uid = getCurrentUserId();
     const progress = uid ? await fetchUserKnowledge(uid, kpId) : null;
     state.kp = { ...kp, progress: progress || {} };
-    state.questions = normaliseQuestions(kp);
+    state.questions = normaliseQuestions(kp, allQuestions);
     state.index = 0;
     state.startedAt = Date.now();
     state.answered = false;
@@ -46,6 +50,7 @@ function renderLesson(container, options) {
   const kp = state.kp;
   const p = kp.progress || {};
   const mastery = Number(p.mastery || 0);
+  const prerequisites = Array.isArray(kp.prerequisiteIds) ? kp.prerequisiteIds : [];
   container.innerHTML = `
     <section class="lesson-head">
       <button class="lesson-back" id="lessonBack">← 返回學習地圖</button>
@@ -53,6 +58,7 @@ function renderLesson(container, options) {
       <h2>${esc(kp.title || kp.name || kp.label || kp.id)}</h2>
       <div class="lesson-status">${masteryStatus(mastery)} · 掌握度 ${mastery}%</div>
       <div class="lesson-progress"><div style="width:${Math.min(100, mastery)}%"></div></div>
+      ${prerequisites.length ? `<div class="lesson-prereq">前置知識：${prerequisites.map(esc).join('、')}</div>` : ''}
     </section>
     <section class="lesson-content">
       <div class="lesson-step active" id="lessonIntro">
@@ -87,7 +93,7 @@ function renderPracticeQuestion(area) {
   state.startedAt = Date.now();
   if (!q) {
     area.innerHTML = `<div class="lesson-complete"><div class="lesson-icon">🎉</div><h3>本課完成！</h3><p>你已完成這個知識點的練習。</p><button class="action" id="lessonFinish">返回學習地圖</button></div>`;
-    area.querySelector('#lessonFinish').onclick = () => window.location.reload();
+    area.querySelector('#lessonFinish').onclick = () => window.location.href = './knowledge-map.html';
     return;
   }
   const options = Array.isArray(q.options) ? q.options : [];
@@ -96,13 +102,17 @@ function renderPracticeQuestion(area) {
   if (q.type === 'fill') {
     opts.innerHTML = `<input class="fill-input" id="lessonInput" placeholder="輸入答案"><button class="action" id="lessonCheck">提交答案</button>`;
     area.querySelector('#lessonCheck').onclick = () => answerQuestion(q, area, area.querySelector('#lessonInput').value);
-  } else {
+  } else if (q.type === 'choice') {
     options.forEach(option => {
+      const value = typeof option === 'object' ? option.text ?? option.value ?? '' : option;
       const b = document.createElement('button');
-      b.className = 'option'; b.textContent = option;
-      b.onclick = () => answerQuestion(q, area, option);
+      b.className = 'option'; b.textContent = value;
+      b.onclick = () => answerQuestion(q, area, value);
       opts.appendChild(b);
     });
+  } else {
+    opts.innerHTML = `<p class="lesson-note">此題型將在後續版本加入互動支援。</p><button class="action" id="lessonSkip">跳過</button>`;
+    area.querySelector('#lessonSkip').onclick = () => { state.index += 1; renderPracticeQuestion(area); };
   }
   area.querySelector('#lessonNext').onclick = () => { state.index += 1; renderPracticeQuestion(area); };
 }
@@ -113,7 +123,7 @@ async function answerQuestion(q, area, answer) {
   const expected = Array.isArray(q.answer) ? q.answer.join('') : String(q.answer ?? '');
   const clean = value => String(value ?? '').replace(/[，。、；：！？\s]/g, '');
   const correct = clean(answer) === clean(expected);
-  area.querySelectorAll('button.option').forEach(b => { b.disabled = true; if (b.textContent === answer) b.classList.add(correct ? 'correct' : 'wrong'); });
+  area.querySelectorAll('button.option').forEach(b => { b.disabled = true; if (b.textContent === String(answer)) b.classList.add(correct ? 'correct' : 'wrong'); });
   try {
     const result = await submitAnswer({ questionId: q.id || null, kpId: state.kp.id, isCorrect: correct, attemptCount: 1, responseTimeMs: Date.now() - state.startedAt, usedHint: false, localDate: new Date().toLocaleDateString('en-CA') });
     const feedback = area.querySelector('#lessonFeedback');
