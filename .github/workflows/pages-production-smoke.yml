@@ -22,5 +22,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Smoke test production Pages learning API
+      - name: Install Firebase Admin cleanup runtime
+        run: npm install --prefix functions --no-audit --no-fund
+      - name: Require cleanup credential before creating a smoke user
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MANJINGO }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Missing FIREBASE_SERVICE_ACCOUNT_MANJINGO cleanup credential."
+            exit 1
+          fi
+      - name: Smoke test production Pages learning API with a real write
         run: npm run smoke:pages
+      - name: Cleanup temporary smoke user and learning data
+        if: always()
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MANJINGO }}
+        run: node scripts/cleanup_smoke_user.cjs
