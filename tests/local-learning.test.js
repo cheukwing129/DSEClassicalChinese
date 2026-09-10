@@ -91,6 +91,37 @@ test('correct answers do not create misconception records', () => {
   assert.deepEqual(Object.keys(engine.getKnowledge('kp_test').misconceptions), []);
 });
 
+test('daily plan orders misconception question ids by repeated error count', () => {
+  const initial = {
+    totalXp: 0,
+    todayXp: 0,
+    streak: 0,
+    todayDate: '2026-09-10',
+    lastGoalDate: null,
+    knowledge: {
+      kp_p3_yi: {
+        mastery: 20,
+        repetition: 0,
+        easeFactor: 2.3,
+        interval: 1,
+        nextReviewAt: '2026-09-10T10:00:00.000Z',
+        attempts: 5,
+        correctCount: 1,
+        lastCorrect: false,
+        lastAnsweredAt: '2026-09-10T10:00:00.000Z',
+        misconceptions: {
+          'p3q009::用': { questionId: 'p3q009', selectedAnswer: '用', correctAnswer: '因為', count: 3 },
+          'p3q010::因為': { questionId: 'p3q010', selectedAnswer: '因為', correctAnswer: '把／將', count: 1 },
+          'p3q009::按照': { questionId: 'p3q009', selectedAnswer: '按照', correctAnswer: '因為', count: 2 }
+        }
+      }
+    }
+  };
+  const { engine } = createEngine({ initial: { manjingo_progress_cache: JSON.stringify(initial) } });
+  const plan = engine.buildDailyPlan(['kp_p3_yi'], 1);
+  assert.deepEqual(Array.from(plan.items[0].misconceptionQuestionIds), ['p3q009', 'p3q010']);
+});
+
 test('daily goal increments streak once, not on every answer after goal', () => {
   const { engine } = createEngine();
   engine.submit('a', true); // 8
