@@ -1,0 +1,11 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
+function load(){const context={window:{},Map,Set,Array,Object,Number,String,Math};vm.createContext(context);vm.runInContext(read('public/question-pack-02.js'),context);vm.runInContext(read('public/question-pack-03.js'),context);vm.runInContext(read('public/content-catalog.js'),context);vm.runInContext(read('public/lesson-content-reading.js'),context);vm.runInContext(read('public/lesson-content.js'),context);return context.window}
+test('all 59 teachable knowledge points build a usable lesson',()=>{const w=load();const kps=w.ManjingoContent.knowledgePoints.filter(k=>k.teachable!==false);assert.equal(kps.length,59);for(const kp of kps){const lesson=w.ManjingoLessonContent.build(kp);assert.ok(lesson.title,`${kp.kpId} missing lesson title`);assert.ok(lesson.explanation,`${kp.kpId} missing explanation`);assert.ok(lesson.tip,`${kp.kpId} missing tip`);assert.ok(Array.isArray(lesson.examples),`${kp.kpId} examples must be an array`)}});
+test('every teachable knowledge point has at least one practice question',()=>{const w=load();const counts=new Map();for(const q of w.ManjingoContent.questions)counts.set(q.kpId,(counts.get(q.kpId)||0)+1);const missing=w.ManjingoContent.knowledgePoints.filter(k=>k.teachable!==false&&!counts.get(k.kpId)).map(k=>k.kpId);assert.deepEqual(Array.from(missing),[])});
+test('lesson practice coverage report stays explicit',()=>{const w=load();const counts=new Map();for(const q of w.ManjingoContent.questions)counts.set(q.kpId,(counts.get(q.kpId)||0)+1);const kps=w.ManjingoContent.knowledgePoints.filter(k=>k.teachable!==false);const under3=kps.filter(k=>(counts.get(k.kpId)||0)<3).map(k=>[k.kpId,counts.get(k.kpId)||0]);assert.ok(under3.length<=23,`too many KPs have fewer than 3 questions: ${JSON.stringify(under3)}`)});
+test('all dedicated reading lessons point to known knowledge points',()=>{const w=load();const ids=new Set(w.ManjingoContent.knowledgePoints.map(k=>k.kpId));const unknown=Object.keys(w.ManjingoReadingLessons).filter(id=>!ids.has(id));assert.deepEqual(Array.from(unknown),[])});
