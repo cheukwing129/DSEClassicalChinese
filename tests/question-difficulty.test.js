@@ -17,6 +17,11 @@ const LATER_STAGE_KPS=[
  'kp_yueyang_emotion','kp_chushi_loyalty','kp_chushi_reward','kp_chushi_experience','kp_fish_shame','kp_caogui_trust','kp_caogui_strategy','kp_zouji_selfknowledge','kp_taohua_society','kp_maqianli_ignorance',
  'kp_argument_001','kp_argument_002','kp_argument_003','kp_p3_argument','kp_yueyang_scene','kp_fish_righteousness','kp_shengyou_adversity','kp_shengyou_country','kp_zouji_remonstrance','kp_loushi_character','kp_ai_lotus_symbol','kp_ai_lotus_contrast','kp_maqianli_talent','kp_xiaoshi_pool','kp_xiaoshi_mood'
 ];
+const COMPLETION_KPS=[
+ 'kp_yueyang_001','kp_yueyang_004','gj_004','gj_005','cy_004','cy_006','kp_translation_001',
+ 'kp_yueyang_context','kp_taohua_discovery','kp_loushi_allusion',
+ 'kp_p3_zhi','kp_p3_er','kp_p3_yi','kp_p3_yu','kp_p3_qi','kp_p3_judgment','kp_p3_passive','kp_p3_fronting','kp_p3_adverbial','kp_p3_ellipsis'
+];
 
 function loadAdaptivePack(file,key){
  const context={window:{},Map,Set,Array,Object,Number,String,Math};
@@ -31,7 +36,7 @@ function loadReviewedRuntime(){
  for(const file of [
   'public/question-pack-02.js','public/question-pack-03.js','public/question-pack-lesson.js',
   'public/question-pack-capacity-01.js','public/content-catalog.js',
-  'public/question-pack-adaptive-01.js','public/question-pack-adaptive-02.js','public/question-difficulty.js'
+  'public/question-pack-adaptive-01.js','public/question-pack-adaptive-02.js','public/question-pack-adaptive-03.js','public/question-difficulty.js'
  ]) vm.runInContext(source(file),context,{filename:file});
  return context.window;
 }
@@ -85,6 +90,25 @@ test('later-stage pack adds only purposeful transfer questions and explicit exis
  assert.equal(pack.tierRevisions.p2q044,'application');
 });
 
+test('completion pack reuses curated material and adds only seven missing transfer questions',()=>{
+ const pack=loadAdaptivePack('public/question-pack-adaptive-03.js','ManjingoQuestionPackAdaptive03');
+ assert.equal(pack.kind,'adaptive-completion');
+ assert.equal(pack.catalogVersion,'reviewed-v4');
+ assert.equal(COMPLETION_KPS.length,20);
+ assert.equal(pack.questions.length,7);
+ assert.equal(new Set(pack.questions.map(q=>q.id)).size,7);
+ for(const q of pack.questions){
+  assert.equal(q.difficultyTier,'transfer');
+  assert.ok(q.q&&q.explanation&&q.a,`${q.id} needs complete teaching content`);
+  assert.ok(Array.isArray(q.o)&&q.o.includes(q.a),`${q.id} answer must be present`);
+ }
+ assert.equal(pack.tierRevisions.q001,'foundation');
+ assert.equal(pack.tierRevisions.cap1q002,'application');
+ assert.equal(pack.tierRevisions.p3q001,'foundation');
+ assert.equal(pack.tierRevisions.p3q003,'application');
+ assert.equal(pack.tierRevisions.p3q004,'transfer');
+});
+
 test('tier ranking prefers the target level but lets unseen adjacent material rotate ahead of a repeated exact-tier item',()=>{
  const list=[
   {id:'f',kpId:'k',difficultyTier:'foundation'},
@@ -106,32 +130,33 @@ test('misconception-targeted question stays ahead of difficulty preference',()=>
  assert.equal(ranked[0].id,'targeted');
 });
 
-test('reviewed runtime becomes v3 with 285 questions and three tiers across later learning stages',()=>{
+test('reviewed runtime v4 gives all 59 knowledge points explicit three-tier coverage',()=>{
  const runtime=loadReviewedRuntime(),catalog=runtime.ManjingoContent;
- assert.equal(catalog.catalogVersion,'reviewed-v3');
- assert.equal(catalog.questions.length,285);
- assert.equal(catalog.knowledgePoints.filter(kp=>kp.teachable!==false).length,59);
+ assert.equal(catalog.catalogVersion,'reviewed-v4');
+ assert.equal(catalog.questions.length,292);
+ const teachable=catalog.knowledgePoints.filter(kp=>kp.teachable!==false);
+ assert.equal(teachable.length,59);
  const zhi=catalog.questions.find(q=>q.id==='ad1q002');
  const passive=catalog.questions.find(q=>q.id==='ad1q025');
  assert.equal(zhi.difficultyTier,'application');
  assert.equal(zhi.misconceptionKey,'zhi_verb_vs_particle');
  assert.equal(passive.misconceptionKey,'sentence_passive_receiver');
- for(const kpId of LATER_STAGE_KPS){
-  const tiers=new Set(catalog.questions.filter(q=>q.kpId===kpId).map(q=>difficulty.tierOf(q)));
-  assert.ok(tiers.has('foundation'),`${kpId} missing foundation`);
-  assert.ok(tiers.has('application'),`${kpId} missing application`);
-  assert.ok(tiers.has('transfer'),`${kpId} missing transfer`);
+ for(const kp of teachable){
+  const tiers=new Set(catalog.questions.filter(q=>q.kpId===kp.kpId).map(q=>q.difficultyTier).filter(Boolean));
+  assert.ok(tiers.has('foundation'),`${kp.kpId} missing explicit foundation`);
+  assert.ok(tiers.has('application'),`${kp.kpId} missing explicit application`);
+  assert.ok(tiers.has('transfer'),`${kp.kpId} missing explicit transfer`);
  }
 });
 
-test('browser loader and Firestore importer include both adaptive tier packs and metadata',()=>{
+test('browser loader and Firestore importer include all adaptive tier packs and metadata',()=>{
  const rotation=source('public/question-rotation.js');
  const importer=source('scripts/import_to_firestore.js');
- assert.match(rotation,/question-pack-adaptive-01\.js/);
- assert.match(rotation,/question-pack-adaptive-02\.js/);
+ for(const suffix of ['01','02','03']){
+  assert.match(rotation,new RegExp(`question-pack-adaptive-${suffix}\\.js`));
+  assert.match(importer,new RegExp(`question-pack-adaptive-${suffix}\\.js`));
+ }
  assert.match(rotation,/question-difficulty\.js/);
- assert.match(importer,/question-pack-adaptive-01\.js/);
- assert.match(importer,/question-pack-adaptive-02\.js/);
  assert.match(importer,/question-difficulty\.js/);
  assert.match(importer,/difficultyTier: question\.difficultyTier \|\| null/);
 });
