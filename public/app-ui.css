@@ -1,0 +1,137 @@
+:root{
+  --ui-bg:#fbfcfa;
+  --ui-surface:#fff;
+  --ui-surface-soft:#f7f9f5;
+  --ui-border:#e5e8e2;
+  --ui-border-strong:#d6dbd2;
+  --ui-ink:#000437;
+  --ui-text:#4b4b4b;
+  --ui-muted:#8e948b;
+  --ui-green:#58cc02;
+  --ui-green-dark:#398500;
+  --ui-green-soft:#eef9e8;
+  --ui-danger:#ff4b4b;
+  --ui-radius-card:20px;
+  --ui-radius-control:14px;
+  --ui-shadow:0 8px 28px rgba(0,4,55,.055);
+  --ui-touch:48px;
+}
+html{background:var(--ui-bg);scroll-behavior:smooth}
+body{background:var(--ui-bg);line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button,a,input,summary{-webkit-tap-highlight-color:transparent}
+button,a,summary{touch-action:manipulation}
+button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid rgba(88,204,2,.32);outline-offset:2px}
+
+/* Shared surfaces and controls */
+body .card,
+#lessonApp .lesson-head,
+#lessonApp .lesson-content{
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-card);
+  background:var(--ui-surface);
+  box-shadow:var(--ui-shadow);
+}
+body .action,
+body .option,
+#lessonApp .action,
+#lessonApp .option,
+#lessonApp .fill-input,
+body .input{
+  min-height:var(--ui-touch);
+  border-radius:var(--ui-radius-control);
+}
+body .action,#lessonApp .action{font-size:15px;font-weight:900;letter-spacing:.01em}
+body .option,#lessonApp .option{font-size:15px;line-height:1.45}
+body .action:active,#lessonApp .action:active{transform:translateY(1px)}
+body .small,#lessonApp .lesson-question-count{color:var(--ui-muted)}
+
+/* Homepage page-level rhythm */
+body.app-nav-ready{max-width:640px;margin:0 auto;padding-top:14px}
+.title{letter-spacing:-.035em}
+.status{color:var(--ui-muted)!important;margin-bottom:12px!important}
+.home-view{padding-bottom:8px}
+#homePath>.card,#homeWeakness>.card,#homeResults>.card{padding:20px}
+#learningPath .lp-title,#weaknessPanel .weak-title,#masteryDashboard .dashboard-title{
+  font-size:22px;
+  line-height:1.25;
+  letter-spacing:-.018em;
+  color:var(--ui-ink);
+}
+#learningPath .lp-sub,#weaknessPanel .weak-sub,#masteryDashboard .dashboard-sub{
+  color:var(--ui-muted);
+  line-height:1.55;
+}
+
+/* Normalize feature cards */
+#learningPath .lp-stage-card,
+#weaknessPanel .weak-priority,
+#masteryDashboard .dashboard-group{
+  border-radius:16px;
+  border-color:var(--ui-border);
+  box-shadow:none;
+}
+#learningPath .lp-stage-card.clickable:hover,
+#weaknessPanel .weak-priority:hover,
+#masteryDashboard .dashboard-toggle:hover{background-color:#fbfdf9}
+#weaknessPanel .weak-action,
+#masteryDashboard .dashboard-kp>a{
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:12px;
+}
+#weaknessPanel .weak-empty,
+#masteryDashboard .dashboard-empty{
+  margin-top:8px;
+  padding:24px 16px;
+  border:1px dashed var(--ui-border-strong);
+  border-radius:16px;
+  background:var(--ui-surface-soft);
+  text-align:center;
+}
+
+/* Lesson consistency */
+#lessonApp{width:100%}
+#lessonApp .lesson-head,#lessonApp .lesson-content{padding:20px;margin-bottom:14px}
+#lessonApp .lesson-back{min-height:40px;display:inline-flex;align-items:center;padding:0 4px 8px;color:var(--ui-green-dark)}
+#lessonApp .lesson-category{color:var(--ui-muted)}
+#lessonApp .lesson-head h2{font-size:26px;line-height:1.25;letter-spacing:-.02em}
+#lessonApp .lesson-step h3,#lessonApp .lesson-complete h3{font-size:22px;line-height:1.35}
+#lessonApp .lesson-question{font-size:21px;line-height:1.55}
+#lessonApp .lesson-tip,#lessonApp .lesson-examples,#lessonApp .feedback{border-radius:14px}
+#lessonApp .lesson-progress{height:9px}
+#lessonApp .lesson-loading,#lessonApp .lesson-error,#lessonApp .lesson-complete{padding:28px 10px}
+
+/* Small-screen guardrails: 360–430px */
+@media(max-width:430px){
+  body{padding-left:12px!important;padding-right:12px!important}
+  body.app-nav-ready{padding-top:8px}
+  .title{font-size:28px!important;margin-top:10px!important}
+  body .card{border-radius:18px}
+  #homePath>.card,#homeWeakness>.card,#homeResults>.card{padding:16px}
+  #learningPath .lp-title,#weaknessPanel .weak-title,#masteryDashboard .dashboard-title{font-size:20px}
+  #weaknessPanel .weak-priority{padding:12px}
+  #masteryDashboard .dashboard-groups{gap:8px}
+  #masteryDashboard .dashboard-toggle{padding:11px}
+  #lessonApp .lesson-head,#lessonApp .lesson-content{padding:16px;border-radius:18px}
+  #lessonApp .lesson-head h2{font-size:23px}
+  #lessonApp .lesson-question{font-size:19px}
+  #lessonApp .lesson-step h3,#lessonApp .lesson-complete h3{font-size:20px}
+  #lessonApp .action,#lessonApp .option,body .action,body .option{min-height:50px}
+}
+@media(max-width:370px){
+  body{padding-left:10px!important;padding-right:10px!important}
+  #homePath>.card,#homeWeakness>.card,#homeResults>.card{padding:14px}
+  #masteryDashboard .dashboard-hero{grid-template-columns:1fr!important;text-align:center}
+  #masteryDashboard .dashboard-overall{margin:0 auto}
+  #masteryDashboard .dashboard-hero-copy{text-align:center}
+  #masteryDashboard .dashboard-groups{grid-template-columns:1fr!important}
+  #weaknessPanel .weak-priority-top{align-items:flex-start}
+  #lessonApp .lesson-head,#lessonApp .lesson-content{padding:14px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
