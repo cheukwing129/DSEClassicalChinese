@@ -12,7 +12,8 @@ test('weakness panel ranks misconception weight and links to targeted KP practic
   assert.match(source,/常把「/);
   assert.match(source,/誤答成「/);
   assert.match(source,/lesson\.html\?kpId=/);
-  assert.match(source,/針對練習/);
+  assert.match(source,/&mode=practice/);
+  assert.match(source,/立即補強/);
 });
 
 test('content catalog loads weakness panel on homepage flow',()=>{
