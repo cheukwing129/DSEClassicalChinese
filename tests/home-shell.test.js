@@ -36,6 +36,20 @@ test('home shell opens result tab for mastery dashboard return links',()=>{
   assert.match(source,/\[data-home-tab\]/);
 });
 
+test('homepage compacts XP streak and daily goal into one player status strip',()=>{
+  const source=read('public/home-shell.js');
+  assert.match(source,/function enhancePlayerStatus\(\)/);
+  assert.match(source,/card\.classList\.add\('player-status'\)/);
+  assert.match(source,/dailyBlock\.appendChild\(daily\)/);
+  assert.match(source,/dailyBlock\.appendChild\(dailyBar\)/);
+  assert.match(source,/card\.appendChild\(levelBlock\)/);
+  assert.match(source,/card\.appendChild\(streak\)/);
+  assert.match(source,/details\.appendChild\(levelBar\)/);
+  assert.match(source,/detailCard\.remove\(\)/);
+  assert.match(source,/今日目標/);
+  assert.match(source,/等級進度/);
+});
+
 test('starting a quiz enters a distraction-free study shell with progress and exit controls',()=>{
   const source=read('public/home-shell.js');
   assert.match(source,/const STUDY_CLASS='study-focus'/);
@@ -45,7 +59,7 @@ test('starting a quiz enters a distraction-free study shell with progress and ex
   assert.match(source,/學習進度/);
   assert.match(source,/role="progressbar"/);
   assert.match(source,/body\.'\+STUDY_CLASS\+'>\.home-tabs\{display:none!important\}/);
-  assert.match(source,/body\.'\+STUDY_CLASS\+'>\.card\.top\+\.card/);
+  assert.match(source,/body\.'\+STUDY_CLASS\+'>\.player-status/);
   assert.match(source,/\[data-home-view\]:not\(\[data-home-view="today"\]\)/);
 });
 
