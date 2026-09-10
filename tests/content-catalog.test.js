@@ -60,7 +60,24 @@ test('question selection follows plan order and selects at most one question per
   assert.deepEqual(Array.from(queue, q => q.category), ['review', 'weak', 'new']);
 });
 
-test('multiple questions for one knowledge point can rotate', () => {
+test('misconception review selects the highest-priority previously missed question', () => {
+  const catalog = loadCatalog();
+  const plan = {
+    targetCount: 1,
+    items: [{
+      kpId: 'kp_p3_yi',
+      category: 'review',
+      priority: 1,
+      misconceptionQuestionIds: ['p3q009', 'p3q010']
+    }]
+  };
+  const queue = catalog.selectQuestionsForPlan(plan, catalog.questions, 1);
+  assert.equal(queue.length, 1);
+  assert.equal(queue[0].id, 'p3q009');
+  assert.equal(queue[0].misconceptionReview, true);
+});
+
+test('multiple questions for one knowledge point can rotate when there is no misconception target', () => {
   const catalog = loadCatalog();
   const plan = { targetCount: 1, items: [{ kpId: 'kp_caogui_strategy', category: 'review', priority: 1 }] };
   const seen = new Set();
