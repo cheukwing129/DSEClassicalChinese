@@ -28,7 +28,7 @@ function render(){
  if(!panel){panel=document.createElement('div');panel.id='weaknessPanel';panel.className='card';host.insertAdjacentElement('afterend',panel)}
  const items=topMisconceptions(3);
  if(!items.length){panel.innerHTML='<div class="plan-title">🧠 弱點診斷</div><div class="plan-sub">目前沒有持續性的錯誤模式。完成更多練習後，這裡會整理最值得複習的弱點。</div>';return;}
- panel.innerHTML='<div class="plan-title">🧠 弱點診斷</div><div class="plan-sub">根據你的錯題紀錄，優先處理這 '+items.length+' 個弱點。</div>'+items.map((item,i)=>'<div style="padding:10px 0;border-top:1px solid #eee"><strong>'+(i+1)+'. '+describe(item)+'</strong><div class="small">累計錯誤權重：'+item.count+'</div><a class="action" style="display:block;text-align:center;text-decoration:none" href="./lesson.html?kpId='+encodeURIComponent(item.kpId)+'">針對練習</a></div>').join('');
+ panel.innerHTML='<div class="plan-title">🧠 弱點診斷</div><div class="plan-sub">根據你的錯題紀錄，優先處理這 '+items.length+' 個弱點。</div>'+items.map((item,i)=>'<div style="padding:10px 0;border-top:1px solid #eee"><strong>'+(i+1)+'. '+describe(item)+'</strong><div class="small">累計錯誤權重：'+item.count+'</div><a class="action" style="display:block;text-align:center;text-decoration:none" href="./lesson.html?kpId='+encodeURIComponent(item.kpId)+'&mode=practice">立即補強</a></div>').join('');
 }
 window.ManjingoWeaknessPanel={render,topMisconceptions};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render);else render();
