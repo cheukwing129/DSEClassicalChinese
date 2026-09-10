@@ -51,7 +51,7 @@ function contextFor(list,preferredIds){
  return{mastery:Number(record.mastery)||0,lastCorrect:record.lastCorrect,mode:practiceMode(kpId),preferredIds};
 }
 function adaptivePacks(){
- return['ManjingoQuestionPackAdaptive01','ManjingoQuestionPackAdaptive02'].map(fromRoot).filter(pack=>pack&&Array.isArray(pack.questions));
+ return['ManjingoQuestionPackAdaptive01','ManjingoQuestionPackAdaptive02','ManjingoQuestionPackAdaptive03'].map(fromRoot).filter(pack=>pack&&Array.isArray(pack.questions));
 }
 function installCatalog(){
  const catalog=fromRoot('ManjingoContent'),packs=adaptivePacks();
