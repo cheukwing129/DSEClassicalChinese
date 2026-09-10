@@ -21,6 +21,14 @@ test('Firestore content sync defaults to read-only review and supports ADC',()=>
   assert.doesNotMatch(source,/csv-parser/);
 });
 
+test('Firestore importer resolves Firebase Admin through the Functions package boundary',()=>{
+  const source=read('scripts/import_to_firestore.js');
+  assert.match(source,/createRequire/);
+  assert.match(source,/functionsRequire = createRequire\(path\.join\(root, 'functions', 'package\.json'\)\)/);
+  assert.match(source,/functionsRequire\(`firebase-admin\/\$\{moduleName\}`\)/);
+  assert.doesNotMatch(source,/node_modules', 'firebase-admin'/);
+});
+
 test('prune only removes stale question and knowledge-point documents',()=>{
   const source=read('scripts/import_to_firestore.js');
   assert.match(source,/mode === 'prune'/);
