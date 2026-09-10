@@ -1,0 +1,26 @@
+name: Pages Production Smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 9 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: vars.ENABLE_PAGES_SMOKE == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      MANJINGO_BASE_URL: ${{ vars.MANJINGO_BASE_URL || 'https://manjingo.pages.dev' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Smoke test production Pages learning API
+        run: npm run smoke:pages
