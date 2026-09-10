@@ -50,6 +50,21 @@ test('homepage compacts XP streak and daily goal into one player status strip',(
   assert.match(source,/等級進度/);
 });
 
+test('primary sections become a mobile app bottom navigation with icons and safe-area spacing',()=>{
+  const source=read('public/home-shell.js');
+  assert.match(source,/const NAV_ITEMS=\{today:\{icon:'🏠',label:'今日'\}/);
+  assert.match(source,/function enhanceAppNav\(\)/);
+  assert.match(source,/nav\.classList\.add\('app-bottom-nav'\)/);
+  assert.match(source,/document\.body\.classList\.add\('app-nav-ready'\)/);
+  assert.match(source,/position:fixed;top:auto;bottom:max\(10px,env\(safe-area-inset-bottom,10px\)\)/);
+  assert.match(source,/padding-bottom:calc\(104px \+ env\(safe-area-inset-bottom,0px\)\)/);
+  assert.match(source,/class="app-nav-icon"/);
+  assert.match(source,/class="app-nav-label"/);
+  assert.match(source,/button\.setAttribute\('aria-controls',panelId\)/);
+  assert.match(source,/function scrollViewTop\(view\)/);
+  assert.match(source,/showView\(view\);scrollViewTop\(view\)/);
+});
+
 test('starting a quiz enters a distraction-free study shell with progress and exit controls',()=>{
   const source=read('public/home-shell.js');
   assert.match(source,/const STUDY_CLASS='study-focus'/);
@@ -60,6 +75,7 @@ test('starting a quiz enters a distraction-free study shell with progress and ex
   assert.match(source,/role="progressbar"/);
   assert.match(source,/body\.'\+STUDY_CLASS\+'>\.home-tabs\{display:none!important\}/);
   assert.match(source,/body\.'\+STUDY_CLASS\+'>\.player-status/);
+  assert.match(source,/padding-bottom:0!important/);
   assert.match(source,/\[data-home-view\]:not\(\[data-home-view="today"\]\)/);
 });
 
