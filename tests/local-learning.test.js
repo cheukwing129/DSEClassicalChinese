@@ -59,6 +59,38 @@ test('correct local answer awards exactly 8 XP; wrong answer awards 0', () => {
   assert.equal(wrong.todayXp, 8);
 });
 
+test('wrong answers record selected misconception and increment repeats', () => {
+  const { engine, store } = createEngine();
+  engine.submit('kp_p3_yi', false, {
+    questionId: 'p3q009',
+    selectedAnswer: '用',
+    correctAnswer: '因為'
+  });
+  engine.submit('kp_p3_yi', false, {
+    questionId: 'p3q009',
+    selectedAnswer: '用',
+    correctAnswer: '因為'
+  });
+  const record = engine.getKnowledge('kp_p3_yi');
+  const key = 'p3q009::用';
+  assert.equal(record.misconceptions[key].questionId, 'p3q009');
+  assert.equal(record.misconceptions[key].selectedAnswer, '用');
+  assert.equal(record.misconceptions[key].correctAnswer, '因為');
+  assert.equal(record.misconceptions[key].count, 2);
+  assert.equal(record.misconceptions[key].lastAt, '2026-09-10T12:00:00.000Z');
+  assert.equal(progressState(store).knowledge.kp_p3_yi.misconceptions[key].count, 2);
+});
+
+test('correct answers do not create misconception records', () => {
+  const { engine } = createEngine();
+  engine.submit('kp_test', true, {
+    questionId: 'q1',
+    selectedAnswer: 'A',
+    correctAnswer: 'A'
+  });
+  assert.deepEqual(Object.keys(engine.getKnowledge('kp_test').misconceptions), []);
+});
+
 test('daily goal increments streak once, not on every answer after goal', () => {
   const { engine } = createEngine();
   engine.submit('a', true); // 8
@@ -125,6 +157,7 @@ test('legacy knowledge state migrates without losing mastery', () => {
     initial: { manjingo_learning_state_v1: JSON.stringify(legacy) }
   });
   assert.equal(engine.getKnowledge('kp_old').mastery, 72);
+  assert.deepEqual(Object.keys(engine.getKnowledge('kp_old').misconceptions), []);
   assert.equal(progressState(store).knowledge.kp_old.mastery, 72);
 });
 
