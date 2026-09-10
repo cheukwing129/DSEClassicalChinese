@@ -62,7 +62,7 @@ exports.submitAnswer = functions.https.onCall(async (data, context) => {
     const rawGame = gameSnap.exists ? gameSnap.data() : {};
     const gameDate = rawGame.todayXpDate || answer.localDate;
     const game = gameDate === answer.localDate ? rawGame : { ...rawGame, todayXp: 0, todayXpDate: answer.localDate };
-    const update = calculateLearningUpdate({ prev, ...answer, baseXp });
+    const update = calculateLearningUpdate({ prev, ...answer, baseXp, now: new Date() });
     const totalXp = Number(game.totalXp ?? 0) + update.xpEarned;
     const todayXp = Number(game.todayXp ?? 0) + update.xpEarned;
     const dailyGoalXp = Number(game.dailyGoalXp ?? 20);
@@ -85,8 +85,8 @@ exports.submitAnswer = functions.https.onCall(async (data, context) => {
     const level = calculateLevel(totalXp);
     transaction.set(kpRef, { ...update, lastAnsweredAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     transaction.set(gamificationRef, { totalXp, todayXp, todayXpDate: answer.localDate, dailyGoalXp, streak, streakFreezes, lastActiveDate: todayXp >= dailyGoalXp ? answer.localDate : previousActiveDate, level, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    transaction.set(logRef, { answerId: answer.answerId, questionId: answer.questionId, kpIds: [answer.kpId], textId: answer.textId, isCorrect: answer.isCorrect, usedHint: answer.usedHint, attemptCount: answer.attemptCount, responseTimeMs: answer.responseTimeMs, localDate: answer.localDate, quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt, totalXp, todayXp, streak, streakFreezes, streakIncreased, level, answeredAt: admin.firestore.FieldValue.serverTimestamp() });
-    return { quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt, totalXp, todayXp, streak, streakFreezes, streakIncreased, level, duplicate: false };
+    transaction.set(logRef, { answerId: answer.answerId, questionId: answer.questionId, kpIds: [answer.kpId], textId: answer.textId, isCorrect: answer.isCorrect, usedHint: answer.usedHint, attemptCount: answer.attemptCount, responseTimeMs: answer.responseTimeMs, localDate: answer.localDate, quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt, interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, totalXp, todayXp, streak, streakFreezes, streakIncreased, level, answeredAt: admin.firestore.FieldValue.serverTimestamp() });
+    return { quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt, interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, totalXp, todayXp, streak, streakFreezes, streakIncreased, level, duplicate: false };
   });
   return { success: true, ...result };
 });
