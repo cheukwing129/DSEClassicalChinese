@@ -1,0 +1,73 @@
+name: Firebase Backend Deploy
+
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-backend-production
+  cancel-in-progress: false
+
+env:
+  FIREBASE_PROJECT_ID: manjingo-95d9a
+  FIREBASE_CLI_VERSION: 15.26.0
+
+jobs:
+  deploy:
+    if: >-
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main')) &&
+      vars.ENABLE_FIREBASE_DEPLOY == 'true'
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MANJINGO }}
+      ENABLE_FIREBASE_FUNCTIONS_DEPLOY: ${{ vars.ENABLE_FIREBASE_FUNCTIONS_DEPLOY }}
+    steps:
+      - name: Checkout tested revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Require Firebase ADC credential
+        shell: bash
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Missing FIREBASE_SERVICE_ACCOUNT_MANJINGO GitHub Actions secret."
+            exit 1
+          fi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.FIREBASE_PROJECT_ID }}
+          credentials_json: ${{ env.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools@${FIREBASE_CLI_VERSION} --no-audit --no-fund
+
+      - name: Install Functions dependencies
+        run: npm install --prefix functions --no-audit --no-fund
+
+      - name: Verify backend before deploy
+        run: |
+          npm --prefix functions run lint
+          npm test
+
+      - name: Deploy Firestore Rules on Spark-safe path
+        if: env.ENABLE_FIREBASE_FUNCTIONS_DEPLOY != 'true'
+        run: firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      - name: Deploy Firestore Rules and Functions
+        if: env.ENABLE_FIREBASE_FUNCTIONS_DEPLOY == 'true'
+        run: firebase deploy --only firestore:rules,functions --project "$FIREBASE_PROJECT_ID" --non-interactive
