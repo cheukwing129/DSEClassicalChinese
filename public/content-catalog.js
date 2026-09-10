@@ -46,10 +46,38 @@ const pack02=window.ManjingoQuestionPack02||{knowledgePoints:[],questions:[]};
 const pack03=window.ManjingoQuestionPack03||{knowledgePoints:[],questions:[]};
 const lessonPack=window.ManjingoQuestionPackLesson||{questions:[]};
 const knowledgePoints=[...baseKnowledgePoints,...pack02.knowledgePoints,...pack03.knowledgePoints];
-const questions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions];
+const rawQuestions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions];
+
+function misconceptionConcept(q){
+ const kp=String(q&&q.kpId||''),answer=String(q&&q.a||''),text=String(q&&q.q||'');
+ if(/(?:kp_virtual|kp_p3)_yi$/.test(kp)){
+   if(/因為/.test(answer)||/表示原因/.test(text))return{key:'yi_reason_vs_tool',label:'「以」：原因義 vs 工具義'};
+   if(/把|將/.test(answer)||/以.*為/.test(text))return{key:'yi_disposal_pattern',label:'「以 A 為 B」：處置義'};
+   if(/來|用來/.test(answer)||/目的/.test(text))return{key:'yi_purpose_vs_reason',label:'「以」：目的義 vs 原因義'};
+   return{key:'yi_function_choice',label:'「以」：依語境辨別功能'};
+ }
+ if(/(?:kp_virtual|kp_p3)_zhi$/.test(kp)){
+   if(/動詞|往|到/.test(answer))return{key:'zhi_verb_vs_particle',label:'「之」：動詞「往／到」vs 助詞'};
+   if(/結構助詞|的/.test(answer))return{key:'zhi_attributive_vs_pronoun',label:'「之」：結構助詞 vs 代詞'};
+   if(/代詞/.test(answer))return{key:'zhi_pronoun_vs_particle',label:'「之」：代詞 vs 助詞'};
+ }
+ if(/(?:kp_virtual|kp_p3)_er$/.test(kp))return{key:'er_semantic_relation',label:'「而」：前後分句語意關係'};
+ if(/(?:kp_virtual|kp_p3)_yu$/.test(kp)){
+   if(/比/.test(answer))return{key:'yu_compare_vs_source',label:'「於」：比較義 vs 來源義'};
+   if(/從/.test(answer))return{key:'yu_source_vs_compare',label:'「於」：來源義 vs 比較義'};
+   return{key:'yu_context_role',label:'「於」：依語境辨別介詞功能'};
+ }
+ if(/(?:kp_virtual|kp_p3)_qi$/.test(kp))return{key:'qi_pronoun_vs_modal',label:'「其」：代詞 vs 語氣'};
+ if(/(?:sx_001|kp_p3_judgment)$/.test(kp))return{key:'sentence_judgment_identity',label:'判斷句：身分／性質判定'};
+ if(/(?:sx_003|sx_004|kp_p3_passive)$/.test(kp))return{key:'sentence_passive_receiver',label:'被動句：主語是動作承受者'};
+ if(/(?:sx_006|kp_p3_fronting)$/.test(kp))return{key:'sentence_object_fronting',label:'賓語前置：還原正常語序'};
+ if(/(?:sx_008|kp_p3_adverbial)$/.test(kp))return{key:'sentence_adverbial_postpose',label:'狀語後置：介詞結構還原'};
+ return null;
+}
+const questions=rawQuestions.map(q=>{const concept=misconceptionConcept(q);return concept?{...q,misconceptionKey:concept.key,misconceptionLabel:concept.label}:{...q};});
 
 function getKnowledgePointIds(options){const teachableOnly=!options||options.teachableOnly!==false;return knowledgePoints.filter(kp=>!teachableOnly||kp.teachable).map(kp=>kp.kpId);}
 function selectQuestionsForPlan(plan,sourceQuestions,limit){const source=Array.isArray(sourceQuestions)?sourceQuestions:[];const items=Array.isArray(plan&&plan.items)?plan.items:[];const max=Math.max(0,Number(limit)||Number(plan&&plan.targetCount)||10);const byKp=new Map();source.forEach(q=>{if(!q||!q.id||!q.kpId)return;if(!byKp.has(q.kpId))byKp.set(q.kpId,[]);byKp.get(q.kpId).push(q)});const used=new Set(),queue=[];items.forEach(item=>{if(queue.length>=max)return;const available=(byKp.get(item.kpId)||[]).filter(q=>!used.has(q.id));if(!available.length)return;const preferred=Array.isArray(item.misconceptionQuestionIds)?item.misconceptionQuestionIds:[];let candidate=null;for(const id of preferred){candidate=available.find(q=>q.id===id);if(candidate)break;}if(!candidate)candidate=available[Math.floor(Math.random()*available.length)];used.add(candidate.id);queue.push({...candidate,category:item.category||'new',priority:item.priority??3,misconceptionReview:preferred.includes(candidate.id)});});return queue;}
-window.ManjingoContent={knowledgePoints:knowledgePoints.map(x=>({...x})),questions:questions.map(x=>({...x})),getKnowledgePointIds,selectQuestionsForPlan};
+window.ManjingoContent={knowledgePoints:knowledgePoints.map(x=>({...x})),questions:questions.map(x=>({...x})),getKnowledgePointIds,selectQuestionsForPlan,misconceptionConcept};
 if(typeof document!=='undefined'&&document.readyState==='loading'){document.write('<script src="./learning-path.js"><\/script><script src="./learning-path-ui.js"><\/script><script src="./weakness-panel.js"><\/script><script src="./mastery-dashboard.js"><\/script>');}
 })();
