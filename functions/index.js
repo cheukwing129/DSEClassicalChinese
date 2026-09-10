@@ -42,7 +42,16 @@ exports.submitAnswer = functions.https.onCall(async (data, context) => {
     let baseXp = 8;
     if (answer.questionId) {
       const questionSnap = await transaction.get(db.collection("questions").doc(answer.questionId));
-      if (questionSnap.exists && Number.isFinite(Number(questionSnap.data().baseXp ?? questionSnap.data().xp))) baseXp = Math.max(1, Math.min(50, Number(questionSnap.data().baseXp ?? questionSnap.data().xp)));
+      if (questionSnap.exists) {
+        const question = questionSnap.data();
+        const questionKpId = question.kpId ? String(question.kpId) : null;
+        if (questionKpId && questionKpId !== answer.kpId) {
+          throw new functions.https.HttpsError("invalid-argument", "questionId 與 kpId 不一致");
+        }
+        if (Number.isFinite(Number(question.baseXp ?? question.xp))) {
+          baseXp = Math.max(1, Math.min(50, Number(question.baseXp ?? question.xp)));
+        }
+      }
     }
     const prev = kpSnap.exists ? kpSnap.data() : {};
     const rawGame = gameSnap.exists ? gameSnap.data() : {};
