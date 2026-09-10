@@ -20,8 +20,16 @@ export async function loadDailyPlan(allQuestions = []) {
     items.push({ kpId: q.kpId, category: 'mixed', priority: 40 });
     if (items.length >= 10) break;
   }
+
+  // 連題庫讀取也暫時失敗時，配合首頁的內建 fallbackQuestions。
+  if (!items.length) {
+    ['kp_yueyang_001', 'kp_virtual_zhi', 'sx_001', 'sx_006', 'kp_yueyang_004'].forEach(kpId => {
+      items.push({ kpId, category: 'mixed', priority: 40 });
+    });
+  }
+
   return {
-    targetCount: Math.min(10, items.length || questions.length),
+    targetCount: Math.min(10, items.length),
     items,
     review: [],
     weak: [],
