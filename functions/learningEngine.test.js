@@ -10,11 +10,14 @@ const {
   calculateLearningUpdate
 } = require('./learningEngine');
 
-test('first correct answer schedules review in 1 day', () => {
+test('first correct answer uses adaptive mastery and schedules review in 1 day', () => {
   const now = new Date('2026-09-10T12:00:00.000Z');
   const result = calculateLearningUpdate({ prev: {}, isCorrect: true, now });
   assert.equal(result.repetition, 1);
   assert.equal(result.interval, 1);
+  assert.equal(result.mastery, 22);
+  assert.equal(result.attempts, 1);
+  assert.equal(result.lastCorrect, true);
   assert.equal(result.xpEarned, 8);
   assert.equal(result.nextReviewAt.toISOString(), '2026-09-11T12:00:00.000Z');
 });
@@ -31,20 +34,22 @@ test('later correct answers grow interval using previous ease factor', () => {
   assert.equal(result.interval, 15);
 });
 
-test('wrong answer resets repetition and interval', () => {
+test('wrong answer decays mastery, resets repetition, and records attempt state', () => {
   const result = calculateLearningUpdate({
-    prev: { mastery: 50, repetition: 4, interval: 30, easeFactor: 2.4 },
+    prev: { mastery: 50, repetition: 4, interval: 30, easeFactor: 2.4, attempts: 3 },
     isCorrect: false,
     now: new Date('2026-09-10T12:00:00.000Z')
   });
   assert.equal(result.quality, 0);
   assert.equal(result.repetition, 0);
   assert.equal(result.interval, 1);
-  assert.equal(result.mastery, 40);
+  assert.equal(result.mastery, 35);
+  assert.equal(result.attempts, 4);
+  assert.equal(result.lastCorrect, false);
   assert.equal(result.xpEarned, 0);
 });
 
-test('concept mastery mirrors local exponential update and keeps cross-KP coverage', () => {
+test('concept mastery mirrors shared adaptive update and keeps cross-KP coverage', () => {
   const first = calculateConceptMasteryUpdate({
     prev: {},
     conceptKey: 'yi_reason_vs_tool',
@@ -112,9 +117,16 @@ test('quality reflects correctness, hints, and retries', () => {
   assert.equal(toQuality({ isCorrect: true, attemptCount: 1 }), 5);
 });
 
-test('mastery is clamped to 0–100', () => {
-  assert.equal(calculateMastery({ prevMastery: 4, isCorrect: false }).mastery, 0);
-  assert.equal(calculateMastery({ prevMastery: 98, isCorrect: true }).mastery, 100);
+test('adaptive mastery decays on wrong answers and can still reach 100', () => {
+  assert.equal(calculateMastery({ prevMastery: 4, isCorrect: false }).mastery, 3);
+  assert.equal(calculateMastery({ prevMastery: 50, isCorrect: true }).mastery, 61);
+  assert.equal(calculateMastery({ prevMastery: 99, isCorrect: true }).mastery, 100);
+});
+
+test('hint and retry earn smaller mastery gains than first-try correctness', () => {
+  assert.equal(calculateMastery({ prevMastery: 50, isCorrect: true }).mastery, 61);
+  assert.equal(calculateMastery({ prevMastery: 50, isCorrect: true, attemptCount: 2 }).mastery, 58);
+  assert.equal(calculateMastery({ prevMastery: 50, isCorrect: true, usedHint: true }).mastery, 56);
 });
 
 test('XP rules are stable for normal, hint, retry, and wrong answers', () => {
