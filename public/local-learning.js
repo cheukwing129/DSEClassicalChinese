@@ -30,7 +30,8 @@ function load(){
 }
 function getProgress(){const data=load();persist(data);return{totalXp:data.totalXp,todayXp:data.todayXp,streak:data.streak,todayDate:data.todayDate,lastGoalDate:data.lastGoalDate}}
 function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
-function getKnowledge(kpId){const data=load();return data.knowledge[kpId]||{mastery:0,repetition:0,easeFactor:2.5,interval:0,nextReviewAt:null,attempts:0,correctCount:0,lastCorrect:null,lastAnsweredAt:null}}
+function emptyKnowledge(){return{mastery:0,repetition:0,easeFactor:2.5,interval:0,nextReviewAt:null,attempts:0,correctCount:0,lastCorrect:null,lastAnsweredAt:null,misconceptions:{}}}
+function getKnowledge(kpId){const data=load();const current=data.knowledge[kpId];return current?{...emptyKnowledge(),...current,misconceptions:current.misconceptions&&typeof current.misconceptions==='object'?current.misconceptions:{}}:emptyKnowledge()}
 function status(mastery){if(mastery>=90)return'mastered';if(mastery>=75)return'stable';if(mastery>=60)return'familiar';if(mastery>=35)return'unstable';if(mastery>0)return'learning';return'unlearned'}
 function isDue(record){return !record.nextReviewAt||new Date(record.nextReviewAt).getTime()<=Date.now()}
 function updateStreak(state){
@@ -44,7 +45,7 @@ function updateStreak(state){
  state.lastGoalDate=today;
 }
 function reviewUpdate(previous,correct){
- const p={...previous};
+ const p={...emptyKnowledge(),...previous,misconceptions:previous&&previous.misconceptions&&typeof previous.misconceptions==='object'?{...previous.misconceptions}:{}};
  p.attempts+=1;
  p.lastAnsweredAt=new Date().toISOString();
  p.lastCorrect=!!correct;
@@ -63,8 +64,11 @@ function reviewUpdate(previous,correct){
  const d=new Date();d.setDate(d.getDate()+p.interval);p.nextReviewAt=d.toISOString();
  return p;
 }
-function submit(kpId,correct){
+function misconceptionKey(meta){const q=meta&&meta.questionId?String(meta.questionId):'unknown';const selected=meta&&meta.selectedAnswer!==undefined?String(meta.selectedAnswer):'unknown';return q+'::'+selected}
+function recordMisconception(record,meta){if(!meta||meta.selectedAnswer===undefined||meta.selectedAnswer===null)return record;const key=misconceptionKey(meta);const now=new Date().toISOString();const previous=record.misconceptions[key]||{};record.misconceptions[key]={questionId:meta.questionId||null,selectedAnswer:String(meta.selectedAnswer),correctAnswer:meta.correctAnswer!==undefined&&meta.correctAnswer!==null?String(meta.correctAnswer):null,count:(Number(previous.count)||0)+1,lastAt:now};return record}
+function submit(kpId,correct,meta){
  const data=load(),previous=data.knowledge[kpId]||getKnowledge(kpId),next=reviewUpdate(previous,correct);
+ if(!correct)recordMisconception(next,meta);
  data.knowledge[kpId]=next;
  if(correct){data.totalXp+=8;data.todayXp+=8;updateStreak(data)}
  persist(data);
@@ -76,7 +80,7 @@ function syncRemoteResult(kpId,result){
  if(kpId){
    const previous=data.knowledge[kpId]||getKnowledge(kpId);
    const next={...previous};
-   ['mastery','repetition','easeFactor','interval','nextReviewAt','attempts','correctCount','lastCorrect','lastAnsweredAt'].forEach(key=>{if(result[key]!==undefined&&result[key]!==null)next[key]=result[key]});
+   ['mastery','repetition','easeFactor','interval','nextReviewAt','attempts','correctCount','lastCorrect','lastAnsweredAt','misconceptions'].forEach(key=>{if(result[key]!==undefined&&result[key]!==null)next[key]=result[key]});
    data.knowledge[kpId]=next;
  }
  if(result.totalXp!==undefined)data.totalXp=Number(result.totalXp)||0;
@@ -88,7 +92,7 @@ function syncRemoteResult(kpId,result){
  return{...getProgress(),...(kpId?{kpId,...data.knowledge[kpId],status:status(data.knowledge[kpId].mastery)}:{})};
 }
 function syncGamification(game){return syncRemoteResult(null,game)}
-function records(){const data=load();return Object.keys(data.knowledge).map(kpId=>({kpId,...data.knowledge[kpId],status:status(data.knowledge[kpId].mastery)}))}
+function records(){const data=load();return Object.keys(data.knowledge).map(kpId=>({kpId,...getKnowledge(kpId),status:status(getKnowledge(kpId).mastery)}))}
 function getDueKnowledgePoints(limit){return records().filter(isDue).sort((a,b)=>(a.mastery||0)-(b.mastery||0)).slice(0,limit||10)}
 function getWeakKnowledgePoints(limit){return records().filter(r=>r.mastery<60||r.lastCorrect===false).sort((a,b)=>{const wrongA=a.lastCorrect===false?1:0,wrongB=b.lastCorrect===false?1:0;if(wrongA!==wrongB)return wrongB-wrongA;return(a.mastery||0)-(b.mastery||0)}).slice(0,limit||10)}
 function buildDailyPlan(kpIds,targetCount){
