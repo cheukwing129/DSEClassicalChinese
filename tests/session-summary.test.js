@@ -26,14 +26,17 @@ test('perfect daily session prioritizes newly unlocked learning path content',()
  assert.match(summary.markup({page:'home',answered:10,correct:10,xp:80,masteryDelta:20,resolved:[],unlockedStages:['句式']}),/新解鎖：句式/);
 });
 
-test('targeted and remedial lesson completion returns to learning results',()=>{
- const targeted=summary.model({page:'lesson',targeted:true,remedial:false,kpId:'kp_virtual_yi',kpLabel:'以',answered:5,correct:4,xp:32,masteryDelta:9,unlockedStages:[]});
+test('targeted remedial and reteach lesson completion return to learning results',()=>{
+ const targeted=summary.model({page:'lesson',targeted:true,remedial:false,reteach:false,kpId:'kp_virtual_yi',kpLabel:'以',answered:5,correct:4,xp:32,masteryDelta:9,unlockedStages:[]});
  assert.equal(targeted.title,'弱點補強完成');
  assert.equal(targeted.action.href,'./index.html#masteryDashboard');
  assert.match(summary.markup({page:'lesson',targeted:true,kpId:'kp_virtual_yi',kpLabel:'以',answered:5,correct:4,xp:32,masteryDelta:9,unlockedStages:[]}),/「以」掌握度提升 9/);
  const remedial=summary.model({page:'lesson',targeted:true,remedial:true,answered:2,correct:2,xp:16,masteryDelta:4,unlockedStages:[]});
  assert.equal(remedial.title,'補救驗證完成');
  assert.equal(remedial.action.label,'查看學習成果');
+ const reteach=summary.model({page:'lesson',targeted:true,reteach:true,answered:3,correct:2,xp:16,masteryDelta:3,unlockedStages:[]});
+ assert.equal(reteach.title,'概念重教完成');
+ assert.equal(reteach.action.href,'./index.html#masteryDashboard');
 });
 
 test('session summary is loaded after answer feedback and preserves homepage completion status',()=>{
@@ -42,6 +45,8 @@ test('session summary is loaded after answer feedback and preserves homepage com
  assert.match(runtime,/📱 今日學習完成/);
  assert.match(runtime,/class="session-summary done"/);
  assert.match(runtime,/自適應補救/);
+ assert.match(runtime,/概念重教/);
+ assert.match(runtime,/startConceptReteach/);
  assert.match(css,/Learning session completion/);
  assert.match(css,/\.session-summary-metrics/);
  assert.match(css,/\.session-summary-impact/);
