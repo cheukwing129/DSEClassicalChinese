@@ -10,11 +10,6 @@ const pack03Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'quest
 const lessonPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-lesson.js'), 'utf8');
 const capacityPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-capacity-01.js'), 'utf8');
 
-const EARLY_STAGE_KPS = [
-  'kp_yueyang_001', 'kp_yueyang_004', 'gj_004', 'sx_001', 'kp_translation_001',
-  'gj_005', 'cy_004', 'cy_006', 'kp_yueyang_context', 'kp_taohua_discovery'
-];
-
 function loadContext() {
   const context = { window: {}, Map, Set, Array, Object, Number, String, Math };
   vm.createContext(context);
@@ -30,17 +25,18 @@ function loadCatalog() {
   return loadContext().window.ManjingoContent;
 }
 
-test('local catalog contains 241 questions and an explicit knowledge point universe', () => {
+test('reviewed local catalog contains 222 questions across the 59 teachable knowledge points', () => {
   const catalog = loadCatalog();
   const kpIds = catalog.getKnowledgePointIds({ teachableOnly: true });
-  assert.equal(catalog.questions.length, 241);
+  assert.equal(catalog.catalogVersion, 'reviewed-v1');
+  assert.equal(catalog.questions.length, 222);
   assert.equal(kpIds.length, 59);
   assert.ok(kpIds.includes('sx_006'));
   assert.ok(kpIds.includes('kp_caogui_strategy'));
   assert.ok(kpIds.includes('kp_p3_translation'));
 });
 
-test('capacity pack adds 28 valid explained questions with unique ids', () => {
+test('capacity pack keeps only validated explained questions', () => {
   const context = loadContext();
   const pack = context.window.ManjingoQuestionPackCapacity01;
   assert.equal(pack.questions.length, 28);
@@ -57,6 +53,22 @@ test('capacity pack adds 28 valid explained questions with unique ids', () => {
   }
 });
 
+test('foundation pack uses stable ids and no retired temporary filler ids', () => {
+  const context = loadContext();
+  const pack = context.window.ManjingoQuestionPackLesson;
+  const retired = new Set([
+    'lpq001','lpq002','lpq003','lpq004','lpq019',
+    'lpq022','lpq023','lpq024','lpq025','lpq026','lpq027','lpq028','lpq029','lpq030','lpq031','lpq032','lpq033','lpq034','lpq035',
+    'lpq049','lpq050','lpq051'
+  ]);
+  assert.equal(pack.kind, 'foundation');
+  assert.equal(pack.questions.length, 44);
+  assert.equal(pack.questions.some(q => retired.has(String(q.id))), false);
+  assert.ok(pack.questions.some(q => q.id === 'lpq064'));
+  assert.ok(pack.questions.some(q => q.id === 'lpq065'));
+  assert.ok(pack.questions.some(q => q.id === 'lpq066'));
+});
+
 test('all local question ids remain unique', () => {
   const catalog = loadCatalog();
   const ids = catalog.questions.map(q => String(q.id));
@@ -70,7 +82,7 @@ test('every local question points to a known teachable knowledge point', () => {
   assert.deepEqual(Array.from(unknown), []);
 });
 
-test('every teachable knowledge point has at least three practice questions', () => {
+test('every teachable knowledge point retains at least three curated practice questions', () => {
   const catalog = loadCatalog();
   const counts = new Map();
   catalog.questions.forEach(q => counts.set(q.kpId, (counts.get(q.kpId) || 0) + 1));
@@ -78,19 +90,30 @@ test('every teachable knowledge point has at least three practice questions', ()
   assert.deepEqual(Array.from(underfilled), []);
 });
 
-test('intro and words stages now have at least six questions per knowledge point', () => {
+test('base translation questions are attached to translation rather than sentence-pattern mastery', () => {
   const catalog = loadCatalog();
-  const counts = new Map();
-  catalog.questions.forEach(q => counts.set(q.kpId, (counts.get(q.kpId) || 0) + 1));
-  const underfilled = EARLY_STAGE_KPS.filter(kpId => (counts.get(kpId) || 0) < 6);
-  assert.deepEqual(underfilled, []);
-  assert.deepEqual(
-    EARLY_STAGE_KPS.map(kpId => [kpId, counts.get(kpId)]),
-    [
-      ['kp_yueyang_001', 6], ['kp_yueyang_004', 6], ['gj_004', 6], ['sx_001', 6], ['kp_translation_001', 6],
-      ['gj_005', 6], ['cy_004', 6], ['cy_006', 6], ['kp_yueyang_context', 6], ['kp_taohua_discovery', 6]
-    ]
-  );
+  assert.equal(catalog.questions.find(q => q.id === 'q006').kpId, 'kp_translation_001');
+  assert.equal(catalog.questions.find(q => q.id === 'q010').kpId, 'kp_translation_001');
+});
+
+test('legacy duplicate-looking p3 knowledge points are presented as transfer or synthesis practice', () => {
+  const catalog = loadCatalog();
+  const labels = new Map(catalog.knowledgePoints.map(kp => [kp.kpId, kp.content]));
+  assert.equal(labels.get('kp_p3_zhi'), '之：跨語境辨析');
+  assert.equal(labels.get('kp_p3_yi'), '以：跨語境辨析');
+  assert.equal(labels.get('kp_p3_judgment'), '判斷句：跨句辨析');
+  assert.equal(labels.get('kp_p3_translation'), '文言翻譯：綜合策略');
+});
+
+test('reviewed corrections distinguish the two 其 uses and Cao Gui reasoning', () => {
+  const catalog = loadCatalog();
+  const q18 = catalog.questions.find(q => q.id === 'p3q018');
+  const q19 = catalog.questions.find(q => q.id === 'p3q019');
+  const cao = catalog.questions.find(q => q.id === 'p2q044');
+  assert.equal(q18.a, '反問語氣（難道）');
+  assert.equal(q19.a, '推測語氣（大概／恐怕）');
+  assert.match(cao.a, /小惠未遍/);
+  assert.match(cao.a, /小信未孚/);
 });
 
 test('question selection follows plan order and selects at most one question per knowledge point task', () => {
