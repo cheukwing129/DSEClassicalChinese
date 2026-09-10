@@ -1,5 +1,5 @@
 /**
- * Import the reviewed Manjingo catalog into Firestore.
+ * Synchronize the reviewed Manjingo catalog with Firestore.
  *
  * Source of truth:
  *   public/question-pack-02.js
@@ -8,39 +8,63 @@
  *   public/question-pack-capacity-01.js
  *   public/content-catalog.js
  *
- * Usage:
- *   cd scripts
- *   node import_to_firestore.js
- *   node import_to_firestore.js --prune   # also delete stale question/KP docs
+ * Safe modes:
+ *   node scripts/import_to_firestore.js --check   # default; report drift only
+ *   node scripts/import_to_firestore.js --apply   # upsert reviewed docs, keep stale docs
+ *   node scripts/import_to_firestore.js --prune   # upsert reviewed docs, delete stale question/KP docs
+ *   node scripts/import_to_firestore.js --verify  # fail when Firestore differs from reviewed catalog
  *
- * Never commit serviceAccountKey.json.
+ * Authentication:
+ *   - GitHub Actions / Google Cloud: Application Default Credentials (ADC)
+ *   - Optional local fallback: FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/key.json
+ *
+ * Never commit service-account credentials.
  */
 
-const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
-const csv = require('csv-parser');
 
 const root = path.join(__dirname, '..');
-const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || path.join(__dirname, 'serviceAccountKey.json');
-if (!fs.existsSync(serviceAccountPath)) {
-  throw new Error(`Missing Firebase service account: ${serviceAccountPath}`);
+const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'manjingo-95d9a';
+const args = new Set(process.argv.slice(2));
+const mode = args.has('--prune') ? 'prune' : args.has('--apply') ? 'apply' : args.has('--verify') ? 'verify' : 'check';
+
+function requireFirebaseAdmin(moduleName) {
+  try {
+    return require(`firebase-admin/${moduleName}`);
+  } catch (firstError) {
+    try {
+      return require(path.join(root, 'functions', 'node_modules', 'firebase-admin', moduleName));
+    } catch (_) {
+      throw new Error(`firebase-admin is unavailable. Run npm install --prefix functions first. (${firstError.message})`);
+    }
+  }
 }
 
-initializeApp({ credential: cert(require(serviceAccountPath)) });
-const db = getFirestore();
-const prune = process.argv.includes('--prune');
+const { initializeApp, cert, applicationDefault } = requireFirebaseAdmin('app');
+const { getFirestore, FieldValue } = requireFirebaseAdmin('firestore');
 
-function readCSV(filePath) {
-  return new Promise((resolve, reject) => {
-    const results = [];
-    fs.createReadStream(filePath)
-      .pipe(csv())
-      .on('data', row => results.push(row))
-      .on('end', () => resolve(results))
-      .on('error', reject);
+function resolveCredential() {
+  const explicit = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  if (explicit) {
+    const absolute = path.resolve(explicit);
+    if (!fs.existsSync(absolute)) throw new Error(`Missing Firebase service account: ${absolute}`);
+    return cert(JSON.parse(fs.readFileSync(absolute, 'utf8')));
+  }
+  return applicationDefault();
+}
+
+initializeApp({ credential: resolveCredential(), projectId: PROJECT_ID });
+const db = getFirestore();
+
+function readSimpleCsv(filePath) {
+  const lines = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/);
+  const headers = lines.shift().split(',');
+  return lines.filter(Boolean).map((line, index) => {
+    const values = line.split(',');
+    if (values.length !== headers.length) throw new Error(`Unsupported quoted/comma CSV at ${path.basename(filePath)} line ${index + 2}`);
+    return Object.fromEntries(headers.map((header, i) => [header, values[i]]));
   });
 }
 
@@ -64,89 +88,160 @@ function loadReviewedCatalog() {
   return catalog;
 }
 
-async function commitSets(collectionName, rows, idOf, dataOf) {
+function textTargets() {
+  return readSimpleCsv(path.join(root, 'data', 'texts_template.csv')).map(row => ({
+    id: String(row.textId),
+    data: {
+      title: row.title,
+      author: row.author,
+      dynasty: row.dynasty,
+      genre: row.genre,
+      summary: row.summary
+    }
+  }));
+}
+
+function catalogTargets(catalog) {
+  const version = String(catalog.catalogVersion || 'reviewed');
+  const knowledgePoints = catalog.knowledgePoints.map(kp => ({
+    id: String(kp.kpId),
+    data: {
+      textId: kp.textId === 'CROSS' ? null : (kp.textId || null),
+      type: kp.type || null,
+      content: kp.content || kp.kpId,
+      difficulty: Number(kp.difficulty || 1),
+      teachable: kp.teachable !== false,
+      catalogVersion: version
+    }
+  }));
+  const questions = catalog.questions.map(question => ({
+    id: String(question.id),
+    data: {
+      type: question.type,
+      kpId: question.kpId,
+      textId: question.textId === 'CROSS' ? null : (question.textId || null),
+      question: question.q,
+      options: Array.isArray(question.o) ? Array.from(question.o, String) : [],
+      answer: question.a == null ? '' : String(question.a),
+      explanation: question.explanation || '',
+      misconceptionKey: question.misconceptionKey || null,
+      misconceptionLabel: question.misconceptionLabel || null,
+      baseXp: Number(question.baseXp || question.xp || 8),
+      catalogVersion: version
+    }
+  }));
+  return { version, knowledgePoints, questions };
+}
+
+function normalized(value) {
+  if (Array.isArray(value)) return value.map(normalized);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, normalized(value[key])]));
+  }
+  return value === undefined ? null : value;
+}
+
+function sameTargetFields(actual, desired) {
+  const subset = Object.fromEntries(Object.keys(desired).map(key => [key, actual && Object.prototype.hasOwnProperty.call(actual, key) ? actual[key] : null]));
+  return JSON.stringify(normalized(subset)) === JSON.stringify(normalized(desired));
+}
+
+async function inspectCollection(collectionName, targets) {
+  const desired = new Map(targets.map(item => [item.id, item.data]));
+  const snap = await db.collection(collectionName).get();
+  const existing = new Map(snap.docs.map(doc => [doc.id, doc.data()]));
+  const create = [];
+  const update = [];
+  const unchanged = [];
+  for (const [id, data] of desired) {
+    if (!existing.has(id)) create.push(id);
+    else if (!sameTargetFields(existing.get(id), data)) update.push(id);
+    else unchanged.push(id);
+  }
+  const stale = Array.from(existing.keys()).filter(id => !desired.has(id));
+  return { collectionName, targets, create, update, unchanged, stale };
+}
+
+function summarize(report) {
+  const sample = ids => ids.length ? ` [${ids.slice(0, 12).join(', ')}${ids.length > 12 ? ', …' : ''}]` : '';
+  console.log(`\n${report.collectionName}`);
+  console.log(`  create:    ${report.create.length}${sample(report.create)}`);
+  console.log(`  update:    ${report.update.length}${sample(report.update)}`);
+  console.log(`  unchanged: ${report.unchanged.length}`);
+  console.log(`  stale:     ${report.stale.length}${sample(report.stale)}`);
+}
+
+async function writeTargets(report) {
+  const rows = report.targets;
   for (let start = 0; start < rows.length; start += 400) {
     const batch = db.batch();
-    rows.slice(start, start + 400).forEach(row => {
-      batch.set(db.collection(collectionName).doc(String(idOf(row))), dataOf(row));
-    });
+    for (const row of rows.slice(start, start + 400)) batch.set(db.collection(report.collectionName).doc(row.id), row.data);
     await batch.commit();
   }
 }
 
-async function pruneCollection(collectionName, keepIds) {
-  const snap = await db.collection(collectionName).get();
-  const stale = snap.docs.filter(doc => !keepIds.has(doc.id));
-  for (let start = 0; start < stale.length; start += 400) {
+async function deleteStale(report) {
+  for (let start = 0; start < report.stale.length; start += 400) {
     const batch = db.batch();
-    stale.slice(start, start + 400).forEach(doc => batch.delete(doc.ref));
+    for (const id of report.stale.slice(start, start + 400)) batch.delete(db.collection(report.collectionName).doc(id));
     await batch.commit();
   }
-  return stale.length;
 }
 
-async function importTexts() {
-  const rows = await readCSV(path.join(root, 'data', 'texts_template.csv'));
-  await commitSets('texts', rows, row => row.textId, row => ({
-    title: row.title,
-    author: row.author,
-    dynasty: row.dynasty,
-    genre: row.genre,
-    summary: row.summary
-  }));
-  console.log(`✅ texts: ${rows.length}`);
+function hasContentDrift(reports, includeStale = true) {
+  return reports.some(report => report.create.length || report.update.length || (includeStale && report.stale.length));
 }
 
-async function importCatalog() {
+async function inspectAll() {
   const catalog = loadReviewedCatalog();
-  const version = String(catalog.catalogVersion || 'reviewed');
-
-  await commitSets('knowledgePoints', catalog.knowledgePoints, kp => kp.kpId, kp => ({
-    textId: kp.textId === 'CROSS' ? null : (kp.textId || null),
-    type: kp.type || null,
-    content: kp.content || kp.kpId,
-    difficulty: Number(kp.difficulty || 1),
-    teachable: kp.teachable !== false,
-    catalogVersion: version
-  }));
-
-  await commitSets('questions', catalog.questions, question => question.id, question => ({
-    type: question.type,
-    kpId: question.kpId,
-    textId: question.textId === 'CROSS' ? null : (question.textId || null),
-    question: question.q,
-    options: Array.isArray(question.o) ? question.o : [],
-    answer: question.a || '',
-    explanation: question.explanation || '',
-    misconceptionKey: question.misconceptionKey || null,
-    misconceptionLabel: question.misconceptionLabel || null,
-    baseXp: Number(question.baseXp || question.xp || 8),
-    catalogVersion: version
-  }));
-
-  console.log(`✅ knowledgePoints: ${catalog.knowledgePoints.length}`);
-  console.log(`✅ questions: ${catalog.questions.length}`);
-  console.log(`✅ catalog version: ${version}`);
-
-  if (prune) {
-    const [questionsDeleted, kpsDeleted] = await Promise.all([
-      pruneCollection('questions', new Set(catalog.questions.map(q => String(q.id)))),
-      pruneCollection('knowledgePoints', new Set(catalog.knowledgePoints.map(kp => String(kp.kpId))))
-    ]);
-    console.log(`🧹 pruned stale questions: ${questionsDeleted}`);
-    console.log(`🧹 pruned stale knowledge points: ${kpsDeleted}`);
-  } else {
-    console.log('ℹ️ stale Firestore content was preserved; run with --prune after reviewing the diff.');
-  }
+  const targets = catalogTargets(catalog);
+  const reports = await Promise.all([
+    inspectCollection('texts', textTargets()),
+    inspectCollection('knowledgePoints', targets.knowledgePoints),
+    inspectCollection('questions', targets.questions)
+  ]);
+  return { catalog, targets, reports };
 }
 
 (async () => {
   try {
-    await importTexts();
-    await importCatalog();
-    console.log('🎉 Firestore content import complete');
+    console.log(`Manjingo Firestore catalog sync: ${mode}`);
+    console.log(`Project: ${PROJECT_ID}`);
+    const before = await inspectAll();
+    console.log(`Reviewed catalog: ${before.targets.version} · ${before.targets.knowledgePoints.length} KP · ${before.targets.questions.length} questions`);
+    before.reports.forEach(summarize);
+
+    if (mode === 'check') {
+      console.log(hasContentDrift(before.reports) ? '\nℹ️ Firestore differs from the reviewed catalog. No changes were made.' : '\n✅ Firestore already matches the reviewed catalog.');
+      return;
+    }
+
+    if (mode === 'verify') {
+      if (hasContentDrift(before.reports)) throw new Error('Firestore catalog verification failed: drift remains');
+      console.log('\n✅ Firestore exactly matches the reviewed catalog.');
+      return;
+    }
+
+    for (const report of before.reports) await writeTargets(report);
+    if (mode === 'prune') {
+      for (const report of before.reports.filter(report => report.collectionName !== 'texts')) await deleteStale(report);
+    }
+
+    await db.collection('contentMeta').doc('catalog').set({
+      catalogVersion: before.targets.version,
+      questionCount: before.targets.questions.length,
+      knowledgePointCount: before.targets.knowledgePoints.length,
+      syncMode: mode,
+      syncedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    const after = await inspectAll();
+    after.reports.forEach(summarize);
+    const remainingWriteDrift = hasContentDrift(after.reports, mode === 'prune');
+    if (remainingWriteDrift) throw new Error('Firestore catalog still differs after synchronization');
+    console.log(mode === 'prune' ? '\n✅ Reviewed catalog synchronized and stale question/KP documents pruned.' : '\n✅ Reviewed catalog synchronized; stale documents intentionally preserved.');
   } catch (error) {
-    console.error('❌ import failed:', error);
+    console.error(`\n❌ ${error.message || error}`);
     process.exitCode = 1;
   }
 })();
