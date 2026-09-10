@@ -21,13 +21,87 @@ export const auth = getAuth(app);
 export const functions = getFunctions(app);
 let currentUserId = null;
 
-export function ensureLogin() { return new Promise((resolve) => { const unsubscribe = onAuthStateChanged(auth, (user) => { if (user) { currentUserId = user.uid; unsubscribe(); resolve(user.uid); return; } signInAnonymously(auth).catch((e) => { console.warn("匿名登入失敗，將使用離線模式", e); unsubscribe(); resolve(null); }); }); }); }
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout`)), ms))
+  ]);
+}
+
+export function ensureLogin() {
+  return withTimeout(new Promise((resolve) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      try { unsubscribe?.(); } catch (_) {}
+      resolve(value);
+    };
+    let unsubscribe = null;
+    unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUserId = user.uid;
+        finish(user.uid);
+        return;
+      }
+      signInAnonymously(auth).catch((e) => {
+        console.warn("匿名登入失敗，將使用離線模式", e);
+        finish(null);
+      });
+    });
+  }), 8000, 'Firebase authentication');
+}
+
 export function getCurrentUserId() { return currentUserId; }
-export async function fetchAllQuestions() { const snap = await getDocs(collection(db, "questions")); return snap.docs.map((d) => ({ id: d.id, ...d.data() })); }
-export async function fetchAllKnowledgePoints() { const snap = await getDocs(collection(db, "knowledgePoints")); return snap.docs.map((d) => ({ id: d.id, ...d.data() })); }
-export async function fetchUserKnowledgeState(userId) { if (!userId) return {}; const snap = await getDocs(collection(db, "users", userId, "knowledge")); return Object.fromEntries(snap.docs.map((d) => [d.id, d.data()])); }
-export async function submitAnswer(answer) { const result = await httpsCallable(functions, "submitAnswer")(answer); return result.data; }
-export async function getDueKnowledgePoints() { const result = await httpsCallable(functions, "getDueKnowledgePoints")({}); return result.data; }
-export async function getDailyLearningPlan() { const result = await httpsCallable(functions, "getDailyLearningPlan")({}); return result.data; }
-export async function fetchUserGamification(userId) { if (!userId) return null; const snap = await getDoc(doc(db, "users", userId, "gamification", "state")); return snap.exists() ? snap.data() : null; }
-export async function fetchUserKnowledge(userId, kpId) { if (!userId || !kpId) return null; const snap = await getDoc(doc(db, "users", userId, "knowledge", kpId)); return snap.exists() ? snap.data() : null; }
+
+export async function fetchAllQuestions() {
+  return withTimeout(
+    getDocs(collection(db, "questions")).then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    8000,
+    'questions read'
+  );
+}
+
+export async function fetchAllKnowledgePoints() {
+  return withTimeout(
+    getDocs(collection(db, "knowledgePoints")).then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    8000,
+    'knowledge points read'
+  );
+}
+
+export async function fetchUserKnowledgeState(userId) {
+  if (!userId) return {};
+  return withTimeout(
+    getDocs(collection(db, "users", userId, "knowledge")).then((snap) => Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))),
+    8000,
+    'user knowledge read'
+  );
+}
+
+export async function submitAnswer(answer) {
+  const result = await withTimeout(httpsCallable(functions, "submitAnswer")(answer), 10000, 'submit answer');
+  return result.data;
+}
+
+export async function getDueKnowledgePoints() {
+  const result = await withTimeout(httpsCallable(functions, "getDueKnowledgePoints")({}), 10000, 'due knowledge points');
+  return result.data;
+}
+
+export async function getDailyLearningPlan() {
+  const result = await withTimeout(httpsCallable(functions, "getDailyLearningPlan")({}), 10000, 'daily learning plan');
+  return result.data;
+}
+
+export async function fetchUserGamification(userId) {
+  if (!userId) return null;
+  const snap = await withTimeout(getDoc(doc(db, "users", userId, "gamification", "state")), 8000, 'gamification read');
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function fetchUserKnowledge(userId, kpId) {
+  if (!userId || !kpId) return null;
+  const snap = await withTimeout(getDoc(doc(db, "users", userId, "knowledge", kpId)), 8000, 'knowledge read');
+  return snap.exists() ? snap.data() : null;
+}
