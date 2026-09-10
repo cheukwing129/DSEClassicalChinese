@@ -89,6 +89,29 @@ npm run deploy
 
 `public/_worker.js` 位於 Pages output directory，因此部署 `public/` 時會啟用 Advanced Mode。未配置兩個 server secrets 時，`/api/health` 會回報 `configured:false`，受保護 learning API 會失敗；現有前端會 fallback 到 local learning engine，不會停止學生本機學習。
 
+## Production smoke test
+
+repo 內建非寫入 smoke test：
+
+```bash
+MANJINGO_BASE_URL=https://manjingo.pages.dev npm run smoke:pages
+```
+
+測試會：
+
+1. 檢查 `/api/health` 且要求 `configured:true`。
+2. 透過 Firebase Identity Toolkit 建立一個臨時匿名 Auth user，取得真實 Firebase ID token。
+3. 用該 token 呼叫 `/api/daily-plan` 與 `/api/due-knowledge-points`，實際驗證 Worker token 驗證、service-account OAuth、Firestore IAM 與 Firestore reads。
+4. 對 `/api/submit-answer` 只送無效 payload，預期 HTTP 400，確認 authenticated submit route 可到達但**不寫入任何學習資料**。
+5. 最後刪除臨時匿名 Auth user。
+
+`.github/workflows/pages-production-smoke.yml` 可手動觸發，也會每日排程，但 job 預設跳過。正式啟用前在 GitHub repository variables 設定：
+
+- `ENABLE_PAGES_SMOKE=true`
+- `MANJINGO_BASE_URL=https://manjingo.pages.dev`（若 production URL 不同才需要覆寫）
+
+這個 workflow 不需要也不應保存 `FIREBASE_PRIVATE_KEY` 或 `FIREBASE_CLIENT_EMAIL`；server secrets 只存在 Cloudflare Pages runtime。
+
 ## Firebase Spark
 
 Firestore、Firebase Authentication 與 client read rules 可維持 Spark/free 使用。新的 production learning write path 不再依賴 Firebase Cloud Functions，因此不需要為了更新 `submitAnswer` 升級到 Blaze。
