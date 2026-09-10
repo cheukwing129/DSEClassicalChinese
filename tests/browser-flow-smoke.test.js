@@ -59,6 +59,15 @@ test('core particle pack carries question-level teaching metadata',()=>{
   assert.ok(yi.example);
 });
 
+test('daily quiz surfaces misconception review and confirms repaired pattern',()=>{
+  const html=read('public/index.html');
+  assert.match(html,/misconceptionReview/);
+  assert.match(html,/🔁 錯題重溫/);
+  assert.match(html,/你已修正這個錯誤模式/);
+  assert.match(html,/selectedAnswer:value/);
+  assert.match(html,/correctAnswer:q\.a/);
+});
+
 test('lesson completion returns learner to learning path',()=>{
   const source=read('public/local-lesson.js');
   assert.match(source,/href="\.\/index\.html"/);
