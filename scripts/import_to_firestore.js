@@ -7,6 +7,8 @@
  *   public/question-pack-lesson.js
  *   public/question-pack-capacity-01.js
  *   public/content-catalog.js
+ *   public/question-pack-adaptive-01.js
+ *   public/question-difficulty.js
  *
  * Safe modes:
  *   node scripts/import_to_firestore.js --check   # default; report drift only
@@ -78,7 +80,9 @@ function loadReviewedCatalog() {
     'question-pack-03.js',
     'question-pack-lesson.js',
     'question-pack-capacity-01.js',
-    'content-catalog.js'
+    'content-catalog.js',
+    'question-pack-adaptive-01.js',
+    'question-difficulty.js'
   ]) {
     const source = fs.readFileSync(path.join(root, 'public', file), 'utf8');
     vm.runInContext(source, context, { filename: file });
@@ -128,6 +132,7 @@ function catalogTargets(catalog) {
       explanation: question.explanation || '',
       misconceptionKey: question.misconceptionKey || null,
       misconceptionLabel: question.misconceptionLabel || null,
+      difficultyTier: question.difficultyTier || null,
       baseXp: Number(question.baseXp || question.xp || 8),
       catalogVersion: version
     }
