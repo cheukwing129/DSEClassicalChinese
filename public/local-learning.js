@@ -10,11 +10,13 @@ function normalizeState(raw){const today=localDate();const state={
  todayXp:Number(raw.todayXp)||0,
  streak:Number(raw.streak)||0,
  todayDate:raw.todayDate||today,
+ lastGoalDate:raw.lastGoalDate||null,
  knowledge:raw.knowledge&&typeof raw.knowledge==='object'?raw.knowledge:{}
 };
  if(state.todayDate!==today){state.todayXp=0;state.todayDate=today;}
  return state;
 }
+function persist(data){try{localStorage.setItem(KEY,JSON.stringify(data));return true}catch(e){return false}}
 function load(){
  const state=normalizeState(readRaw(KEY));
  if(!Object.keys(state.knowledge).length){
@@ -26,7 +28,7 @@ function load(){
  }
  return state;
 }
-function persist(data){try{localStorage.setItem(KEY,JSON.stringify(data));return true}catch(e){return false}}
+function getProgress(){const data=load();persist(data);return{totalXp:data.totalXp,todayXp:data.todayXp,streak:data.streak,todayDate:data.todayDate,lastGoalDate:data.lastGoalDate}}
 function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
 function getKnowledge(kpId){const data=load();return data.knowledge[kpId]||{mastery:0,repetition:0,easeFactor:2.5,interval:0,nextReviewAt:null,attempts:0,correctCount:0,lastCorrect:null,lastAnsweredAt:null}}
 function status(mastery){if(mastery>=90)return'mastered';if(mastery>=75)return'stable';if(mastery>=60)return'familiar';if(mastery>=35)return'unstable';if(mastery>0)return'learning';return'unlearned'}
@@ -62,12 +64,30 @@ function reviewUpdate(previous,correct){
  return p;
 }
 function submit(kpId,correct){
- const data=load(),previous=getKnowledge(kpId),next=reviewUpdate(previous,correct);
+ const data=load(),previous=data.knowledge[kpId]||getKnowledge(kpId),next=reviewUpdate(previous,correct);
  data.knowledge[kpId]=next;
  if(correct){data.totalXp+=8;data.todayXp+=8;updateStreak(data)}
  persist(data);
  return {...next,kpId,status:status(next.mastery),xpEarned:correct?8:0,totalXp:data.totalXp,todayXp:data.todayXp,streak:data.streak};
 }
+function syncRemoteResult(kpId,result){
+ if(!result||typeof result!=='object')return getProgress();
+ const data=load();
+ if(kpId){
+   const previous=data.knowledge[kpId]||getKnowledge(kpId);
+   const next={...previous};
+   ['mastery','repetition','easeFactor','interval','nextReviewAt','attempts','correctCount','lastCorrect','lastAnsweredAt'].forEach(key=>{if(result[key]!==undefined&&result[key]!==null)next[key]=result[key]});
+   data.knowledge[kpId]=next;
+ }
+ if(result.totalXp!==undefined)data.totalXp=Number(result.totalXp)||0;
+ if(result.todayXp!==undefined)data.todayXp=Number(result.todayXp)||0;
+ if(result.streak!==undefined)data.streak=Number(result.streak)||0;
+ data.todayDate=localDate();
+ if(result.lastGoalDate)data.lastGoalDate=result.lastGoalDate;
+ persist(data);
+ return{...getProgress(),...(kpId?{kpId,...data.knowledge[kpId],status:status(data.knowledge[kpId].mastery)}:{})};
+}
+function syncGamification(game){return syncRemoteResult(null,game)}
 function records(){const data=load();return Object.keys(data.knowledge).map(kpId=>({kpId,...data.knowledge[kpId],status:status(data.knowledge[kpId].mastery)}))}
 function getDueKnowledgePoints(limit){return records().filter(isDue).sort((a,b)=>(a.mastery||0)-(b.mastery||0)).slice(0,limit||10)}
 function getWeakKnowledgePoints(limit){return records().filter(r=>r.mastery<60||r.lastCorrect===false).sort((a,b)=>{const wrongA=a.lastCorrect===false?1:0,wrongB=b.lastCorrect===false?1:0;if(wrongA!==wrongB)return wrongB-wrongA;return(a.mastery||0)-(b.mastery||0)}).slice(0,limit||10)}
@@ -81,5 +101,5 @@ function buildDailyPlan(kpIds,targetCount){
  add(due,'review',5);add(weak,'weak',3);add(fresh,'new',2);add(due,'review',targetCount);add(weak,'weak',targetCount);add(fresh,'new',targetCount);
  return{targetCount:items.length,items,review:items.filter(x=>x.category==='review').map(x=>x.kpId),weak:items.filter(x=>x.category==='weak').map(x=>x.kpId),newKnowledgePoints:items.filter(x=>x.category==='new').map(x=>x.kpId),totalRecommended:items.length};
 }
-window.ManjingoLocalLearning={getKnowledge,submit,getDueKnowledgePoints,getWeakKnowledgePoints,buildDailyPlan,status,isDue};
+window.ManjingoLocalLearning={getProgress,getKnowledge,submit,syncRemoteResult,syncGamification,getDueKnowledgePoints,getWeakKnowledgePoints,buildDailyPlan,status,isDue};
 })();
