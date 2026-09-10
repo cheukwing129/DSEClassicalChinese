@@ -1,0 +1,83 @@
+name: Firebase Content Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Preview only, or synchronize reviewed catalog and prune stale question/KP docs"
+        required: true
+        default: check
+        type: choice
+        options:
+          - check
+          - sync-and-prune
+      confirmation:
+        description: "For sync-and-prune, enter PRUNE_REVIEWED_CONTENT"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-content-production
+  cancel-in-progress: false
+
+env:
+  FIREBASE_PROJECT_ID: manjingo-95d9a
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MANJINGO }}
+      OPERATION: ${{ inputs.operation }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - name: Checkout reviewed catalog
+        uses: actions/checkout@v4
+
+      - name: Require explicit prune confirmation
+        if: env.OPERATION == 'sync-and-prune'
+        shell: bash
+        run: |
+          if [ "$CONFIRMATION" != "PRUNE_REVIEWED_CONTENT" ]; then
+            echo "::error::sync-and-prune requires confirmation PRUNE_REVIEWED_CONTENT"
+            exit 1
+          fi
+
+      - name: Require Firebase ADC credential
+        shell: bash
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Missing FIREBASE_SERVICE_ACCOUNT_MANJINGO GitHub Actions secret."
+            exit 1
+          fi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.FIREBASE_PROJECT_ID }}
+          credentials_json: ${{ env.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase Admin runtime
+        run: npm install --prefix functions --no-audit --no-fund
+
+      - name: Verify repository before production content access
+        run: npm test
+
+      - name: Preview Firestore catalog drift
+        run: node scripts/import_to_firestore.js --check
+
+      - name: Synchronize reviewed catalog and prune stale content
+        if: env.OPERATION == 'sync-and-prune'
+        run: node scripts/import_to_firestore.js --prune
+
+      - name: Verify Firestore exactly matches reviewed catalog
+        if: env.OPERATION == 'sync-and-prune'
+        run: node scripts/import_to_firestore.js --verify
