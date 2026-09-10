@@ -71,7 +71,7 @@ export async function getDailyLearningPlan() {
 // 只讀取新版個人化學習狀態；前端不直接寫入。
 export async function fetchUserGamification(userId) {
   if (!userId) return null;
-  const ref = doc(db, "users", userId, "gamification");
+  const ref = doc(db, "users", userId, "gamification", "state");
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
 }
