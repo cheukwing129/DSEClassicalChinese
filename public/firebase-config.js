@@ -19,7 +19,6 @@ let currentUserId = null;
 
 async function getFirebase() {
   if (firebaseReadyPromise) return firebaseReadyPromise;
-
   firebaseReadyPromise = (async () => {
     const [appModule, firestoreModule, authModule, functionsModule] = await Promise.all([
       import("https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"),
@@ -27,18 +26,12 @@ async function getFirebase() {
       import("https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"),
       import("https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js")
     ]);
-
     const app = appModule.initializeApp(firebaseConfig);
     db = firestoreModule.getFirestore(app);
     auth = authModule.getAuth(app);
     functions = functionsModule.getFunctions(app);
-
     return { firestoreModule, authModule, functionsModule };
-  })().catch(error => {
-    firebaseReadyPromise = null;
-    throw error;
-  });
-
+  })().catch(error => { firebaseReadyPromise = null; throw error; });
   return firebaseReadyPromise;
 }
 
@@ -46,10 +39,17 @@ export { getFirebase };
 export { db, auth, functions };
 
 function withTimeout(promise, ms, label) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout`)), ms))
-  ]);
+  return Promise.race([promise,new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout`)), ms))]);
+}
+function isoTimestamp(value) {
+  if (!value) return null;
+  try {
+    if (typeof value.toDate === 'function') return value.toDate().toISOString();
+    if (typeof value === 'string') return value;
+    if (Number.isFinite(Number(value._seconds))) return new Date(Number(value._seconds) * 1000).toISOString();
+    if (Number.isFinite(Number(value.seconds))) return new Date(Number(value.seconds) * 1000).toISOString();
+    const d = new Date(value); return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  } catch (_) { return null; }
 }
 
 export async function ensureLogin() {
@@ -58,22 +58,10 @@ export async function ensureLogin() {
     return await withTimeout(new Promise((resolve) => {
       let settled = false;
       let unsubscribe = null;
-      const finish = (value) => {
-        if (settled) return;
-        settled = true;
-        try { unsubscribe?.(); } catch (_) {}
-        resolve(value);
-      };
+      const finish = (value) => { if (settled) return; settled = true; try { unsubscribe?.(); } catch (_) {} resolve(value); };
       unsubscribe = authModule.onAuthStateChanged(auth, (user) => {
-        if (user) {
-          currentUserId = user.uid;
-          finish(user.uid);
-          return;
-        }
-        authModule.signInAnonymously(auth).catch((e) => {
-          console.warn("匿名登入失敗，將使用離線模式", e);
-          finish(null);
-        });
+        if (user) { currentUserId = user.uid; finish(user.uid); return; }
+        authModule.signInAnonymously(auth).catch((e) => { console.warn("匿名登入失敗，將使用離線模式", e); finish(null); });
       });
     }), 8000, 'Firebase authentication');
   } catch (error) {
@@ -87,76 +75,65 @@ export function getCurrentUserId() { return currentUserId; }
 export async function fetchAllQuestions() {
   try {
     const { firestoreModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
-    return await withTimeout(
-      firestoreModule.getDocs(firestoreModule.collection(db, "questions"))
-        .then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-      8000,
-      'questions read'
-    );
-  } catch (error) {
-    console.warn('questions read unavailable:', error);
-    return [];
-  }
+    return await withTimeout(firestoreModule.getDocs(firestoreModule.collection(db, "questions")).then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))),8000,'questions read');
+  } catch (error) { console.warn('questions read unavailable:', error); return []; }
 }
 
 export async function fetchAllKnowledgePoints() {
   try {
     const { firestoreModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
-    return await withTimeout(
-      firestoreModule.getDocs(firestoreModule.collection(db, "knowledgePoints"))
-        .then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-      8000,
-      'knowledge points read'
-    );
-  } catch (error) {
-    console.warn('knowledge points read unavailable:', error);
-    return [];
-  }
+    return await withTimeout(firestoreModule.getDocs(firestoreModule.collection(db, "knowledgePoints")).then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))),8000,'knowledge points read');
+  } catch (error) { console.warn('knowledge points read unavailable:', error); return []; }
 }
 
 export async function fetchUserKnowledgeState(userId) {
   if (!userId) return {};
   try {
     const { firestoreModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
+    return await withTimeout(firestoreModule.getDocs(firestoreModule.collection(db, "users", userId, "knowledge")).then((snap) => Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))),8000,'user knowledge read');
+  } catch (error) { console.warn('user knowledge read unavailable:', error); return {}; }
+}
+
+export async function fetchUserConceptState(userId) {
+  if (!userId) return {};
+  try {
+    const { firestoreModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
     return await withTimeout(
-      firestoreModule.getDocs(firestoreModule.collection(db, "users", userId, "knowledge"))
-        .then((snap) => Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))),
+      firestoreModule.getDocs(firestoreModule.collection(db, "users", userId, "concepts")).then((snap) => Object.fromEntries(snap.docs.map((d) => {
+        const data = d.data();
+        return [d.id, { ...data, conceptKey: d.id, lastAnsweredAt: isoTimestamp(data.lastAnsweredAt), updatedAt: isoTimestamp(data.updatedAt) }];
+      }))),
       8000,
-      'user knowledge read'
+      'concept mastery read'
     );
-  } catch (error) {
-    console.warn('user knowledge read unavailable:', error);
-    return {};
-  }
+  } catch (error) { console.warn('concept mastery read unavailable:', error); return {}; }
+}
+
+function enrichConcept(answer) {
+  if (!answer || answer.conceptKey) return answer;
+  try {
+    const content = window.ManjingoContent;
+    const q = content && Array.isArray(content.questions) ? content.questions.find((x) => String(x.id) === String(answer.questionId) && String(x.kpId) === String(answer.kpId)) : null;
+    const concept = q && q.misconceptionKey ? { key: q.misconceptionKey, label: q.misconceptionLabel } : content && typeof content.misconceptionConcept === 'function' ? content.misconceptionConcept(q || answer) : null;
+    return concept ? { ...answer, conceptKey: String(concept.key), conceptLabel: String(concept.label || concept.key) } : answer;
+  } catch (_) { return answer; }
 }
 
 export async function submitAnswer(answer) {
   const { functionsModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
-  const result = await withTimeout(
-    functionsModule.httpsCallable(functions, "submitAnswer")(answer),
-    10000,
-    'submit answer'
-  );
+  const result = await withTimeout(functionsModule.httpsCallable(functions, "submitAnswer")(enrichConcept(answer)),10000,'submit answer');
   return result.data;
 }
 
 export async function getDueKnowledgePoints() {
   const { functionsModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
-  const result = await withTimeout(
-    functionsModule.httpsCallable(functions, "getDueKnowledgePoints")({}),
-    10000,
-    'due knowledge points'
-  );
+  const result = await withTimeout(functionsModule.httpsCallable(functions, "getDueKnowledgePoints")({}),10000,'due knowledge points');
   return result.data;
 }
 
 export async function getDailyLearningPlan() {
   const { functionsModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
-  const result = await withTimeout(
-    functionsModule.httpsCallable(functions, "getDailyLearningPlan")({}),
-    10000,
-    'daily learning plan'
-  );
+  const result = await withTimeout(functionsModule.httpsCallable(functions, "getDailyLearningPlan")({}),10000,'daily learning plan');
   return result.data;
 }
 
@@ -164,30 +141,16 @@ export async function fetchUserGamification(userId) {
   if (!userId) return null;
   try {
     const { firestoreModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
-    const snap = await withTimeout(
-      firestoreModule.getDoc(firestoreModule.doc(db, "users", userId, "gamification", "state")),
-      8000,
-      'gamification read'
-    );
+    const snap = await withTimeout(firestoreModule.getDoc(firestoreModule.doc(db, "users", userId, "gamification", "state")),8000,'gamification read');
     return snap.exists() ? snap.data() : null;
-  } catch (error) {
-    console.warn('gamification read unavailable:', error);
-    return null;
-  }
+  } catch (error) { console.warn('gamification read unavailable:', error); return null; }
 }
 
 export async function fetchUserKnowledge(userId, kpId) {
   if (!userId || !kpId) return null;
   try {
     const { firestoreModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
-    const snap = await withTimeout(
-      firestoreModule.getDoc(firestoreModule.doc(db, "users", userId, "knowledge", kpId)),
-      8000,
-      'knowledge read'
-    );
+    const snap = await withTimeout(firestoreModule.getDoc(firestoreModule.doc(db, "users", userId, "knowledge", kpId)),8000,'knowledge read');
     return snap.exists() ? snap.data() : null;
-  } catch (error) {
-    console.warn('knowledge read unavailable:', error);
-    return null;
-  }
+  } catch (error) { console.warn('knowledge read unavailable:', error); return null; }
 }
