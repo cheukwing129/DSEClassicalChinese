@@ -81,6 +81,37 @@ test('wrong answers record selected misconception and increment repeats', () => 
   assert.equal(progressState(store).knowledge.kp_p3_yi.misconceptions[key].count, 2);
 });
 
+test('correct misconception review decays weight until the pattern retires', () => {
+  const { engine } = createEngine();
+  const detail = { questionId: 'p3q009', selectedAnswer: '用', correctAnswer: '因為' };
+  engine.submit('kp_p3_yi', false, detail);
+  engine.submit('kp_p3_yi', false, detail);
+
+  const firstRepair = engine.submit('kp_p3_yi', true, { questionId: 'p3q009', selectedAnswer: '因為', correctAnswer: '因為' });
+  assert.equal(firstRepair.resolvedMisconceptions, 1);
+  assert.equal(firstRepair.remainingMisconceptionWeight, 1);
+  assert.equal(engine.getKnowledge('kp_p3_yi').misconceptions['p3q009::用'].count, 1);
+  assert.deepEqual(Array.from(engine.buildDailyPlan(['kp_p3_yi'], 1).items[0].misconceptionQuestionIds), ['p3q009']);
+
+  const secondRepair = engine.submit('kp_p3_yi', true, { questionId: 'p3q009', selectedAnswer: '因為', correctAnswer: '因為' });
+  assert.equal(secondRepair.resolvedMisconceptions, 1);
+  assert.equal(secondRepair.remainingMisconceptionWeight, 0);
+  assert.equal(engine.getKnowledge('kp_p3_yi').misconceptions['p3q009::用'], undefined);
+  assert.deepEqual(Array.from(engine.buildDailyPlan(['kp_p3_yi'], 1).items[0].misconceptionQuestionIds), []);
+});
+
+test('synced correct answer can repair misconception without local XP duplication', () => {
+  const { engine } = createEngine();
+  engine.submit('kp_p3_yi', false, { questionId: 'p3q009', selectedAnswer: '用', correctAnswer: '因為' });
+  const before = engine.getProgress();
+  const repair = engine.resolveQuestionMisconceptions('kp_p3_yi', 'p3q009');
+  const after = engine.getProgress();
+  assert.equal(repair.resolvedMisconceptions, 1);
+  assert.equal(repair.remainingMisconceptionWeight, 0);
+  assert.equal(after.totalXp, before.totalXp);
+  assert.equal(after.todayXp, before.todayXp);
+});
+
 test('correct answers do not create misconception records', () => {
   const { engine } = createEngine();
   engine.submit('kp_test', true, {
