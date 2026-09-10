@@ -49,6 +49,17 @@ export async function fetchAllQuestions() {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+export async function fetchAllKnowledgePoints() {
+  const snap = await getDocs(collection(db, "knowledgePoints"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function fetchUserKnowledgeState(userId) {
+  if (!userId) return {};
+  const snap = await getDocs(collection(db, "users", userId, "knowledge"));
+  return Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]));
+}
+
 // v2：學習狀態只由 server-side functions 寫入。
 export async function submitAnswer(answer) {
   const callable = httpsCallable(functions, "submitAnswer");
