@@ -1,0 +1,141 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'local-learning.js'), 'utf8');
+
+function makeDateClass(nowIso) {
+  const RealDate = Date;
+  const fixed = new RealDate(nowIso).getTime();
+  return class FakeDate extends RealDate {
+    constructor(...args) {
+      super(...(args.length ? args : [fixed]));
+    }
+    static now() { return fixed; }
+  };
+}
+
+function createEngine({ now = '2026-09-10T12:00:00.000Z', initial = {} } = {}) {
+  const store = new Map(Object.entries(initial));
+  const context = {
+    window: {},
+    localStorage: {
+      getItem(key) { return store.has(key) ? store.get(key) : null; },
+      setItem(key, value) { store.set(key, String(value)); },
+      removeItem(key) { store.delete(key); }
+    },
+    Date: makeDateClass(now),
+    console,
+    JSON,
+    Math,
+    Number,
+    String,
+    Object,
+    Array,
+    Map,
+    Set
+  };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  return { engine: context.window.ManjingoLocalLearning, store };
+}
+
+function progressState(store) {
+  return JSON.parse(store.get('manjingo_progress_cache') || '{}');
+}
+
+test('correct local answer awards exactly 8 XP; wrong answer awards 0', () => {
+  const { engine } = createEngine();
+  const correct = engine.submit('kp_test', true);
+  assert.equal(correct.xpEarned, 8);
+  assert.equal(correct.totalXp, 8);
+  assert.equal(correct.todayXp, 8);
+
+  const wrong = engine.submit('kp_test', false);
+  assert.equal(wrong.xpEarned, 0);
+  assert.equal(wrong.totalXp, 8);
+  assert.equal(wrong.todayXp, 8);
+});
+
+test('daily goal increments streak once, not on every answer after goal', () => {
+  const { engine } = createEngine();
+  engine.submit('a', true); // 8
+  engine.submit('b', true); // 16
+  const goal = engine.submit('c', true); // 24 => goal reached
+  assert.equal(goal.streak, 1);
+  const extra = engine.submit('d', true); // still same day
+  assert.equal(extra.streak, 1);
+});
+
+test('consecutive-day goal increments streak', () => {
+  const yesterdayState = {
+    totalXp: 40,
+    todayXp: 24,
+    streak: 2,
+    todayDate: '2026-09-09',
+    lastGoalDate: '2026-09-09',
+    knowledge: {}
+  };
+  const { engine } = createEngine({
+    now: '2026-09-10T12:00:00.000Z',
+    initial: { manjingo_progress_cache: JSON.stringify(yesterdayState) }
+  });
+  engine.submit('a', true);
+  engine.submit('b', true);
+  const result = engine.submit('c', true);
+  assert.equal(result.streak, 3);
+});
+
+test('missing a day resets streak to 1 when goal is reached again', () => {
+  const oldState = {
+    totalXp: 80,
+    todayXp: 24,
+    streak: 4,
+    todayDate: '2026-09-08',
+    lastGoalDate: '2026-09-08',
+    knowledge: {}
+  };
+  const { engine } = createEngine({
+    now: '2026-09-10T12:00:00.000Z',
+    initial: { manjingo_progress_cache: JSON.stringify(oldState) }
+  });
+  engine.submit('a', true);
+  engine.submit('b', true);
+  const result = engine.submit('c', true);
+  assert.equal(result.streak, 1);
+});
+
+test('legacy knowledge state migrates without losing mastery', () => {
+  const legacy = {
+    kp_old: {
+      mastery: 72,
+      repetition: 3,
+      easeFactor: 2.4,
+      interval: 12,
+      nextReviewAt: '2026-09-15T12:00:00.000Z',
+      attempts: 7,
+      correctCount: 5,
+      lastCorrect: true,
+      lastAnsweredAt: '2026-09-09T12:00:00.000Z'
+    }
+  };
+  const { engine, store } = createEngine({
+    initial: { manjingo_learning_state_v1: JSON.stringify(legacy) }
+  });
+  assert.equal(engine.getKnowledge('kp_old').mastery, 72);
+  assert.equal(progressState(store).knowledge.kp_old.mastery, 72);
+});
+
+test('remote gamification sync becomes the rendered local progress source', () => {
+  const { engine } = createEngine();
+  engine.syncGamification({ totalXp: 120, todayXp: 16, streak: 5 });
+  assert.deepEqual(engine.getProgress(), {
+    totalXp: 120,
+    todayXp: 16,
+    streak: 5,
+    todayDate: '2026-09-10',
+    lastGoalDate: null
+  });
+});
