@@ -1,118 +1,125 @@
 # Manjingo v2 部署指南
 
+## 目前架構
+
+Manjingo production 以 **Cloudflare Pages + Pages Functions Advanced Mode + Firebase Spark / Firestore** 為主：
+
+```text
+Browser
+  ├─ static HTML/JS ───────────────→ Cloudflare Pages assets
+  ├─ Firebase Auth (anonymous) ────→ Firebase Authentication
+  └─ /api/* + Firebase ID token ──→ public/_worker.js
+                                      ↓ verify user token
+                                      ↓ service-account OAuth
+                                    Firestore REST API
+                                      ├─ knowledge
+                                      ├─ concepts
+                                      ├─ gamification
+                                      └─ answerLogs
+```
+
+`public/_worker.js` 使用 Cloudflare Pages Advanced Mode。所有 `/api/*` 由 Worker 處理，其餘請求交給 `env.ASSETS.fetch()`，因此現有靜態網站路由維持不變。根目錄舊 `functions/` 會被 Advanced Mode 忽略，不會與 Firebase Cloud Functions 原始碼衝突。
+
 ## 目錄結構
+
 ```text
 manjingo/
-├── public/                      <- Cloudflare Pages 靜態前端
+├── public/
+│   ├── _worker.js                 <- Cloudflare server-side learning API
 │   ├── index.html
-│   └── firebase-config.js
-├── functions/                   <- Firebase Cloud Functions
-│   ├── index.js
-│   ├── learningEngine.js
-│   └── package.json
-├── firebase.json                <- Firebase deploy targets
-├── firestore.rules              <- Firestore v2 安全規則
-├── data/                         <- CSV 內容範本
-├── scripts/                      <- 資料匯入腳本
-├── wrangler.toml
+│   └── firebase-config.js         <- Firebase Auth + read-only Firestore client
+├── functions/                     <- legacy Firebase Functions implementation / parity tests
+├── firebase.json                  <- Firebase deploy targets
+├── firestore.rules                <- client-side Firestore security rules
+├── wrangler.toml                  <- Pages config + non-secret project id
+├── data/
+├── scripts/
 └── package.json
 ```
 
-## GitHub Actions：Firebase backend
+## Cloudflare learning API
 
-`.github/workflows/firebase-backend-deploy.yml` 會在 `Tests` workflow 對 `main` 成功後觸發，也可由 `workflow_dispatch` 手動觸發。部署預設關閉，避免尚未設定憑證或仍使用 Spark 時意外部署。
+目前 server-authoritative endpoints：
 
-啟用前需要在 GitHub repository 的 **Settings → Secrets and variables → Actions** 設定：
+- `POST /api/submit-answer`
+- `GET /api/daily-plan`
+- `GET /api/due-knowledge-points`
+- `GET /api/health`
 
-- Secret `FIREBASE_SERVICE_ACCOUNT_MANJINGO`：Firebase / Google Cloud service account JSON。workflow 透過 Application Default Credentials 使用它；不要把 JSON key 提交到 repository。
-- Variable `ENABLE_FIREBASE_DEPLOY=true`：開啟 Firebase backend deployment。未設定或不是 `true` 時，deploy job 會跳過。
-- Variable `ENABLE_FIREBASE_FUNCTIONS_DEPLOY=true`：只有在專案已使用 Blaze 且確定要部署 Cloud Functions 時才設定。Spark 專案請保持未設定或 `false`。
+`submit-answer` 在 Firestore transaction 內處理 answerId 去重、XP、KP Mastery、SM-2、Concept Mastery、streak 與 answer log。瀏覽器不直接寫這些 server-owned collections。
 
-安全流程：
+### Pages runtime secrets
 
-```text
-push main
-  ↓
-Tests
-  ↓ success only
-Firebase Backend Deploy
-  ↓
-checkout exactly tested commit
-  ↓
-Functions lint + full npm test
-  ↓
-ADC authentication
-  ↓
-Spark-safe: Firestore Rules only
-  OR
-Blaze-enabled: Firestore Rules + Functions
+`wrangler.toml` 只保存非敏感：
+
+```toml
+[vars]
+FIREBASE_PROJECT_ID = "manjingo-95d9a"
 ```
 
-workflow 使用固定 Firebase CLI 版本，並加上 deployment concurrency；不會取消正在進行的 production deployment。
+Cloudflare Pages production / preview environment 需要兩個 **encrypted secrets**：
 
-## Firebase pricing constraint
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`
 
-Cloud Functions for Firebase 的 production deployment 需要 Blaze pricing plan。若 Manjingo 要維持 Spark/free，`ENABLE_FIREBASE_FUNCTIONS_DEPLOY` 必須保持關閉；這時 workflow 只部署 Firestore Rules，而 Functions 程式碼仍會被 lint / tests 保護。
+請在 Cloudflare Pages 專案的 **Settings → Variables and Secrets** 建立；或以 Wrangler 的 `pages secret put` / `pages secret bulk` 設定。不要把 service-account private key 放進 Git、`wrangler.toml` 或任何公開前端檔案。
 
-因此，目前 Cloud / Local concept mastery 的 Cloud Functions 版本只有在 Firebase project 已是 Blaze 時才能正式部署。不要為了 CI 自動把 project 升級到 Blaze。
+本機開發可建立未提交的 `.dev.vars`：
 
-## Firebase Functions
-
-本機或 Blaze 環境可執行：
-
-```bash
-cd functions
-npm install
-npm run lint
-cd ..
-firebase deploy --only functions --project manjingo-95d9a
+```dotenv
+FIREBASE_CLIENT_EMAIL="...@...iam.gserviceaccount.com"
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
 
-`submitAnswer` 由 server-side function 決定 XP、KP Mastery、Concept Mastery、SM-2 及答題紀錄；前端不應直接寫入學生的學習狀態。
+`.dev.vars*` 與 `.env*` 已加入 `.gitignore`。
 
-## Firestore Rules
+### Google Cloud IAM
 
-```bash
-firebase deploy --only firestore:rules --project manjingo-95d9a
-```
+Pages Worker 使用 service account OAuth 2.0 存取 Cloud Firestore REST API。該 service account 應只取得 Firestore 所需最小 IAM 權限，不應給 Owner / Editor。Worker 會先驗證 Firebase ID token 的 RS256 signature、audience、issuer、expiry 與 uid，再用 server credential 存取 Firestore。
 
-v2 規則允許學生讀取自己的 `users/{uid}` 學習資料，包括 `gamification`、`knowledge`、`answerLogs` 與 `concepts`，但禁止前端直接寫入這些 server-owned 學習狀態。
+這一點很重要：service-account OAuth 對 Firestore 是 IAM server access，**不依賴 Firestore Security Rules**；因此 `/api/*` 的 Firebase ID token 驗證是授權邊界。
 
-## 內容資料
-
-公開教材資料可由前端讀取：
-
-- `texts`
-- `questions`
-- `knowledgePoints`
-
-資料匯入仍可使用 `scripts/import_to_firestore.js`，service account 憑證不得提交到 GitHub。
-
-## Cloudflare Pages
+## Cloudflare Pages 部署
 
 ```bash
 npm install
-npm run dev
+npm test
 npm run deploy
 ```
 
-Cloudflare Pages 只負責靜態前端；Firebase Cloud Functions 及 Firestore 是獨立部署。
+`public/_worker.js` 位於 Pages output directory，因此部署 `public/` 時會啟用 Advanced Mode。未配置兩個 server secrets 時，`/api/health` 會回報 `configured:false`，受保護 learning API 會失敗；現有前端會 fallback 到 local learning engine，不會停止學生本機學習。
 
-## v2 學習流程
+## Firebase Spark
+
+Firestore、Firebase Authentication 與 client read rules 可維持 Spark/free 使用。新的 production learning write path 不再依賴 Firebase Cloud Functions，因此不需要為了更新 `submitAnswer` 升級到 Blaze。
+
+Firestore Rules 仍允許登入者讀自己的 `gamification`、`knowledge`、`answerLogs`、`concepts`，但 client write 保持禁止。server write 改由 Cloudflare Worker 經 IAM 執行。
+
+## GitHub Actions：Firebase backend（legacy / rules）
+
+`.github/workflows/firebase-backend-deploy.yml` 仍保留作為 Firestore Rules deploy 與 legacy Firebase Functions 驗證流程，預設關閉：
+
+- `ENABLE_FIREBASE_DEPLOY=true`：才允許 Firebase deploy job。
+- Spark 專案保持 `ENABLE_FIREBASE_FUNCTIONS_DEPLOY=false`；只需部署 rules。
+- 若未來刻意升級 Blaze 才考慮重新啟用 Firebase Functions deploy。
+
+目前正式學習 API 以 `public/_worker.js` 為準，`functions/` 主要保留演算法 parity、migration 與 rollback 參考。
+
+## 學習流程
 
 ```text
 學生答題
-  ↓
-submitAnswer
-  ↓
-Quality
+  ↓ Firebase ID token
+Cloudflare /api/submit-answer
+  ↓ Firestore transaction
+  ├── answerId dedupe
   ├── KP Mastery
   ├── Concept Mastery
   ├── SM-2 / nextReviewAt
-  ├── XP
+  ├── XP / streak
   └── answerLog
         ↓
-  Daily Learning Plan
+/api/daily-plan
         ↓
-  Review → Concept weakness → Weak points → New learning
+Review → Concept weakness → Weak points → New learning
 ```
