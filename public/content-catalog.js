@@ -5,6 +5,7 @@ if(typeof document!=='undefined'&&document.readyState==='loading'){
  if(!window.ManjingoQuestionPack02)document.write('<script src="./question-pack-02.js"><\/script>');
  if(!window.ManjingoQuestionPack03)document.write('<script src="./question-pack-03.js"><\/script>');
  if(!window.ManjingoQuestionPackLesson)document.write('<script src="./question-pack-lesson.js"><\/script>');
+ if(!window.ManjingoQuestionPackCapacity01)document.write('<script src="./question-pack-capacity-01.js"><\/script>');
 }
 
 const baseKnowledgePoints=[
@@ -45,8 +46,9 @@ const baseQuestions=[
 const pack02=window.ManjingoQuestionPack02||{knowledgePoints:[],questions:[]};
 const pack03=window.ManjingoQuestionPack03||{knowledgePoints:[],questions:[]};
 const lessonPack=window.ManjingoQuestionPackLesson||{questions:[]};
+const capacityPack01=window.ManjingoQuestionPackCapacity01||{questions:[]};
 const knowledgePoints=[...baseKnowledgePoints,...pack02.knowledgePoints,...pack03.knowledgePoints];
-const rawQuestions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions];
+const rawQuestions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions,...capacityPack01.questions];
 
 function misconceptionConcept(q){
  const kp=String(q&&q.kpId||''),answer=String(q&&q.a||''),text=String(q&&q.q||'');
