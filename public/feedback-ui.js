@@ -26,7 +26,8 @@ function parseCorrectAnswer(text){return sliceLabel(text,'正確答案：',['為
 function metricLines(text){
  const raw=clean(text),lines=[];
  const concept=raw.match(/概念(?:掌握度)?[： ]+([0-9]{1,3}%)/);if(concept)lines.push('概念掌握度 '+concept[1]);
- const mastery=raw.match(/(?:🧠\s*)?掌握度[： ]+([0-9]{1,3}%)/);if(mastery)lines.push('掌握度 '+mastery[1]);
+ const masterySource=raw.replace(/概念(?:掌握度)?[： ]+[0-9]{1,3}%/g,'');
+ const mastery=masterySource.match(/(?:🧠\s*)?掌握度[： ]+([0-9]{1,3}%)/);if(mastery)lines.push('掌握度 '+mastery[1]);
  const xp=raw.match(/(?:本題獲得[： ]*)?\+?([0-9]+)\s*XP/);if(xp)lines.push('本題 +'+xp[1]+' XP');
  const review=raw.match(/建議下次複習[： ]+([^📅⭐]+?)(?=本題|$)/);if(review)lines.push('下次複習 '+clean(review[1]));
  return unique(lines);
