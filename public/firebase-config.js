@@ -1,6 +1,6 @@
 // firebase-config.js
 // Firebase client initialization for authentication + Firestore reads.
-// Server-authoritative learning writes now go through same-origin Cloudflare Pages API.
+// Server-authoritative learning writes continue to go through same-origin Cloudflare Pages API.
 
 const firebaseConfig = {
   apiKey: "AIzaSyCGhpSFHy3MDf75fhAJtrHTQJoa18SjqAM",
@@ -15,6 +15,8 @@ let db = null;
 let auth = null;
 let firebaseReadyPromise = null;
 let currentUserId = null;
+let redirectChecked = false;
+let redirectCheckPromise = null;
 
 async function getFirebase() {
   if (firebaseReadyPromise) return firebaseReadyPromise;
@@ -48,17 +50,62 @@ function isoTimestamp(value) {
     const d = new Date(value); return Number.isNaN(d.getTime()) ? null : d.toISOString();
   } catch (_) { return null; }
 }
+function accountSnapshot(user) {
+  if (!user) return { uid:null, anonymous:true, google:false, displayName:null, email:null, photoURL:null };
+  const google = Array.isArray(user.providerData) && user.providerData.some(p => p && p.providerId === 'google.com');
+  return { uid:user.uid, anonymous:!!user.isAnonymous, google, displayName:user.displayName||null, email:user.email||null, photoURL:user.photoURL||null };
+}
+function credentialFromGoogleError(authModule, error) {
+  try { return authModule.GoogleAuthProvider.credentialFromError(error) || error.credential || null; }
+  catch (_) { return error && error.credential || null; }
+}
+function isCredentialConflict(error) {
+  return ['auth/credential-already-in-use','auth/email-already-in-use','auth/account-exists-with-different-credential'].includes(String(error&&error.code||''));
+}
+function preferRedirectFlow() {
+  try { return typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches && window.innerWidth < 820; }
+  catch (_) { return false; }
+}
+
+export async function completeGoogleRedirect() {
+  if (redirectChecked) return auth ? accountSnapshot(auth.currentUser) : accountSnapshot(null);
+  if (redirectCheckPromise) return redirectCheckPromise;
+  redirectCheckPromise = (async () => {
+    const { authModule } = await getFirebase();
+    try {
+      const result = await authModule.getRedirectResult(auth);
+      redirectChecked = true;
+      if (result && result.user) currentUserId = result.user.uid;
+      else if (auth.currentUser) currentUserId = auth.currentUser.uid;
+      return accountSnapshot(auth.currentUser);
+    } catch (error) {
+      if (isCredentialConflict(error)) {
+        const credential = credentialFromGoogleError(authModule, error);
+        if (credential) {
+          const result = await authModule.signInWithCredential(auth, credential);
+          currentUserId = result.user.uid;
+          redirectChecked = true;
+          return accountSnapshot(result.user);
+        }
+      }
+      redirectChecked = true;
+      throw error;
+    }
+  })().finally(() => { redirectCheckPromise = null; });
+  return redirectCheckPromise;
+}
 
 export async function ensureLogin() {
   try {
     const { authModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
+    try { await withTimeout(completeGoogleRedirect(), 8000, 'Google redirect'); } catch (error) { console.warn('Google redirect completion unavailable:', error); }
     return await withTimeout(new Promise((resolve) => {
       let settled = false;
       let unsubscribe = null;
       const finish = (value) => { if (settled) return; settled = true; try { unsubscribe?.(); } catch (_) {} resolve(value); };
       unsubscribe = authModule.onAuthStateChanged(auth, (user) => {
         if (user) { currentUserId = user.uid; finish(user.uid); return; }
-        authModule.signInAnonymously(auth).catch((e) => { console.warn("匿名登入失敗，將使用離線模式", e); finish(null); });
+        authModule.signInAnonymously(auth).then(credential => { currentUserId = credential.user.uid; finish(credential.user.uid); }).catch((e) => { console.warn("匿名登入失敗，將使用離線模式", e); finish(null); });
       });
     }), 8000, 'Firebase authentication');
   } catch (error) {
@@ -68,6 +115,54 @@ export async function ensureLogin() {
 }
 
 export function getCurrentUserId() { return currentUserId; }
+export async function getAccountState() { await ensureLogin(); return accountSnapshot(auth && auth.currentUser); }
+export async function onAccountChanged(callback) {
+  const { authModule } = await getFirebase();
+  return authModule.onAuthStateChanged(auth, user => { currentUserId = user ? user.uid : null; callback(accountSnapshot(user)); });
+}
+
+export async function signInWithGoogle(options = {}) {
+  const { authModule } = await getFirebase();
+  await ensureLogin();
+  const current = auth.currentUser;
+  if (!current) throw new Error('Firebase authentication unavailable');
+  if (accountSnapshot(current).google) return { ...accountSnapshot(current), linked:true, redirecting:false };
+  const provider = new authModule.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt:'select_account' });
+  const useRedirect = options.redirect === true || (options.redirect !== false && preferRedirectFlow());
+  if (useRedirect) {
+    if (current.isAnonymous) await authModule.linkWithRedirect(current, provider);
+    else await authModule.signInWithRedirect(auth, provider);
+    return { ...accountSnapshot(current), linked:false, redirecting:true };
+  }
+  try {
+    const result = current.isAnonymous ? await authModule.linkWithPopup(current, provider) : await authModule.signInWithPopup(auth, provider);
+    currentUserId = result.user.uid;
+    return { ...accountSnapshot(result.user), linked:current.isAnonymous, redirecting:false };
+  } catch (error) {
+    if (isCredentialConflict(error)) {
+      const credential = credentialFromGoogleError(authModule, error);
+      const result = credential ? await authModule.signInWithCredential(auth, credential) : await authModule.signInWithPopup(auth, provider);
+      currentUserId = result.user.uid;
+      return { ...accountSnapshot(result.user), linked:false, mergedExisting:true, redirecting:false };
+    }
+    if (String(error&&error.code||'') === 'auth/popup-blocked') {
+      if (current.isAnonymous) await authModule.linkWithRedirect(current, provider);
+      else await authModule.signInWithRedirect(auth, provider);
+      return { ...accountSnapshot(current), linked:false, redirecting:true };
+    }
+    throw error;
+  }
+}
+
+export async function signOutAccount() {
+  const { authModule } = await getFirebase();
+  await authModule.signOut(auth);
+  currentUserId = null;
+  const credential = await authModule.signInAnonymously(auth);
+  currentUserId = credential.user.uid;
+  return accountSnapshot(credential.user);
+}
 
 async function authorizedApi(path, options = {}) {
   const uid = await ensureLogin();
@@ -122,6 +217,31 @@ export async function fetchUserConceptState(userId) {
       'concept mastery read'
     );
   } catch (error) { console.warn('concept mastery read unavailable:', error); return {}; }
+}
+
+export async function fetchClientSyncState(userId) {
+  if (!userId) return null;
+  try {
+    const { firestoreModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
+    const snap = await withTimeout(firestoreModule.getDoc(firestoreModule.doc(db, 'users', userId, 'clientSync', 'state')),8000,'client sync read');
+    if (!snap.exists()) return null;
+    const data = snap.data() || {};
+    return { learningState:data.learningState||null, questionRotation:data.questionRotation||null, schemaVersion:Number(data.schemaVersion)||1, updatedAt:isoTimestamp(data.updatedAt) };
+  } catch (error) { console.warn('client sync read unavailable:', error); return null; }
+}
+
+export async function saveClientSyncState(userId, payload) {
+  if (!userId || !payload) return false;
+  try {
+    const { firestoreModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
+    await withTimeout(firestoreModule.setDoc(firestoreModule.doc(db, 'users', userId, 'clientSync', 'state'), {
+      schemaVersion:1,
+      learningState:payload.learningState||{},
+      questionRotation:payload.questionRotation||{},
+      updatedAt:firestoreModule.serverTimestamp()
+    }, { merge:true }),8000,'client sync write');
+    return true;
+  } catch (error) { console.warn('client sync write unavailable:', error); return false; }
 }
 
 function enrichConcept(answer) {
