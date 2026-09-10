@@ -4,32 +4,37 @@ const fs=require('node:fs');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
-test('cloud answer persists concept mastery and misconception summary transactionally',()=>{
- const fn=read('functions/index.js');
- assert.match(fn,/calculateConceptMasteryUpdate/);
- assert.match(fn,/collection\('concepts'\)\.doc\(conceptKey\)/);
- assert.match(fn,/selectedAnswer:answer\.selectedAnswer/);
- assert.match(fn,/correctAnswer:answer\.correctAnswer/);
- assert.match(fn,/conceptMastery:conceptResult/);
- assert.match(fn,/existing\.conceptMastery/);
+test('Cloudflare answer API persists concept mastery transactionally',()=>{
+ const worker=read('public/_worker.js');
+ assert.match(worker,/beginTransaction/);
+ assert.match(worker,/users\/\$\{uid\}\/concepts\/\$\{conceptKey\}/);
+ assert.match(worker,/selectedAnswer: answer\.selectedAnswer/);
+ assert.match(worker,/correctAnswer: answer\.correctAnswer/);
+ assert.match(worker,/conceptMastery: conceptResult/);
+ assert.match(worker,/if \(logDoc\)/);
+ assert.match(worker,/duplicate: true/);
 });
 
-test('cloud daily plan schedules weak concepts with question targeting metadata',()=>{
- const fn=read('functions/index.js');
- assert.match(fn,/userRef\.collection\('concepts'\)/);
- assert.match(fn,/conceptReview:true/);
- assert.match(fn,/conceptQuestionIds/);
- assert.match(fn,/conceptMastery:Number\(concept\.mastery\|\|0\)/);
- assert.match(fn,/conceptReview:selected\.filter/);
+test('Cloudflare daily plan schedules weak concepts with question targeting metadata',()=>{
+ const worker=read('public/_worker.js');
+ assert.match(worker,/users\/\$\{uid\}\/concepts/);
+ assert.match(worker,/conceptReview: true/);
+ assert.match(worker,/conceptQuestionIds/);
+ assert.match(worker,/conceptMastery: Number\(c\.mastery \|\| 0\)/);
+ assert.match(worker,/conceptReview: selected\.filter/);
 });
 
-test('firebase client can download concept state and enrich cloud answer payloads',()=>{
+test('firebase client downloads concept state and sends learning writes to same-origin Pages API',()=>{
  const firebase=read('public/firebase-config.js');
  assert.match(firebase,/fetchUserConceptState/);
  assert.match(firebase,/collection\(db, "users", userId, "concepts"\)/);
  assert.match(firebase,/function enrichConcept\(answer\)/);
  assert.match(firebase,/conceptKey: String\(concept\.key\)/);
- assert.match(firebase,/httpsCallable\(functions, "submitAnswer"\)\(enrichConcept\(answer\)\)/);
+ assert.match(firebase,/function authorizedApi\(path, options = \{\}\)/);
+ assert.match(firebase,/auth\.currentUser\.getIdToken\(\)/);
+ assert.match(firebase,/authorizedApi\('\/api\/submit-answer'/);
+ assert.match(firebase,/authorizedApi\('\/api\/daily-plan'/);
+ assert.doesNotMatch(firebase,/httpsCallable\(functions/);
 });
 
 test('homepage syncs cloud concepts before selection and avoids double local concept increments',()=>{
