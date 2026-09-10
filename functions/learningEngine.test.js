@@ -5,6 +5,7 @@ const {
   calculateSM2,
   calculateNextReviewAt,
   calculateMastery,
+  calculateConceptMasteryUpdate,
   calculateXp,
   calculateLearningUpdate
 } = require('./learningEngine');
@@ -41,6 +42,38 @@ test('wrong answer resets repetition and interval', () => {
   assert.equal(result.interval, 1);
   assert.equal(result.mastery, 40);
   assert.equal(result.xpEarned, 0);
+});
+
+test('concept mastery mirrors local exponential update and keeps cross-KP coverage', () => {
+  const first = calculateConceptMasteryUpdate({
+    prev: {},
+    conceptKey: 'yi_reason_vs_tool',
+    conceptLabel: '「以」：原因義 vs 工具義',
+    kpId: 'kp_p3_yi',
+    questionId: 'p3q009',
+    isCorrect: true,
+    now: new Date('2026-09-10T12:00:00.000Z')
+  });
+  assert.equal(first.mastery, 22);
+  assert.equal(first.attempts, 1);
+  assert.equal(first.correctCount, 1);
+  assert.equal(first.lastCorrect, true);
+  assert.equal(first.lastAnsweredAt.toISOString(), '2026-09-10T12:00:00.000Z');
+
+  const second = calculateConceptMasteryUpdate({
+    prev: first,
+    conceptKey: 'yi_reason_vs_tool',
+    kpId: 'kp_virtual_yi',
+    questionId: 'q_virtual_yi_reason',
+    isCorrect: false,
+    now: new Date('2026-09-10T13:00:00.000Z')
+  });
+  assert.equal(second.mastery, 15);
+  assert.equal(second.attempts, 2);
+  assert.equal(second.correctCount, 1);
+  assert.equal(second.lastCorrect, false);
+  assert.deepEqual(second.kpIds.sort(), ['kp_p3_yi', 'kp_virtual_yi']);
+  assert.deepEqual(second.questionIds.sort(), ['p3q009', 'q_virtual_yi_reason']);
 });
 
 test('ease factor stays within 1.3–3.0', () => {
