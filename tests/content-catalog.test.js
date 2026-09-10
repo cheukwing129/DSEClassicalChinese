@@ -7,20 +7,22 @@ const vm = require('node:vm');
 const catalogSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'content-catalog.js'), 'utf8');
 const pack02Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-02.js'), 'utf8');
 const pack03Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-03.js'), 'utf8');
+const lessonPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-lesson.js'), 'utf8');
 
 function loadCatalog() {
   const context = { window: {}, Map, Set, Array, Object, Number, String, Math };
   vm.createContext(context);
   vm.runInContext(pack02Source, context);
   vm.runInContext(pack03Source, context);
+  vm.runInContext(lessonPackSource, context);
   vm.runInContext(catalogSource, context);
   return context.window.ManjingoContent;
 }
 
-test('local catalog contains 150 questions and an explicit knowledge point universe', () => {
+test('local catalog contains 207 questions and an explicit knowledge point universe', () => {
   const catalog = loadCatalog();
   const kpIds = catalog.getKnowledgePointIds({ teachableOnly: true });
-  assert.equal(catalog.questions.length, 150);
+  assert.equal(catalog.questions.length, 207);
   assert.equal(kpIds.length, 59);
   assert.ok(kpIds.includes('sx_006'));
   assert.ok(kpIds.includes('kp_caogui_strategy'));
@@ -32,6 +34,14 @@ test('every local question points to a known teachable knowledge point', () => {
   const kpIds = new Set(catalog.getKnowledgePointIds({ teachableOnly: true }));
   const unknown = catalog.questions.filter(q => !kpIds.has(q.kpId));
   assert.deepEqual(Array.from(unknown), []);
+});
+
+test('every teachable knowledge point has at least three practice questions', () => {
+  const catalog = loadCatalog();
+  const counts = new Map();
+  catalog.questions.forEach(q => counts.set(q.kpId, (counts.get(q.kpId) || 0) + 1));
+  const underfilled = catalog.knowledgePoints.filter(kp => kp.teachable && (counts.get(kp.kpId) || 0) < 3);
+  assert.deepEqual(Array.from(underfilled), []);
 });
 
 test('question selection follows plan order and selects at most one question per knowledge point task', () => {
