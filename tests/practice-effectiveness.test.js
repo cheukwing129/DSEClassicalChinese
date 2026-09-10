@@ -62,7 +62,7 @@ test('installed policy records strategy metadata and patches remediation status 
  vm.createContext(context);
  vm.runInContext(read('public/local-learning.js'),context);
  vm.runInContext(read('public/practice-effectiveness.js'),context);
- const practice=context.window.ManjingoPracticeEffectiveness,engine=context.window.ManjingoLocalLearning;
+ const practice=context.ManjingoPracticeEffectiveness,engine=context.window.ManjingoLocalLearning;
  assert.equal(practice.install(),true);
  const first=engine.recordPracticeSession({kpId:'kp_high',beforeMastery:90,afterMastery:92,correctCount:5,questionCount:5,strategy:'targeted'});
  const second=engine.recordPracticeSession({kpId:'kp_high',beforeMastery:92,afterMastery:94,correctCount:5,questionCount:5,strategy:'targeted'});
