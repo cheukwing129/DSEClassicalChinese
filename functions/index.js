@@ -14,7 +14,9 @@ function assertAnswerData(data) {
   if (responseTimeMs != null && (!Number.isFinite(responseTimeMs) || responseTimeMs < 0 || responseTimeMs > 10 * 60 * 1000)) throw new functions.https.HttpsError("invalid-argument", "responseTimeMs 無效");
   const localDate = data.localDate ? String(data.localDate) : new Date().toISOString().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(localDate)) throw new functions.https.HttpsError("invalid-argument", "localDate 必須為 YYYY-MM-DD");
-  return { kpId: String(data.kpId), questionId: data.questionId ? String(data.questionId) : null, textId: data.textId ? String(data.textId) : null, isCorrect: data.isCorrect, usedHint: Boolean(data.usedHint), attemptCount, responseTimeMs, localDate };
+  const answerId = data.answerId ? String(data.answerId) : null;
+  if (answerId && !/^[A-Za-z0-9_-]{8,128}$/.test(answerId)) throw new functions.https.HttpsError("invalid-argument", "answerId 無效");
+  return { answerId, kpId: String(data.kpId), questionId: data.questionId ? String(data.questionId) : null, textId: data.textId ? String(data.textId) : null, isCorrect: data.isCorrect, usedHint: Boolean(data.usedHint), attemptCount, responseTimeMs, localDate };
 }
 
 function calculateLevel(totalXp) {
@@ -33,24 +35,27 @@ exports.submitAnswer = functions.https.onCall(async (data, context) => {
   const answer = assertAnswerData(data);
   const userRef = db.collection("users").doc(userId);
   const kpRef = userRef.collection("knowledge").doc(answer.kpId);
-  const logRef = userRef.collection("answerLogs").doc();
   const gamificationRef = userRef.collection("gamification").doc("state");
+  const logRef = answer.answerId ? userRef.collection("answerLogs").doc(answer.answerId) : userRef.collection("answerLogs").doc();
 
   const result = await db.runTransaction(async (transaction) => {
     const kpSnap = await transaction.get(kpRef);
     const gameSnap = await transaction.get(gamificationRef);
+    const existingLogSnap = answer.answerId ? await transaction.get(logRef) : null;
+    if (existingLogSnap && existingLogSnap.exists) {
+      const existing = existingLogSnap.data();
+      if (existing.kpIds?.[0] && existing.kpIds[0] !== answer.kpId) throw new functions.https.HttpsError("already-exists", "answerId 已用於另一個 Knowledge Point");
+      return { quality: existing.quality, xpEarned: Number(existing.xpEarned ?? 0), mastery: Number(existing.mastery ?? 0), status: existing.status ?? null, nextReviewAt: existing.nextReviewAt ?? null, totalXp: Number(existing.totalXp ?? gameSnap.data()?.totalXp ?? 0), todayXp: Number(existing.todayXp ?? gameSnap.data()?.todayXp ?? 0), streak: Number(existing.streak ?? gameSnap.data()?.streak ?? 0), streakFreezes: Number(existing.streakFreezes ?? gameSnap.data()?.streakFreezes ?? 0), streakIncreased: Boolean(existing.streakIncreased), level: Number(existing.level ?? gameSnap.data()?.level ?? 1), duplicate: true };
+    }
+
     let baseXp = 8;
     if (answer.questionId) {
       const questionSnap = await transaction.get(db.collection("questions").doc(answer.questionId));
       if (questionSnap.exists) {
         const question = questionSnap.data();
         const questionKpId = question.kpId ? String(question.kpId) : null;
-        if (questionKpId && questionKpId !== answer.kpId) {
-          throw new functions.https.HttpsError("invalid-argument", "questionId 與 kpId 不一致");
-        }
-        if (Number.isFinite(Number(question.baseXp ?? question.xp))) {
-          baseXp = Math.max(1, Math.min(50, Number(question.baseXp ?? question.xp)));
-        }
+        if (questionKpId && questionKpId !== answer.kpId) throw new functions.https.HttpsError("invalid-argument", "questionId 與 kpId 不一致");
+        if (Number.isFinite(Number(question.baseXp ?? question.xp))) baseXp = Math.max(1, Math.min(50, Number(question.baseXp ?? question.xp)));
       }
     }
     const prev = kpSnap.exists ? kpSnap.data() : {};
@@ -80,8 +85,8 @@ exports.submitAnswer = functions.https.onCall(async (data, context) => {
     const level = calculateLevel(totalXp);
     transaction.set(kpRef, { ...update, lastAnsweredAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     transaction.set(gamificationRef, { totalXp, todayXp, todayXpDate: answer.localDate, dailyGoalXp, streak, streakFreezes, lastActiveDate: todayXp >= dailyGoalXp ? answer.localDate : previousActiveDate, level, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    transaction.set(logRef, { questionId: answer.questionId, kpIds: [answer.kpId], textId: answer.textId, isCorrect: answer.isCorrect, usedHint: answer.usedHint, attemptCount: answer.attemptCount, responseTimeMs: answer.responseTimeMs, localDate: answer.localDate, quality: update.quality, xpEarned: update.xpEarned, answeredAt: admin.firestore.FieldValue.serverTimestamp() });
-    return { quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt, totalXp, todayXp, streak, streakFreezes, streakIncreased, level };
+    transaction.set(logRef, { answerId: answer.answerId, questionId: answer.questionId, kpIds: [answer.kpId], textId: answer.textId, isCorrect: answer.isCorrect, usedHint: answer.usedHint, attemptCount: answer.attemptCount, responseTimeMs: answer.responseTimeMs, localDate: answer.localDate, quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt, totalXp, todayXp, streak, streakFreezes, streakIncreased, level, answeredAt: admin.firestore.FieldValue.serverTimestamp() });
+    return { quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt, totalXp, todayXp, streak, streakFreezes, streakIncreased, level, duplicate: false };
   });
   return { success: true, ...result };
 });
@@ -104,35 +109,17 @@ exports.getDailyLearningPlan = functions.https.onCall(async (data, context) => {
     knowledgeRef.limit(500).get(),
     db.collection("knowledgePoints").limit(500).get(),
   ]);
-
   const learned = new Set(learnedSnap.docs.map((d) => d.id));
   const due = dueSnap.docs.map((d) => ({ id: d.id, data: d.data() }));
   const weak = weakSnap.docs.map((d) => ({ id: d.id, data: d.data() }));
   const dueIds = new Set(due.map((x) => x.id));
   const weakOnly = weak.filter((x) => !dueIds.has(x.id));
   const fresh = kpSnap.docs.filter((d) => !learned.has(d.id)).map((d) => ({ id: d.id, data: d.data() }));
-
-  // 優先級：到期複習 > 弱項 > 新知識；同類內按掌握度／到期時間優先。
   const selected = [];
-  const push = (item, category, priority) => {
-    if (selected.length >= targetCount || selected.some((x) => x.kpId === item.id)) return;
-    selected.push({ kpId: item.id, category, priority });
-  };
+  const push = (item, category, priority) => { if (selected.length >= targetCount || selected.some((x) => x.kpId === item.id)) return; selected.push({ kpId: item.id, category, priority }); };
   due.slice(0, 5).forEach((x) => push(x, "review", 100));
   weakOnly.slice(0, 3).forEach((x) => push(x, "weak", 80));
   fresh.slice(0, 2).forEach((x) => push(x, "new", 60));
-  [...due, ...weakOnly, ...fresh].forEach((x) => {
-    if (selected.length >= targetCount) return;
-    const category = dueIds.has(x.id) ? "review" : weakOnly.some((w) => w.id === x.id) ? "weak" : "new";
-    push(x, category, category === "review" ? 100 : category === "weak" ? 80 : 60);
-  });
-
-  return {
-    targetCount,
-    items: selected,
-    review: selected.filter((x) => x.category === "review").map((x) => x.kpId),
-    weak: selected.filter((x) => x.category === "weak").map((x) => x.kpId),
-    newKnowledgePoints: selected.filter((x) => x.category === "new").map((x) => x.kpId),
-    totalRecommended: selected.length,
-  };
+  [...due, ...weakOnly, ...fresh].forEach((x) => { if (selected.length >= targetCount) return; const category = dueIds.has(x.id) ? "review" : weakOnly.some((w) => w.id === x.id) ? "weak" : "new"; push(x, category, category === "review" ? 100 : category === "weak" ? 80 : 60); });
+  return { targetCount, items: selected, review: selected.filter((x) => x.category === "review").map((x) => x.kpId), weak: selected.filter((x) => x.category === "weak").map((x) => x.kpId), newKnowledgePoints: selected.filter((x) => x.category === "new").map((x) => x.kpId), totalRecommended: selected.length };
 });
