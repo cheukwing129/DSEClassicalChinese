@@ -64,9 +64,12 @@ function selectQuestionsForPlan(plan,sourceQuestions,limit){
    if(queue.length>=max)return;
    const available=(byKp.get(item.kpId)||[]).filter(q=>!used.has(q.id));
    if(!available.length)return;
-   const candidate=available[Math.floor(Math.random()*available.length)];
+   const preferred=Array.isArray(item.misconceptionQuestionIds)?item.misconceptionQuestionIds:[];
+   let candidate=null;
+   for(const id of preferred){candidate=available.find(q=>q.id===id);if(candidate)break;}
+   if(!candidate)candidate=available[Math.floor(Math.random()*available.length)];
    used.add(candidate.id);
-   queue.push({...candidate,category:item.category||'new',priority:item.priority??3});
+   queue.push({...candidate,category:item.category||'new',priority:item.priority??3,misconceptionReview:preferred.includes(candidate.id)});
  });
  return queue;
 }
