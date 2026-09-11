@@ -13,16 +13,16 @@
 <span class="pill">P2 · candidate v4</span>
 <h1>Encouraging P2 Visual QA</h1>
 <p>專門驗收答錯後的小墨靈。先看是否仍像同一角色，再看是否自然傳達「一起看清這一步」，並特別排除失望、責備、羞恥或無助感。</p>
-<section class="panel"><h2>Direction / C / D · previous 3D vs all-ink encouraging</h2><p>34 / 42px 是產品實際 feedback 寬度；48 / 64 / 96 / 160px 是 artwork QA 尺寸。v4 採用產品負責人選定的全墨呆萌方向：取消淺色面罩，以炭灰至深墨藍漸變凸顯豆豆眼。左側只保留上一個米白面部方向供差異比較；Gate A 的正式 identity A/B 要待全墨 neutral anchor 建立。</p><div class="size-grid" id="sizeGrid"></div></section>
+<section class="panel"><h2>Gate A / C / D · all-ink neutral vs encouraging</h2><p>34 / 42px 是產品實際 feedback 寬度；48 / 64 / 96 / 160px 是 artwork QA 尺寸。兩側使用同一套全墨角色 DNA：炭灰至深墨藍漸變、豆豆眼、淡腮紅、金色雲紋、流動墨冠與獨立墨滴。左側 neutral 候選保持置中、雙手放低；右側 encouraging v4 以前傾、開掌及隨動作偏轉的墨冠增加支持意圖。此對照只作 Gate A 驗收，尚未替換正式 neutral。</p><div class="size-grid" id="sizeGrid"></div></section>
 <section class="panel"><h2>Gate E · wrong-answer context</h2><p>角色必須陪伴答案解釋，而不是成為「做錯了」的懲罰訊號。</p><div class="contexts"><div class="context"><strong>Desktop · 42×62px</strong><div class="feedback"><div class="result"><span class="x">×</span><div class="copy"><b>這題答錯了</b><span>正確答案：B</span></div><div class="mascot"><img id="desktopMascot" alt=""><span>一起看清這一步。</span></div></div><div class="explain"><b>為甚麼？</b><br>先找句中的關鍵實詞，再判斷它在上下文中的意思。</div><div class="next">下一步：看提示再試一次</div></div></div><div class="context mobile"><strong>Narrow mobile · 34×50px</strong><div class="feedback"><div class="result"><span class="x">×</span><div class="copy"><b>這題答錯了</b><span>正確答案：B</span></div><div class="mascot"><img id="mobileMascot" alt=""><span>一起看清這一步。</span></div></div><div class="explain"><b>為甚麼？</b><br>角色放在主要文字下方，不壓縮解釋空間。</div><div class="next">下一步：看提示再試一次</div></div></div></div></section>
-<section class="panel"><h2>人工檢查</h2><ul class="checklist"><li>眼神朝向學生／前方，不低頭、不皺眉。</li><li>輕微前傾與開放手勢讀成「陪你再看」，不是指責。</li><li>34 / 42px 時至少眼神、嘴形或伸手方向仍成立。</li><li>沒有眼淚、汗滴、紅叉、聳肩、搖頭或失望姿勢。</li><li>情緒能與 production happy 清楚區分：encouraging 更穩、更低能量。</li></ul></section>
+<section class="panel"><h2>人工檢查</h2><ul class="checklist"><li>眼神朝向學生／前方，不低頭、不皺眉。</li><li>輕微前傾與開放手勢讀成「陪你再看」，不是指責。</li><li>34 / 42px 時至少眼神、嘴形或伸手方向仍成立。</li><li>沒有眼淚、汗滴、紅叉、聳肩、搖頭或失望姿勢。</li><li>與全墨 neutral 候選相比，encouraging 的前傾、開掌及偏轉墨冠清楚增加支持意圖。</li><li>墨冠像液態身體的一部分隨姿勢轉動，不像固定帽子。</li></ul></section>
 </main><script src="./mascot-runtime.js"></script><script>
 (function(){
 const runtime=window.ManjingoMascotRuntime;
 if(!runtime)throw new Error('mascot runtime unavailable');
 const sizes=[34,42,48,64,96,160];
 const grid=document.getElementById('sizeGrid');
-grid.innerHTML=sizes.map(size=>{const h=Math.round(size*320/215);return '<div class="size"><strong>'+size+'px</strong><div class="pair"><div class="figure"><img src="'+'./mascot/moling-reference-approved.svg?v=3'+'" width="'+size+'" height="'+h+'" alt="previous cream-face direction '+size+'px"><span>previous cream-face direction</span></div><div class="figure encouraging"><img src="'+runtime.asset('encouraging')+'" width="'+size+'" height="'+h+'" alt="encouraging candidate '+size+'px"><span>encouraging candidate v4</span></div></div></div>'}).join('');
+grid.innerHTML=sizes.map(size=>{const h=Math.round(size*320/215);return '<div class="size"><strong>'+size+'px</strong><div class="pair"><div class="figure"><img src="'+'./mascot/moling-neutral-all-ink-candidate.svg?v=1'+'" width="'+size+'" height="'+h+'" alt="all-ink neutral candidate '+size+'px"><span>all-ink neutral candidate</span></div><div class="figure encouraging"><img src="'+runtime.asset('encouraging')+'" width="'+size+'" height="'+h+'" alt="encouraging candidate '+size+'px"><span>encouraging candidate v4</span></div></div></div>'}).join('');
 document.getElementById('desktopMascot').src=runtime.asset('encouraging');
 document.getElementById('mobileMascot').src=runtime.asset('encouraging');
 })();
