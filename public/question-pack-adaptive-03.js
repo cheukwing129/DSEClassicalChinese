@@ -20,7 +20,11 @@ const tierRevisions={
  p3q025:'foundation',p3q027:'application',p3q028:'transfer',
  p3q029:'foundation',p3q030:'application',p3q031:'transfer',
  p3q033:'foundation',p3q034:'application',p3q036:'transfer',
- p3q038:'foundation',p3q040:'application',p3q037:'transfer'
+ p3q038:'foundation',p3q040:'application',p3q037:'transfer',
+ tr3q001:'foundation',tr3q002:'foundation',tr3q003:'application',tr3q004:'application',tr3q005:'transfer',tr3q006:'transfer',
+ tr3q007:'foundation',tr3q008:'foundation',tr3q009:'application',tr3q010:'application',tr3q011:'transfer',tr3q012:'transfer',
+ tr3q013:'foundation',tr3q014:'foundation',tr3q015:'application',tr3q016:'application',tr3q017:'transfer',tr3q018:'transfer',
+ tr3q019:'foundation',tr3q020:'foundation',tr3q021:'application',tr3q022:'application',tr3q023:'transfer',tr3q024:'transfer'
 };
 const questions=[
  {id:'ad3q001',kpId:'kp_yueyang_001',textId:'CROSS',type:'choice',difficultyTier:'transfer',q:'比較「滕子京謫守巴陵郡」與「謫戍之眾」中的「謫」，兩者共同的核心意思最接近？',o:['因罪責而被貶降或發遣','主動辭官退隱','獲得升遷任命','短暫外出遊歷'],a:'因罪責而被貶降或發遣',explanation:'「謫」的核心都帶有因過失、罪責而受處分的意味；在《岳陽樓記》是被貶後外任，在「謫戍」語境則是被發遣戍守。'},
