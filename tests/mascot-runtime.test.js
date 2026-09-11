@@ -12,7 +12,7 @@ test('mascot runtime stays in parity with the machine-readable manifest',()=>{
   assert.equal(runtime.name,manifest.name);
   assert.deepEqual(runtime.recommendedSizes,manifest.recommendedSizes);
   assert.equal(runtime.compactAsset,manifest.compactAsset);
-  const runtimeStates=runtime.list().map(({id,label,asset,intent,motion})=>({id,label,asset,intent,motion}));
+  const runtimeStates=runtime.list().map(({id,label,asset,intent,motion,artStatus,productionPriority})=>({id,label,asset,intent,motion,artStatus,productionPriority}));
   assert.deepEqual(runtimeStates,manifest.states);
 });
 
@@ -25,6 +25,13 @@ test('mascot runtime normalizes unknown states and owns compact-size selection',
   assert.equal(runtime.asset('thinking',{compact:true}),'./mascot/moling-head.svg');
   assert.equal(runtime.stateClass('determined'),'mascot-state-determined');
   assert.equal(runtime.stateClass('nonsense'),'mascot-state-neutral');
+});
+
+test('mascot runtime exposes production artwork readiness in priority order',()=>{
+  assert.equal(runtime.isProductionArt('neutral'),true);
+  assert.equal(runtime.isProductionArt('happy'),false);
+  assert.equal(runtime.descriptor('happy').artStatus,'placeholder-treatment');
+  assert.deepEqual(runtime.productionQueue().map(state=>state.id),['happy','encouraging','thinking','determined','celebrate']);
 });
 
 test('semantic lesson icon tagging is explicit rather than styling every lesson icon',()=>{
