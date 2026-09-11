@@ -43,7 +43,7 @@ test('completion markup uses state-specific mascot asset instead of the legacy f
 });
 
 test('all six v1 mascot state assets exist while candidate and production artwork can graduate from the baseline',()=>{
-  const baselineDerived=new Set(['neutral','celebrate','determined']);
+  const baselineDerived=new Set(['neutral','celebrate']);
   ['neutral','happy','celebrate','encouraging','thinking','determined'].forEach(state=>{
     const file=`public/mascot/moling-${state}.svg`;
     assert.equal(exists(file),true,file+' should exist');
@@ -60,6 +60,11 @@ test('all six v1 mascot state assets exist while candidate and production artwor
   assert.match(thinking,/<image\b/);
   assert.match(thinking,/data:image\/webp;base64,/);
   assert.match(thinking,/thinking production artwork v2/);
+  const determined=read('public/mascot/moling-determined.svg');
+  assert.doesNotMatch(determined,/\.\.\/mascot-moling\.svg/);
+  assert.match(determined,/<image\b/);
+  assert.match(determined,/data:image\/webp;base64,/);
+  assert.match(determined,/determined 狀態 P4 candidate artwork v1/);
   const encouraging=read('public/mascot/moling-encouraging.svg');
   assert.doesNotMatch(encouraging,/\.\.\/mascot-moling\.svg/);
   assert.match(encouraging,/<image\b/);
