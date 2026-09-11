@@ -1,6 +1,7 @@
 // firebase-config.js
 // Firebase client initialization for authentication + Firestore reads.
 // Server-authoritative learning writes continue to go through same-origin Cloudflare Pages API.
+import './answer-outbox.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCGhpSFHy3MDf75fhAJtrHTQJoa18SjqAM",
@@ -17,6 +18,9 @@ let firebaseReadyPromise = null;
 let currentUserId = null;
 let redirectChecked = false;
 let redirectCheckPromise = null;
+let outboxFlushPromise = null;
+let outboxRetryTimer = null;
+const answerInFlight = new Map();
 
 async function getFirebase() {
   if (firebaseReadyPromise) return firebaseReadyPromise;
@@ -118,7 +122,7 @@ export function getCurrentUserId() { return currentUserId; }
 export async function getAccountState() { await ensureLogin(); return accountSnapshot(auth && auth.currentUser); }
 export async function onAccountChanged(callback) {
   const { authModule } = await getFirebase();
-  return authModule.onAuthStateChanged(auth, user => { currentUserId = user ? user.uid : null; callback(accountSnapshot(user)); });
+  return authModule.onAuthStateChanged(auth, user => { currentUserId = user ? user.uid : null; if(user)void flushAnswerOutbox({force:true,uid:user.uid}); callback(accountSnapshot(user)); });
 }
 
 export async function signInWithGoogle(options = {}) {
@@ -138,12 +142,14 @@ export async function signInWithGoogle(options = {}) {
   try {
     const result = current.isAnonymous ? await authModule.linkWithPopup(current, provider) : await authModule.signInWithPopup(auth, provider);
     currentUserId = result.user.uid;
+    void flushAnswerOutbox({force:true,uid:currentUserId});
     return { ...accountSnapshot(result.user), linked:current.isAnonymous, redirecting:false };
   } catch (error) {
     if (isCredentialConflict(error)) {
       const credential = credentialFromGoogleError(authModule, error);
       const result = credential ? await authModule.signInWithCredential(auth, credential) : await authModule.signInWithPopup(auth, provider);
       currentUserId = result.user.uid;
+      void flushAnswerOutbox({force:true,uid:currentUserId});
       return { ...accountSnapshot(result.user), linked:false, mergedExisting:true, redirecting:false };
     }
     if (String(error&&error.code||'') === 'auth/popup-blocked') {
@@ -161,6 +167,7 @@ export async function signOutAccount() {
   currentUserId = null;
   const credential = await authModule.signInAnonymously(auth);
   currentUserId = credential.user.uid;
+  void flushAnswerOutbox({force:true,uid:currentUserId});
   return accountSnapshot(credential.user);
 }
 
@@ -178,8 +185,61 @@ async function authorizedApi(path, options = {}) {
   }), 12000, 'learning API');
   let data = null;
   try { data = await response.json(); } catch (_) {}
-  if (!response.ok) throw new Error(data && data.error ? data.error : `learning API ${response.status}`);
+  if (!response.ok) { const error=new Error(data && data.error ? data.error : `learning API ${response.status}`); error.status=response.status; throw error; }
   return data;
+}
+
+function outbox(){return typeof globalThis!=='undefined'?globalThis.ManjingoAnswerOutbox:null}
+function retryableAnswerError(error){const status=Number(error&&error.status)||0;return !status||status===408||status===409||status===425||status===429||status>=500}
+function scheduleAnswerOutboxRetry(uid){
+  if(typeof window==='undefined')return;
+  if(outboxRetryTimer){clearTimeout(outboxRetryTimer);outboxRetryTimer=null;}
+  const box=outbox(),next=box&&box.nextDueAt(uid||currentUserId||null);if(next==null)return;
+  const delay=Math.max(1000,Math.min(300000,(next||Date.now())-Date.now()));
+  outboxRetryTimer=setTimeout(()=>{outboxRetryTimer=null;void flushAnswerOutbox();},delay);
+}
+async function sendAnswerPayload(payload){return authorizedApi('/api/submit-answer',{method:'POST',body:JSON.stringify(payload)})}
+function sendAnswerOnce(payload){
+  const id=String(payload&&payload.answerId||'');
+  if(id&&answerInFlight.has(id))return answerInFlight.get(id);
+  const promise=sendAnswerPayload(payload).finally(()=>{if(id)answerInFlight.delete(id)});
+  if(id)answerInFlight.set(id,promise);return promise;
+}
+function applyRetriedAnswer(payload,result){
+  if(!result||!result.success||typeof window==='undefined')return;
+  try{const learning=window.ManjingoLocalLearning;if(learning&&typeof learning.syncRemoteResult==='function')learning.syncRemoteResult(payload.kpId,result)}catch(error){console.warn('retried answer local reconciliation unavailable:',error)}
+  try{window.dispatchEvent(new CustomEvent('manjingo:answer-sync-complete',{detail:{answerId:payload.answerId,kpId:payload.kpId,duplicate:!!result.duplicate}}))}catch(_){}
+}
+
+export async function flushAnswerOutbox(options={}) {
+  if(outboxFlushPromise)return outboxFlushPromise;
+  outboxFlushPromise=(async()=>{
+    const box=outbox();if(!box)return{synced:0,pending:0};
+    const uid=options.uid||currentUserId||await ensureLogin();
+    if(!uid){scheduleAnswerOutboxRetry(null);return{synced:0,pending:box.pendingCount()};}
+    box.bindUnowned(uid);
+    const items=box.list({uid,includeUnowned:false,dueOnly:!options.force}),synced=[];
+    for(const item of items){
+      try{
+        const result=await sendAnswerOnce(item.payload);
+        if(result&&result.success){box.remove(item.answerId);applyRetriedAnswer(item.payload,result);synced.push(item.answerId);continue;}
+        throw new Error('learning API did not confirm answer');
+      }catch(error){
+        if(retryableAnswerError(error)){box.markFailure(item.answerId,error);break;}
+        box.remove(item.answerId);console.warn('discarding permanently rejected queued answer',item.answerId,error);
+      }
+    }
+    scheduleAnswerOutboxRetry(uid);
+    return{synced:synced.length,pending:box.pendingCount(uid)};
+  })().finally(()=>{outboxFlushPromise=null;});
+  return outboxFlushPromise;
+}
+
+function installAnswerOutboxRetry(){
+  if(typeof window==='undefined')return;
+  window.addEventListener('online',()=>void flushAnswerOutbox({force:true}));
+  if(typeof document!=='undefined')document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void flushAnswerOutbox();});
+  setTimeout(()=>void flushAnswerOutbox({force:true}),0);
 }
 
 export async function fetchAllQuestions() {
@@ -265,10 +325,21 @@ function recordDifficultyOutcome(answer, result) {
 }
 
 export async function submitAnswer(answer) {
-  const payload = enrichConcept(answer);
-  const result = await authorizedApi('/api/submit-answer', { method: 'POST', body: JSON.stringify(payload) });
-  recordDifficultyOutcome(payload, result);
-  return result;
+  const payload = enrichConcept(answer),box=outbox(),queued=box?box.enqueue(payload,currentUserId):false;
+  try {
+    const uid=currentUserId||await ensureLogin();if(box&&uid)box.bindUnowned(uid);
+    const result = await sendAnswerOnce(payload);
+    if(box)box.remove(payload.answerId);
+    recordDifficultyOutcome(payload, result);
+    void flushAnswerOutbox();
+    return result;
+  } catch(error) {
+    const retryable=retryableAnswerError(error);
+    if(box&&queued){if(retryable)box.markFailure(payload.answerId,error);else box.remove(payload.answerId);}
+    error.queued=!!(queued&&retryable);
+    scheduleAnswerOutboxRetry(currentUserId);
+    throw error;
+  }
 }
 
 export async function getDueKnowledgePoints() {
@@ -296,3 +367,5 @@ export async function fetchUserKnowledge(userId, kpId) {
     return snap.exists() ? snap.data() : null;
   } catch (error) { console.warn('knowledge read unavailable:', error); return null; }
 }
+
+installAnswerOutboxRetry();
