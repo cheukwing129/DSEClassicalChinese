@@ -11,7 +11,8 @@ const manifest=JSON.parse(read('public/mascot/manifest.json'));
 
 const stateIds=['neutral','happy','celebrate','encouraging','thinking','determined'];
 const sizes=[32,48,64,96,160];
-const expectedPriority=['happy','encouraging','thinking','determined','celebrate'];
+const productionPriority=['happy','encouraging','thinking','determined','celebrate'];
+const pendingPriority=['encouraging','thinking','determined','celebrate'];
 
 test('mascot manifest is the complete six-state v1 contract',()=>{
   assert.equal(manifest.version,1);
@@ -35,9 +36,9 @@ test('runtime and manifest stay in exact parity including artwork readiness',()=
     ['id','label','asset','intent','motion','artStatus','productionPriority'].forEach(key=>assert.equal(descriptor[key],state[key],state.id+' '+key));
   });
   assert.equal(runtime.isProductionArt('neutral'),true);
-  assert.equal(runtime.isProductionArt('happy'),false);
-  assert.equal(runtime.descriptor('happy').artStatus,'candidate');
-  assert.deepEqual(runtime.productionQueue().map(state=>state.id),expectedPriority);
+  assert.equal(runtime.isProductionArt('happy'),true);
+  assert.equal(runtime.descriptor('happy').artStatus,'production');
+  assert.deepEqual(runtime.productionQueue().map(state=>state.id),pendingPriority);
 });
 
 test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and production assets',()=>{
@@ -51,13 +52,13 @@ test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and 
     if(state.artStatus==='candidate'||state.artStatus==='production')assert.equal(referencesBaseline,false,state.id+' should be independent from the legacy baseline');
   });
   const happy=manifest.states.find(state=>state.id==='happy');
-  assert.equal(happy.artStatus,'candidate');
+  assert.equal(happy.artStatus,'production');
   const happySvg=read('public/mascot/moling-happy.svg');
   assert.match(happySvg,/<(?:path|ellipse|circle)\b/);
-  assert.match(happySvg,/happy 候選 artwork/);
+  assert.match(happySvg,/happy production artwork/);
 });
 
-test('happy candidate v2 keeps the real smile primary at feedback sizes',()=>{
+test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
   const happy=read('public/mascot/moling-happy.svg');
   assert.match(happy,/清楚笑意/);
   assert.match(happy,/M78 167c8 11 18 16 30 16s22-5 30-16/);
@@ -76,7 +77,7 @@ test('32px uses a dedicated compact head crop instead of shrinking the full body
   assert.match(svg,/32px/);
 });
 
-test('visual QA character sheet exposes production readiness priority and happy A/B review',()=>{
+test('visual QA character sheet exposes production readiness happy A/B and feedback context',()=>{
   const sheet=read('public/mascot-sheet.html');
   assert.match(sheet,/script src="\.\/mascot-runtime\.js"/);
   assert.match(sheet,/runtime\.recommendedSizes/);
@@ -88,10 +89,15 @@ test('visual QA character sheet exposes production readiness priority and happy 
   assert.match(sheet,/candidate/);
   assert.match(sheet,/productionPriority/);
   assert.match(sheet,/id="happyABGrid"/);
-  assert.match(sheet,/neutral \/ candidate A\/B/);
+  assert.match(sheet,/neutral \/ production A\/B/);
   assert.match(sheet,/const reviewSizes=\[34,42,48,64,96,160\]/);
   assert.match(sheet,/runtime\.asset\('neutral'\)/);
   assert.match(sheet,/runtime\.asset\('happy'\)/);
+  assert.match(sheet,/feedback context preview/);
+  assert.match(sheet,/Desktop · 42×62px mascot/);
+  assert.match(sheet,/Narrow mobile · 34×50px mascot/);
+  assert.match(sheet,/id="happyContextDesktop"/);
+  assert.match(sheet,/id="happyContextMobile"/);
   sizes.forEach(size=>assert.match(sheet,new RegExp(String(size))));
   assert.match(sheet,/prefers-reduced-motion:reduce/);
 });
@@ -104,10 +110,10 @@ test('production placements use canonical state assets instead of the legacy bas
   assert.doesNotMatch(css,/background:url\('\.\/mascot-moling\.svg'\)/);
 });
 
-test('production art brief protects character DNA and defines four priority poses',()=>{
+test('production art brief protects character DNA and defines the state priority order',()=>{
   const brief=read('docs/mascot-production-art-brief.md');
   assert.match(brief,/不可改動的角色 DNA/);
-  expectedPriority.slice(0,4).forEach(state=>assert.match(brief,new RegExp('`'+state+'`')));
+  productionPriority.slice(0,4).forEach(state=>assert.match(brief,new RegExp('`'+state+'`')));
   assert.match(brief,/不再只是 baseline artwork 加外掛符號/);
   assert.match(brief,/48 \/ 64 \/ 96 \/ 160px/);
   assert.match(brief,/Definition of Done/);
