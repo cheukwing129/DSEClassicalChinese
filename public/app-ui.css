@@ -44,14 +44,14 @@ body .input{
 }
 body .action,#lessonApp .action{font-size:15px;font-weight:900;letter-spacing:.01em}
 body .option,#lessonApp .option{font-size:15px;line-height:1.45}
-body .action:active,#lessonApp .action:active{transform:translateY(1px)}
+body .action:active,#lessonApp .action{transform:translateY(1px)}
 body .small,#lessonApp .lesson-question-count{color:var(--ui-muted)}
 
 /* Homepage page-level rhythm */
 body.app-nav-ready{max-width:640px;margin:0 auto;padding-top:14px}
 .title{letter-spacing:-.035em}
 body.app-nav-ready>.title{display:flex;align-items:center;justify-content:center;gap:14px;color:var(--brand-ink-teal)!important;min-height:92px;margin:2px 0 0!important}
-body.app-nav-ready>.title::after{content:"";display:block;width:58px;height:86px;flex:0 0 58px;background:url('./mascot-moling.svg') center/contain no-repeat}
+body.app-nav-ready>.title::after{content:"";display:block;width:58px;height:86px;flex:0 0 58px;background:url('./mascot/moling-neutral.svg') center/contain no-repeat}
 .status{color:var(--ui-muted)!important;margin-bottom:12px!important}
 .home-view{padding-bottom:8px}
 #homePath>.card,#homeWeakness>.card,#homeResults>.card{padding:20px}
@@ -65,6 +65,11 @@ body.app-nav-ready>.title::after{content:"";display:block;width:58px;height:86px
   color:var(--ui-muted);
   line-height:1.55;
 }
+
+/* Canonical mascot state placements */
+.player-status .streak{display:inline-flex;align-items:center;gap:4px}
+.player-status .streak::before{content:"";display:block;width:30px;height:40px;flex:0 0 30px;background:url('./mascot/moling-determined.svg') center/contain no-repeat}
+#lessonApp .lesson-step>.lesson-icon{font-size:0;width:64px;height:82px;margin:0 auto 4px;background:url('./mascot/moling-thinking.svg') center/contain no-repeat}
 
 /* Normalize feature cards */
 #learningPath .lp-stage-card,
@@ -162,6 +167,7 @@ body .feedback-ui.wrong,#lessonApp .feedback-ui.wrong{border-color:#ffc5c5}
   .title{font-size:28px!important;margin-top:10px!important}
   body.app-nav-ready>.title{gap:9px;min-height:72px;margin-top:0!important}
   body.app-nav-ready>.title::after{width:44px;height:66px;flex-basis:44px}
+  .player-status .streak::before{width:24px;height:32px;flex-basis:24px}
   body .card{border-radius:18px}
   #homePath>.card,#homeWeakness>.card,#homeResults>.card{padding:16px}
   #learningPath .lp-title,#weaknessPanel .weak-title,#masteryDashboard .dashboard-title{font-size:20px}
@@ -172,6 +178,7 @@ body .feedback-ui.wrong,#lessonApp .feedback-ui.wrong{border-color:#ffc5c5}
   #lessonApp .lesson-head h2{font-size:23px}
   #lessonApp .lesson-question{font-size:19px}
   #lessonApp .lesson-step h3,#lessonApp .lesson-complete h3{font-size:20px}
+  #lessonApp .lesson-step>.lesson-icon{width:56px;height:72px}
   #lessonApp .action,#lessonApp .option,body .action,body .option{min-height:50px}
   .feedback-result{padding:12px}.feedback-teaching{padding:12px}.feedback-progress,.feedback-next{padding-left:12px;padding-right:12px}
   .session-summary h3{font-size:22px}.session-summary-metrics>div{padding:11px 4px}.session-summary-metrics strong{font-size:17px}
