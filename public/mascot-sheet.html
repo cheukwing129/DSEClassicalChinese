@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manjingo｜小墨靈 Visual QA</title>
+<style>
+:root{--bg:#f7f9f5;--surface:#fff;--border:#dfe5dc;--ink:#000437;--text:#4b4b4b;--muted:#7b8278;--teal:#0f5a5a;--gold:#d4a85b;--green:#58cc02}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text)}main{width:min(1180px,calc(100% - 28px));margin:0 auto;padding:32px 0 56px}.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end;margin-bottom:24px}.eyebrow{color:var(--teal);font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.hero h1{margin:5px 0 7px;color:var(--ink);font-size:clamp(28px,5vw,46px);line-height:1.05}.hero p{max-width:760px;margin:0;color:var(--muted);line-height:1.6}.badge{align-self:start;padding:8px 11px;border:1px solid #c9dfbf;border-radius:999px;background:#eff8ea;color:#347400;font-size:12px;font-weight:900}.notice{margin:0 0 22px;padding:12px 14px;border:1px solid #eadcbf;border-radius:14px;background:#fff9ed;font-size:13px;line-height:1.55}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.state-card{overflow:hidden;border:1px solid var(--border);border-radius:20px;background:var(--surface);box-shadow:0 8px 26px rgba(0,4,55,.05)}.state-head{display:flex;align-items:start;justify-content:space-between;gap:12px;padding:16px 17px 10px}.state-head h2{margin:0;color:var(--ink);font-size:20px}.state-id{display:block;margin-top:2px;color:var(--teal);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:800}.intent{max-width:58%;color:var(--muted);font-size:11px;line-height:1.45;text-align:right}.hero-preview{display:flex;align-items:center;justify-content:center;min-height:220px;margin:0 14px;border:1px solid #e6e9e3;border-radius:16px;background-color:#fff;background-image:linear-gradient(45deg,#f2f4f0 25%,transparent 25%),linear-gradient(-45deg,#f2f4f0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f2f4f0 75%),linear-gradient(-45deg,transparent 75%,#f2f4f0 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}.hero-preview img{display:block;width:160px;height:190px;object-fit:contain}.size-strip{display:flex;align-items:end;gap:14px;min-height:182px;padding:16px 14px 18px;overflow-x:auto}.size-item{display:flex;min-width:54px;flex-direction:column;align-items:center;gap:7px}.size-box{display:flex;align-items:center;justify-content:center;min-width:48px;min-height:52px}.size-box img{display:block;object-fit:contain}.size-label{color:var(--muted);font-size:10px;font-weight:850}.size-item.compact .size-label::after{content:' head';color:var(--teal)}.footer-note{margin-top:22px;padding:17px;border:1px solid var(--border);border-radius:18px;background:var(--surface)}.footer-note h2{margin:0 0 7px;color:var(--ink);font-size:17px}.footer-note ul{margin:0;padding-left:20px;line-height:1.7;font-size:13px}.error{padding:30px;border:1px solid #ffc5c5;border-radius:16px;background:#fff3f3;color:#8e1b1b;font-weight:800}@media(max-width:760px){main{width:min(100% - 20px,640px);padding-top:20px}.hero{grid-template-columns:1fr}.badge{justify-self:start}.grid{grid-template-columns:1fr}.intent{max-width:54%}.hero-preview{min-height:200px}.size-strip{gap:10px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div>
+      <div class="eyebrow">Visual QA / Mascot System v1</div>
+      <h1>小墨靈角色檢查表</h1>
+      <p>一次檢查六個正式狀態在 32 / 48 / 64 / 96 / 160px 的輪廓、辨識度與一致性。此頁只作設計與回歸檢查，不加入學生主要導航。</p>
+    </div>
+    <div class="badge">v1 · six-state contract</div>
+  </section>
+  <div class="notice"><strong>32px 規則：</strong>使用獨立 head crop，避免把完整身體硬縮到無法辨認。48px 以上才顯示各狀態完整角色。檢查時尤其留意 transparent edge、眼神、狀態點綴是否在小尺寸消失。</div>
+  <section class="grid" id="stateGrid" aria-live="polite"></section>
+  <section class="footer-note">
+    <h2>人工 QA 檢查重點</h2>
+    <ul>
+      <li>32–48px：第一眼仍辨認為同一個小墨靈，不靠文字才能認出角色。</li>
+      <li>64–96px：happy / encouraging / thinking / determined 的差異要能在靜態畫面成立。</li>
+      <li>160px：celebrate 可以最有動勢，但不可因裝飾蓋過角色輪廓。</li>
+      <li>所有尺寸：透明背景邊緣乾淨，不遮擋 UI，且 reduced-motion 下仍完整可用。</li>
+    </ul>
+  </section>
+</main>
+<script>
+(async function(){
+  const grid=document.getElementById('stateGrid');
+  try{
+    const response=await fetch('./mascot/manifest.json',{cache:'no-store'});
+    if(!response.ok)throw new Error('manifest '+response.status);
+    const manifest=await response.json();
+    const sizes=Array.isArray(manifest.recommendedSizes)?manifest.recommendedSizes:[32,48,64,96,160];
+    grid.innerHTML=(manifest.states||[]).map(state=>{
+      const sizeItems=sizes.map(size=>{
+        const compact=size===32;
+        const asset=compact?manifest.compactAsset:state.asset;
+        const height=compact?Math.round(size*190/215):Math.round(size*320/215);
+        return '<div class="size-item'+(compact?' compact':'')+'"><div class="size-box"><img src="'+asset+'" width="'+size+'" height="'+height+'" alt="" aria-hidden="true"></div><div class="size-label">'+size+'px</div></div>';
+      }).join('');
+      return '<article class="state-card" data-mascot-state="'+state.id+'"><div class="state-head"><div><h2>'+state.label+'</h2><span class="state-id">'+state.id+'</span></div><div class="intent">'+state.intent+'</div></div><div class="hero-preview"><img src="'+state.asset+'" alt="小墨靈 '+state.label+' 狀態"></div><div class="size-strip">'+sizeItems+'</div></article>';
+    }).join('');
+  }catch(error){
+    console.error(error);
+    grid.innerHTML='<div class="error">無法載入 mascot manifest；請用網站伺服器開啟此頁，並檢查 <code>public/mascot/manifest.json</code>。</div>';
+  }
+})();
+</script>
+</body>
+</html>
