@@ -42,12 +42,21 @@ test('completion markup uses state-specific mascot asset instead of the legacy f
   assert.match(good,/\.\/mascot\/moling-happy\.svg/);
 });
 
-test('implemented mascot state assets preserve the selected baseline artwork',()=>{
-  ['neutral','happy','celebrate','encouraging'].forEach(state=>{
+test('all six v1 mascot state assets exist and preserve the selected baseline artwork',()=>{
+  ['neutral','happy','celebrate','encouraging','thinking','determined'].forEach(state=>{
     const file=`public/mascot/moling-${state}.svg`;
     assert.equal(exists(file),true,file+' should exist');
     assert.match(read(file),/\.\.\/mascot-moling\.svg/);
   });
+});
+
+test('thinking and determined states are connected to concept learning and streak UI',()=>{
+  const css=read('public/app-ui.css');
+  assert.match(css,/body\.app-nav-ready>\.title::after[^}]*moling-neutral\.svg/);
+  assert.match(css,/\.player-status \.streak::before[^}]*moling-determined\.svg/);
+  assert.match(css,/#lessonApp \.lesson-step>\.lesson-icon[^}]*moling-thinking\.svg/);
+  assert.match(read('public/mascot/moling-thinking.svg'),/thinking 狀態/);
+  assert.match(read('public/mascot/moling-determined.svg'),/determined 狀態/);
 });
 
 test('encouraging state avoids punitive reaction language and motion',()=>{
