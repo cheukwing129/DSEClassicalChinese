@@ -22,7 +22,7 @@ function loadCatalog() {
 
 test('every active question meets the reviewed structural quality floor', () => {
   const catalog = loadCatalog();
-  assert.equal(catalog.questions.length, 242);
+  assert.equal(catalog.questions.length, 268);
   for (const q of catalog.questions) {
     assert.ok(String(q.id || '').trim(), 'question id is required');
     assert.ok(String(q.kpId || '').trim(), `${q.id}: kpId is required`);
