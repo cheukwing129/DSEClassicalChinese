@@ -30,7 +30,7 @@ test('mascot runtime normalizes unknown states and owns compact-size selection',
 test('mascot runtime exposes production artwork readiness in priority order',()=>{
   assert.equal(runtime.isProductionArt('neutral'),true);
   assert.equal(runtime.isProductionArt('happy'),false);
-  assert.equal(runtime.descriptor('happy').artStatus,'placeholder-treatment');
+  assert.equal(runtime.descriptor('happy').artStatus,'candidate');
   assert.deepEqual(runtime.productionQueue().map(state=>state.id),['happy','encouraging','thinking','determined','celebrate']);
 });
 
