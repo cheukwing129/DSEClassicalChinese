@@ -41,7 +41,7 @@ test('homepage answer feedback is revealed synchronously before cloud persistenc
   assert.match(source,/feedback\.textContent=correct\?'答對了！':'正確答案：'/);
   assert.match(source,/answerKey\(button\.textContent\)===answerKey\(question\.a\)/);
   const home=read('public/index.html');
-  assert.match(home,/await cloudSubmit\(q,correct,answerId,value\)/);
+  assert.match(home,/showLearningFeedback\(box,q,correct,null\);try\{const result=await cloudSubmit\(q,correct,answerId,value\)/);
 });
 
 test('next question unlocks without waiting for cloud persistence',async()=>{
@@ -54,6 +54,16 @@ test('next question unlocks without waiting for cloud persistence',async()=>{
   const source=read('public/feedback-ui.js');
   assert.match(source,/unlockNextSoon\(scope\)/);
   assert.match(source,/next\.disabled=false/);
+});
+
+test('today task owns a synchronous nonblocking next button and stale cloud answers cannot repaint a later question',()=>{
+  const home=read('public/index.html');
+  assert.match(home,/function answerIsCurrent\(box,answerId\)/);
+  assert.match(home,/if\(nextButton\)nextButton\.disabled=false;showLearningFeedback\(box,q,correct,null\)/);
+  assert.doesNotMatch(home,/nextButton\.disabled=true/);
+  assert.match(home,/if\(answerIsCurrent\(box,answerId\)\)showLearningFeedback\(box,q,correct,\{\.\.\.result/);
+  assert.match(home,/if\(answerIsCurrent\(box,answerId\)\)showLearningFeedback\(box,q,correct,localResult\)/);
+  assert.match(home,/if\(!correct&&isAnswer\)b\.classList\.add\('correct'\)/);
 });
 
 test('instant feedback can be enhanced again when cloud progress replaces it',()=>{
