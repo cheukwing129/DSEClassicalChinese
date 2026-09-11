@@ -15,11 +15,11 @@
     <div>
       <div class="eyebrow">Visual QA / Mascot System v1</div>
       <h1>小墨靈角色檢查表</h1>
-      <p>一次檢查六個正式狀態在 32 / 48 / 64 / 96 / 160px 的輪廓、辨識度與一致性。此頁只作設計與回歸檢查，不加入學生主要導航。</p>
+      <p>一次檢查六個正式狀態在 32 / 48 / 64 / 96 / 160px 的輪廓、辨識度與一致性。此頁直接使用 production mascot runtime，避免預覽頁與真正產品資產映射分叉。</p>
     </div>
-    <div class="badge">v1 · six-state contract</div>
+    <div class="badge">v1 · runtime-backed</div>
   </section>
-  <div class="notice"><strong>32px 規則：</strong>使用獨立 head crop，避免把完整身體硬縮到無法辨認。48px 以上才顯示各狀態完整角色。檢查時尤其留意 transparent edge、眼神、狀態點綴是否在小尺寸消失。</div>
+  <div class="notice"><strong>32px 規則：</strong>使用獨立 head crop，避免把完整身體硬縮到無法辨認。48px 以上才顯示各狀態完整角色。runtime 與 <code>manifest.json</code> 的一致性由自動測試保護。</div>
   <section class="grid" id="stateGrid" aria-live="polite"></section>
   <section class="footer-note">
     <h2>人工 QA 檢查重點</h2>
@@ -31,26 +31,26 @@
     </ul>
   </section>
 </main>
+<script src="./mascot-runtime.js"></script>
 <script>
-(async function(){
+(function(){
   const grid=document.getElementById('stateGrid');
+  const runtime=window.ManjingoMascotRuntime;
   try{
-    const response=await fetch('./mascot/manifest.json',{cache:'no-store'});
-    if(!response.ok)throw new Error('manifest '+response.status);
-    const manifest=await response.json();
-    const sizes=Array.isArray(manifest.recommendedSizes)?manifest.recommendedSizes:[32,48,64,96,160];
-    grid.innerHTML=(manifest.states||[]).map(state=>{
+    if(!runtime||typeof runtime.list!=='function')throw new Error('mascot runtime unavailable');
+    const sizes=runtime.recommendedSizes||[32,48,64,96,160];
+    grid.innerHTML=runtime.list().map(state=>{
       const sizeItems=sizes.map(size=>{
-        const compact=size===32;
-        const asset=compact?manifest.compactAsset:state.asset;
+        const compact=size<=32;
+        const asset=runtime.asset(state.id,{size});
         const height=compact?Math.round(size*190/215):Math.round(size*320/215);
         return '<div class="size-item'+(compact?' compact':'')+'"><div class="size-box"><img src="'+asset+'" width="'+size+'" height="'+height+'" alt="" aria-hidden="true"></div><div class="size-label">'+size+'px</div></div>';
       }).join('');
-      return '<article class="state-card" data-mascot-state="'+state.id+'"><div class="state-head"><div><h2>'+state.label+'</h2><span class="state-id">'+state.id+'</span></div><div class="intent">'+state.intent+'</div></div><div class="hero-preview"><img src="'+state.asset+'" alt="小墨靈 '+state.label+' 狀態"></div><div class="size-strip">'+sizeItems+'</div></article>';
+      return '<article class="state-card" data-mascot-state="'+state.id+'"><div class="state-head"><div><h2>'+state.label+'</h2><span class="state-id">'+state.id+'</span></div><div class="intent">'+state.intent+'</div></div><div class="hero-preview"><img src="'+runtime.asset(state.id)+'" alt="小墨靈 '+state.label+' 狀態"></div><div class="size-strip">'+sizeItems+'</div></article>';
     }).join('');
   }catch(error){
     console.error(error);
-    grid.innerHTML='<div class="error">無法載入 mascot manifest；請用網站伺服器開啟此頁，並檢查 <code>public/mascot/manifest.json</code>。</div>';
+    grid.innerHTML='<div class="error">無法載入 mascot runtime；請檢查 <code>public/mascot-runtime.js</code> 與 mascot assets。</div>';
   }
 })();
 </script>
