@@ -6,8 +6,13 @@ const TOKEN_SCOPE = 'https://www.googleapis.com/auth/datastore';
 const FIRESTORE_ROOT = 'https://firestore.googleapis.com/v1';
 const FIREBASE_JWKS = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+const STATIC_CACHE_TTL_MS = 5 * 60 * 1000;
+const QUESTION_CACHE_TTL_MS = 10 * 60 * 1000;
+const QUESTION_CACHE_MAX = 400;
 let serviceTokenCache = null;
 let firebaseJwksCache = null;
+let kpUniverseCache = null;
+const questionMetadataCache = new Map();
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
@@ -63,7 +68,7 @@ async function getServiceAccessToken(env) {
   const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion })
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth-type:jwt-bearer', assertion })
   });
   if (!response.ok) throw new Error(`Google OAuth failed (${response.status})`);
   const data = await response.json();
@@ -131,8 +136,7 @@ function databaseRoot(env) { return `${FIRESTORE_ROOT}/projects/${encodeURICompo
 function documentName(env, path) { return `projects/${projectId(env)}/databases/(default)/documents/${path.split('/').map(encodeURIComponent).join('/')}`; }
 function documentUrl(env, path) { return `${databaseRoot(env)}/documents/${path.split('/').map(encodeURIComponent).join('/')}`; }
 async function googleFetch(url, token, init = {}) {
-  const response = await fetch(url, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${token}` } });
-  return response;
+  return fetch(url, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${token}` } });
 }
 async function getDocument(env, token, path, transaction) {
   const suffix = transaction ? `?transaction=${encodeURIComponent(transaction)}` : '';
@@ -157,6 +161,28 @@ async function listDocuments(env, token, path, pageSize = 500) {
   } while (pageToken && all.length < 2000);
   return all;
 }
+function parseBatchGetStream(text) {
+  const trimmed=String(text||'').trim();
+  if(!trimmed)return[];
+  try{const parsed=JSON.parse(trimmed);return Array.isArray(parsed)?parsed:[parsed];}catch(_){}
+  return trimmed.split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));
+}
+async function batchGetDocuments(env, token, paths, transaction) {
+  const names=paths.map(path=>documentName(env,path));
+  const response=await googleFetch(`${databaseRoot(env)}/documents:batchGet`,token,{
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({documents:names,...(transaction?{transaction}:{})})
+  });
+  if(!response.ok)throw new Error(`Firestore batch read failed (${response.status})`);
+  const rows=parseBatchGetStream(await response.text());
+  const byName=new Map();
+  for(const row of rows){
+    if(row&&row.found&&row.found.name)byName.set(row.found.name,{name:row.found.name,data:fromFields(row.found.fields||{})});
+    else if(row&&row.missing)byName.set(row.missing,null);
+  }
+  return names.map(name=>byName.has(name)?byName.get(name):null);
+}
 async function beginTransaction(env, token) {
   const response = await googleFetch(`${databaseRoot(env)}/documents:beginTransaction`, token, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
   if (!response.ok) throw new Error(`Firestore transaction start failed (${response.status})`);
@@ -169,6 +195,25 @@ async function commit(env, token, transaction, writes) {
   const response = await googleFetch(`${databaseRoot(env)}/documents:commit`, token, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ transaction, writes }) });
   if (!response.ok) throw new Error(`Firestore commit failed (${response.status})`);
   return response.json();
+}
+function cacheKey(env,id){return `${projectId(env)}:${id}`;}
+async function getQuestionMetadata(env, token, questionId) {
+  const key=cacheKey(env,questionId),now=Date.now(),cached=questionMetadataCache.get(key);
+  if(cached&&cached.expiresAt>now)return cached.value;
+  if(cached)questionMetadataCache.delete(key);
+  const value=await getDocument(env,token,`questions/${questionId}`);
+  if(value){
+    questionMetadataCache.set(key,{value,expiresAt:now+QUESTION_CACHE_TTL_MS});
+    while(questionMetadataCache.size>QUESTION_CACHE_MAX)questionMetadataCache.delete(questionMetadataCache.keys().next().value);
+  }
+  return value;
+}
+async function getKnowledgePointUniverse(env, token) {
+  const now=Date.now(),pid=projectId(env);
+  if(kpUniverseCache&&kpUniverseCache.projectId===pid&&kpUniverseCache.expiresAt>now)return kpUniverseCache.value;
+  const value=await listDocuments(env,token,'knowledgePoints');
+  kpUniverseCache={projectId:pid,value,expiresAt:now+STATIC_CACHE_TTL_MS};
+  return value;
 }
 function updateWrite(env, path, data) { return { update: docObject(documentName(env, path), data) }; }
 function masteryStatus(mastery) { return POLICY.masteryStatus(mastery); }
@@ -202,7 +247,7 @@ async function submitAnswer(request, env, uid, trace) {
   const token = await timed(trace,'oauth',()=>getServiceAccessToken(env));
   let baseXp = 8, conceptKey = answer.conceptKey, conceptLabel = answer.conceptLabel;
   if (answer.questionId) {
-    const question = await timed(trace,'question_read',()=>getDocument(env, token, `questions/${answer.questionId}`));
+    const question = await timed(trace,'question_read',()=>getQuestionMetadata(env, token, answer.questionId));
     if (question) {
       const questionKpId = question.data.kpId ? String(question.data.kpId) : null;
       if (questionKpId && questionKpId !== answer.kpId) throw Object.assign(new Error('questionId does not belong to kpId'), { status: 400 });
@@ -218,9 +263,10 @@ async function submitAnswer(request, env, uid, trace) {
     const gamePath = `users/${uid}/gamification/state`;
     const logPath = `users/${uid}/answerLogs/${answer.answerId}`;
     const conceptPath = conceptKey ? `users/${uid}/concepts/${conceptKey}` : null;
-    const [kpDoc, gameDoc, logDoc, conceptDoc] = await timed(trace,'tx_reads',()=>Promise.all([
-      getDocument(env, token, kpPath, tx), getDocument(env, token, gamePath, tx), getDocument(env, token, logPath, tx), conceptPath ? getDocument(env, token, conceptPath, tx) : Promise.resolve(null)
-    ]));
+    const txPaths=[kpPath,gamePath,logPath,...(conceptPath?[conceptPath]:[])];
+    const txDocs=await timed(trace,'tx_reads',()=>batchGetDocuments(env,token,txPaths,tx));
+    const [kpDoc,gameDoc,logDoc]=txDocs;
+    const conceptDoc=conceptPath?txDocs[3]:null;
     const gameExisting = gameDoc ? gameDoc.data : {};
     if (logDoc) {
       await timed(trace,'tx_rollback',()=>rollback(env, token, tx));
@@ -282,7 +328,7 @@ async function dailyPlan(env, uid, trace) {
   const [knowledge, concepts, kpUniverseDocs] = await Promise.all([
     timed(trace,'knowledge_list',()=>listDocuments(env, token, `users/${uid}/knowledge`)),
     timed(trace,'concepts_list',()=>listDocuments(env, token, `users/${uid}/concepts`)),
-    timed(trace,'kp_list',()=>listDocuments(env, token, 'knowledgePoints'))
+    timed(trace,'kp_list',()=>getKnowledgePointUniverse(env, token))
   ]);
   const now = new Date(), targetCount = 10;
   const kpUniverse = new Set(kpUniverseDocs.map(x => x.id));
