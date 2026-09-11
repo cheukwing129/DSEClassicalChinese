@@ -6,7 +6,8 @@
     "dev": "wrangler pages dev public",
     "mascot:check": "node scripts/validate_mascot_art.cjs",
     "mascot:happy:p1": "node scripts/check_mascot_happy_p1.cjs",
-    "test": "node scripts/validate_mascot_art.cjs && node scripts/check_mascot_happy_p1.cjs && node --test functions/*.test.js tests/*.test.js",
+    "mascot:encouraging:p2": "node scripts/check_mascot_encouraging_p2.cjs",
+    "test": "node scripts/validate_mascot_art.cjs && node scripts/check_mascot_happy_p1.cjs && node scripts/check_mascot_encouraging_p2.cjs && node --test functions/*.test.js tests/*.test.js",
     "smoke:pages": "node scripts/smoke_sync_guard.mjs && node scripts/smoke_answer_outbox.mjs && node scripts/smoke_pages_api.mjs",
     "deploy": "wrangler pages deploy public"
   },
