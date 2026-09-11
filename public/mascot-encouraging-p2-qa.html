@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manjingo｜Encouraging P2 QA</title>
+<style>
+:root{--bg:#f7f9f5;--surface:#fff;--border:#dfe5dc;--ink:#000437;--muted:#737b72;--teal:#0f5a5a;--wrong:#9a5b20}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,'Noto Sans TC',sans-serif}main{width:min(1040px,calc(100% - 24px));margin:auto;padding:28px 0 48px}h1{margin:0 0 8px;font-size:clamp(28px,5vw,44px)}p{color:var(--muted);line-height:1.55}.pill{display:inline-flex;padding:6px 9px;border:1px solid #b9dce8;border-radius:999px;background:#e9f7ff;color:#176078;font-size:11px;font-weight:900}.panel{margin-top:18px;padding:16px;border:1px solid var(--border);border-radius:18px;background:var(--surface)}.panel h2{margin:0 0 6px;font-size:18px}.size-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.size{padding:10px;border:1px solid var(--border);border-radius:14px;background:#fafbf9}.size strong{display:block;margin-bottom:8px;color:var(--teal);font-size:11px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:7px}.figure{display:flex;min-height:210px;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;padding:8px;border-radius:11px;background:#fff}.figure img{display:block;max-width:none;object-fit:contain}.figure span{font-size:9px;font-weight:900;color:var(--muted)}.figure.encouraging{box-shadow:inset 0 0 0 1px #b9dce8}.contexts{display:grid;grid-template-columns:1fr minmax(280px,.68fr);gap:12px}.context{padding:12px;border:1px solid var(--border);border-radius:15px;background:#fafbf9}.context>strong{display:block;margin-bottom:8px;color:var(--teal);font-size:11px}.feedback{padding:14px;border-radius:14px;background:#fff;border:1px solid #eadfcf}.result{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:9px;align-items:center}.x{display:grid;width:30px;height:30px;place-items:center;border-radius:50%;background:#fff3e4;color:var(--wrong);font-weight:950}.copy b{display:block;font-size:15px}.copy span{display:block;margin-top:2px;color:var(--muted);font-size:11px}.mascot{display:flex;align-items:center;gap:6px;max-width:145px}.mascot img{width:42px;height:62px;object-fit:contain}.mascot span{font-size:10px;line-height:1.3;font-weight:900;color:#60736f}.explain{margin-top:10px;padding-top:10px;border-top:1px solid #eee9e0;font-size:12px;line-height:1.5}.next{margin-top:8px;color:var(--teal);font-size:11px;font-weight:900}.mobile{max-width:360px}.mobile .result{grid-template-columns:32px minmax(0,1fr)}.mobile .mascot{grid-column:2;max-width:120px}.mobile .mascot img{width:34px;height:50px}.checklist{margin:0;padding-left:20px;line-height:1.7;color:#4d554c;font-size:13px}@media(max-width:780px){.size-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.contexts{grid-template-columns:1fr}}@media(max-width:460px){.size-grid{grid-template-columns:1fr}.pair{grid-template-columns:1fr}}@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body><main>
+<span class="pill">P2 · production v4</span>
+<h1>Encouraging P2 Visual QA</h1>
+<p>專門驗收答錯後的小墨靈。先看是否仍像同一角色，再看是否自然傳達「一起看清這一步」，並特別排除失望、責備、羞恥或無助感。</p>
+<section class="panel"><h2>Gate A / C / D · all-ink neutral vs encouraging</h2><p>34 / 42px 是產品實際 feedback 寬度；48 / 64 / 96 / 160px 是 artwork QA 尺寸。兩側使用同一套全墨角色 DNA：炭灰至深墨藍漸變、豆豆眼、淡腮紅、金色雲紋、流動墨冠與獨立墨滴。左側 neutral 候選保持置中、雙手放低；右側 encouraging v4 以前傾、開掌及隨動作偏轉的墨冠增加支持意圖。此對照只作 Gate A 驗收，尚未替換正式 neutral。</p><div class="size-grid" id="sizeGrid"></div></section>
+<section class="panel"><h2>Gate E · wrong-answer context</h2><p>角色必須陪伴答案解釋，而不是成為「做錯了」的懲罰訊號。</p><div class="contexts"><div class="context"><strong>Desktop · 42×62px</strong><div class="feedback"><div class="result"><span class="x">×</span><div class="copy"><b>這題答錯了</b><span>正確答案：B</span></div><div class="mascot"><img id="desktopMascot" alt=""><span>一起看清這一步。</span></div></div><div class="explain"><b>為甚麼？</b><br>先找句中的關鍵實詞，再判斷它在上下文中的意思。</div><div class="next">下一步：看提示再試一次</div></div></div><div class="context mobile"><strong>Narrow mobile · 34×50px</strong><div class="feedback"><div class="result"><span class="x">×</span><div class="copy"><b>這題答錯了</b><span>正確答案：B</span></div><div class="mascot"><img id="mobileMascot" alt=""><span>一起看清這一步。</span></div></div><div class="explain"><b>為甚麼？</b><br>角色放在主要文字下方，不壓縮解釋空間。</div><div class="next">下一步：看提示再試一次</div></div></div></div></section>
+<section class="panel"><h2>人工檢查</h2><ul class="checklist"><li>眼神朝向學生／前方，不低頭、不皺眉。</li><li>輕微前傾與開放手勢讀成「陪你再看」，不是指責。</li><li>34 / 42px 時至少眼神、嘴形或伸手方向仍成立。</li><li>沒有眼淚、汗滴、紅叉、聳肩、搖頭或失望姿勢。</li><li>與全墨 neutral 候選相比，encouraging 的前傾、開掌及偏轉墨冠清楚增加支持意圖。</li><li>墨冠像液態身體的一部分隨姿勢轉動，不像固定帽子。</li></ul></section>
+</main><script src="./mascot-runtime.js"></script><script>
+(function(){
+const runtime=window.ManjingoMascotRuntime;
+if(!runtime)throw new Error('mascot runtime unavailable');
+const sizes=[34,42,48,64,96,160];
+const grid=document.getElementById('sizeGrid');
+grid.innerHTML=sizes.map(size=>{const h=Math.round(size*320/215);return '<div class="size"><strong>'+size+'px</strong><div class="pair"><div class="figure"><img src="'+'./mascot/moling-neutral-all-ink-candidate.svg?v=1'+'" width="'+size+'" height="'+h+'" alt="all-ink neutral candidate '+size+'px"><span>all-ink neutral candidate</span></div><div class="figure encouraging"><img src="'+runtime.asset('encouraging')+'" width="'+size+'" height="'+h+'" alt="encouraging production '+size+'px"><span>encouraging production v4</span></div></div></div>'}).join('');
+document.getElementById('desktopMascot').src=runtime.asset('encouraging');
+document.getElementById('mobileMascot').src=runtime.asset('encouraging');
+})();
+document.querySelectorAll('.figure img,.mascot img').forEach(img=>img.addEventListener('error',()=>{img.closest('.figure,.mascot').classList.add('asset-load-failed');img.alt='ASSET LOAD FAILED'}));
+</script></body></html>
