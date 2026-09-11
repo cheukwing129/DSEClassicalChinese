@@ -16,6 +16,8 @@ function loadCatalog() {
     'public/question-pack-03.js',
     'public/question-pack-lesson.js',
     'public/question-pack-capacity-01.js',
+    'public/question-pack-transfer-01.js',
+    'public/question-pack-transfer-03.js',
     'public/content-catalog.js'
   ]) vm.runInContext(source(file), context, { filename:file });
   return context.window.ManjingoContent;
@@ -30,11 +32,11 @@ test('curriculum v1 defines a unique transfer-first skill tree', () => {
   assert.equal(curriculum.skills.every(x => domains.has(x.domain)), true);
 });
 
-test('all 59 current teachable knowledge points have an explicit migration decision', () => {
+test('all 63 current teachable knowledge points have an explicit migration decision', () => {
   const catalog = loadCatalog();
   const kpIds = Array.from(catalog.getKnowledgePointIds({ teachableOnly:true }), String).sort();
   const mapped = Object.keys(curriculum.migration).sort();
-  assert.equal(kpIds.length, 59);
+  assert.equal(kpIds.length, 63);
   assert.deepEqual(mapped, kpIds);
 });
 
@@ -55,7 +57,7 @@ test('migration removes article recall from the normal core without discarding t
   assert.deepEqual(counts, {
     refactor:3,
     'optional-set-text':26,
-    retain:15,
+    retain:19,
     'advanced-reading':4,
     merge:11
   });
@@ -63,6 +65,10 @@ test('migration removes article recall from the normal core without discarding t
   assert.equal(curriculum.migration.kp_theme_001.action, 'optional-set-text');
   assert.equal(curriculum.migration.kp_taohua_discovery.salvageQuestions, true);
   assert.equal(curriculum.migration.kp_loushi_allusion.salvageQuestions, true);
+  assert.deepEqual(curriculum.migration.kp_virtual_wei.targetSkillIds, ['fw.wei']);
+  assert.deepEqual(curriculum.migration.kp_virtual_zhe.targetSkillIds, ['fw.zhe']);
+  assert.deepEqual(curriculum.migration.kp_virtual_suo.targetSkillIds, ['fw.suo']);
+  assert.deepEqual(curriculum.migration.kp_virtual_ye.targetSkillIds, ['fw.ye']);
 });
 
 test('daily policy prioritizes language transfer and caps source repetition', () => {
