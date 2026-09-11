@@ -8,13 +8,13 @@
 
 目前 artwork 已：
 
-- 不再引用 legacy `mascot-moling.svg`；
-- 保持 215×320 viewBox、透明背景、accessible title/desc；
-- 使用與 production `happy` 相同的墨青／深墨 vector 語言；
-- 以輕微前傾、平穩小笑容及開放伸手表達「一起看清這一步」；
-- 沒有紅叉、眼淚、汗滴、搖頭、皺眉、倒地、聳肩或其他責備／失望訊號。
+- 舊扁平 v2 已由產品負責人明確否決；
+- candidate v3 已按確認的立體小墨靈參考重製；
+- 保留深色立體墨質、米白面部、大眼睛、金色雲紋、墨冠與獨立墨滴；
+- 使用閉合小笑容、正向眼神與圓潤開掌，沒有指責式手指；
+- 檔案使用真正透明 alpha，並以 raster-backed SVG 接入現有 runtime。
 
-## Candidate v1 → v2
+## Rejected v2 → candidate v3
 
 第一版在 34 / 42px raster review 暴露一個小尺寸問題：兩條手臂位置太靠近臉部，縮小後容易像橫線／鬍鬚，反而干擾眼神與嘴形。
 
@@ -27,11 +27,11 @@ v2 已修正：
 
 ## Current A–E position
 
-- **Gate A — same character: candidate-level pass**：主輪廓、眼睛比例、墨青 palette 與 production `happy` 保持一致的 vector family；最終仍需與 approved neutral A/B 再看一次。
-- **Gate B — static encouraging: candidate-level pass**：不靠符號或動畫，v2 已有前傾＋伸手＋平穩微笑三個支持訊號。
-- **Gate C — no blame: candidate-level pass**：目前沒有可合理讀成失望、責備、羞恥、悲傷或懲罰的視覺元素；這一關在 production promotion 前仍需再次人工確認。
-- **Gate D — size QA: candidate-level pass**：34 / 42 / 48 / 64 / 96 / 160px raster review 中，v2 已移除臉部手臂干擾；34 / 42px 主要依靠眼神＋平穩嘴形，手勢作次要訊號。
-- **Gate E — wrong-answer context: provisional pass**：`/mascot-encouraging-p2-qa.html` 已建立 desktop 42×62 與 narrow-mobile 34×50 context preview；仍需最後 live layout review 後才可 production。
+- **Gate A — pending deployed A/B**：QA 已改用產品負責人確認的 3D reference；舊扁平 neutral／happy 不再作身份錨點。
+- **Gate B — candidate-level pass**：靜態 v3 以眼神、閉合小笑容、輕微前傾與開掌傳達陪伴。
+- **Gate C — candidate-level pass**：沒有合理可讀成失望、責備、羞恥、悲傷或懲罰的訊號。
+- **Gate D — pending deployed size QA**：42px 本地 raster 檢查可辨認；仍需部署後逐一確認 34 / 42 / 48 / 64 / 96 / 160px。
+- **Gate E — pending live layout**：必須在 branch preview 的真實 wrong-answer layout 驗收。
 
 目前決定：**保留 candidate，不升 production。**
 
