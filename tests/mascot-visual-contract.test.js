@@ -73,9 +73,10 @@ test('encouraging P2 candidate encodes supportive cues without blame cues',()=>{
   const encouraging=read('public/mascot/moling-encouraging.svg');
   assert.match(encouraging,/輕微前傾/);
   assert.match(encouraging,/陪伴與支持/);
-  assert.match(encouraging,/rotate\(-3 108 175\)/);
-  assert.match(encouraging,/Open supportive reach toward the learner/);
-  assert.match(encouraging,/Small supportive smile/);
+  assert.match(encouraging,/米白面部/);
+  assert.match(encouraging,/金色雲紋/);
+  assert.match(encouraging,/圓潤開掌/);
+  assert.match(encouraging,/data:image\/webp;base64,/);
   assert.doesNotMatch(encouraging,/mascot-moling\.svg/);
   assert.doesNotMatch(encouraging,/(眼淚|紅叉|搖頭|皺眉|shame|punish)/i);
 });
@@ -101,11 +102,11 @@ test('visual QA character sheet retains happy production regression surfaces',()
   assert.match(sheet,/prefers-reduced-motion:reduce/);
 });
 
-test('encouraging P2 QA page covers neutral A/B and real wrong-answer sizes',()=>{
+test('encouraging P2 QA page covers approved-reference A/B and real wrong-answer sizes',()=>{
   const qa=read('public/mascot-encouraging-p2-qa.html');
   assert.match(qa,/Encouraging P2 Visual QA/);
   assert.match(qa,/const sizes=\[34,42,48,64,96,160\]/);
-  assert.match(qa,/runtime\.asset\('neutral'\)/);
+  assert.match(qa,/moling-reference-approved\.svg/);
   assert.match(qa,/runtime\.asset\('encouraging'\)/);
   assert.match(qa,/這題答錯了/);
   assert.match(qa,/一起看清這一步。/);
