@@ -6,14 +6,17 @@ const summary=require('../public/session-summary.js');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 const exists=p=>fs.existsSync(path.join(__dirname,'..',p));
 
-test('answer feedback gives Little Ink Spirit distinct correct and thinking reactions',()=>{
+test('answer feedback maps Little Ink Spirit to happy and encouraging states',()=>{
   const source=read('public/feedback-ui.js');
-  assert.match(source,/function mascotFeedback\(isCorrect\)/);
-  assert.match(source,/\.\/mascot-moling\.svg/);
+  assert.match(source,/function mascotFeedbackState\(isCorrect\)/);
+  assert.match(source,/happy:'\.\/mascot\/moling-happy\.svg'/);
+  assert.match(source,/encouraging:'\.\/mascot\/moling-encouraging\.svg'/);
+  assert.match(source,/mascot-state-'\+state/);
   assert.match(source,/抓到重點了！/);
   assert.match(source,/一起看清這一步。/);
   assert.match(source,/moling-correct/);
-  assert.match(source,/moling-think/);
+  assert.match(source,/moling-encourage/);
+  assert.doesNotMatch(source,/img\.src='\.\/mascot-moling\.svg'/);
   assert.match(source,/prefers-reduced-motion:reduce/);
 });
 
@@ -39,12 +42,21 @@ test('completion markup uses state-specific mascot asset instead of the legacy f
   assert.match(good,/\.\/mascot\/moling-happy\.svg/);
 });
 
-test('first mascot state assets exist and preserve the selected baseline artwork',()=>{
-  ['neutral','happy','celebrate'].forEach(state=>{
+test('implemented mascot state assets preserve the selected baseline artwork',()=>{
+  ['neutral','happy','celebrate','encouraging'].forEach(state=>{
     const file=`public/mascot/moling-${state}.svg`;
     assert.equal(exists(file),true,file+' should exist');
     assert.match(read(file),/\.\.\/mascot-moling\.svg/);
   });
+});
+
+test('encouraging state avoids punitive reaction language and motion',()=>{
+  const encouraging=read('public/mascot/moling-encouraging.svg');
+  const feedback=read('public/feedback-ui.js');
+  assert.match(encouraging,/encouraging 狀態/);
+  assert.match(encouraging,/支持而非責備/);
+  assert.doesNotMatch(feedback,/moling-think/);
+  assert.doesNotMatch(feedback,/shake/i);
 });
 
 test('mascot reactions stay decorative and do not replace learning controls',()=>{
