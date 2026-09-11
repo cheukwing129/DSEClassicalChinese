@@ -10,21 +10,15 @@ function loadCatalog() {
   const context = { window: {}, Map, Set, Array, Object, Number, String, Math };
   vm.createContext(context);
   for (const file of [
-    'public/question-pack-02.js',
-    'public/question-pack-03.js',
-    'public/question-pack-lesson.js',
-    'public/question-pack-capacity-01.js',
-    'public/question-pack-transfer-01.js',
-    'public/question-pack-transfer-03.js',
-    'public/question-pack-transfer-04.js',
-    'public/content-catalog.js'
+    'public/question-pack-02.js','public/question-pack-03.js','public/question-pack-lesson.js','public/question-pack-capacity-01.js',
+    'public/question-pack-transfer-01.js','public/question-pack-transfer-03.js','public/question-pack-transfer-04.js','public/question-pack-transfer-05.js','public/content-catalog.js'
   ]) vm.runInContext(source(file), context, { filename:file });
   return context.window.ManjingoContent;
 }
 
 test('every active question meets the reviewed structural quality floor', () => {
   const catalog = loadCatalog();
-  assert.equal(catalog.questions.length, 316);
+  assert.equal(catalog.questions.length, 340);
   for (const q of catalog.questions) {
     assert.ok(String(q.id || '').trim(), 'question id is required');
     assert.ok(String(q.kpId || '').trim(), `${q.id}: kpId is required`);
@@ -35,17 +29,13 @@ test('every active question meets the reviewed structural quality floor', () => 
       assert.ok(Array.isArray(q.o) && q.o.length >= 3, `${q.id}: choice needs at least three options`);
       assert.equal(new Set(q.o.map(String)).size, q.o.length, `${q.id}: choice options must be unique`);
       assert.equal(q.o.filter(x => String(x) === String(q.a)).length, 1, `${q.id}: answer must appear exactly once`);
-    } else {
-      assert.ok(String(q.a || '').trim(), `${q.id}: fill answer is required`);
-    }
+    } else assert.ok(String(q.a || '').trim(), `${q.id}: fill answer is required`);
   }
 });
 
 test('known corrupt legacy text cannot appear in the active reviewed catalog', () => {
   const active = JSON.stringify(loadCatalog().questions);
-  for (const bad of ['苛政猫於虎','學而不思則網','何這之有','二者不可得入入','憂讒畏譛','先後天下之憂而憂']) {
-    assert.equal(active.includes(bad), false, `legacy corrupt text must stay retired: ${bad}`);
-  }
+  for (const bad of ['苛政猫於虎','學而不思則網','何這之有','二者不可得入入','憂讒畏譛','先後天下之憂而憂']) assert.equal(active.includes(bad), false, `legacy corrupt text must stay retired: ${bad}`);
   assert.equal(/「避」[^。？]*通假/.test(active), false, '避 must not be presented as a fake 通假字 question');
 });
 
@@ -53,14 +43,7 @@ test('reviewed catalog is the only Firestore question import source', () => {
   const importer = source('scripts/import_to_firestore.js');
   const readme = source('scripts/README.md');
   assert.match(importer, /loadReviewedCatalog/);
-  assert.match(importer, /question-pack-02\.js/);
-  assert.match(importer, /question-pack-03\.js/);
-  assert.match(importer, /question-pack-lesson\.js/);
-  assert.match(importer, /question-pack-capacity-01\.js/);
-  assert.match(importer, /question-pack-transfer-01\.js/);
-  assert.match(importer, /question-pack-transfer-03\.js/);
-  assert.match(importer, /question-pack-transfer-04\.js/);
-  assert.match(importer, /content-catalog\.js/);
+  for (const name of ['question-pack-02.js','question-pack-03.js','question-pack-lesson.js','question-pack-capacity-01.js','question-pack-transfer-01.js','question-pack-transfer-03.js','question-pack-transfer-04.js','question-pack-transfer-05.js','content-catalog.js']) assert.match(importer,new RegExp(name.replaceAll('.','\\.')));
   assert.doesNotMatch(importer, /questions_v2_template\.csv/);
   assert.match(importer, /--prune/);
   assert.match(readme, /legacy \/ historical files/);
