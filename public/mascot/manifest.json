@@ -20,7 +20,7 @@
       "asset": "./mascot/moling-happy.svg",
       "intent": "答對、完成小步驟",
       "motion": "short-bounce",
-      "artStatus": "placeholder-treatment",
+      "artStatus": "production",
       "productionPriority": 1
     },
     {
