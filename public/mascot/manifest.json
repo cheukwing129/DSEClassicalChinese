@@ -56,7 +56,7 @@
       "asset": "./mascot/moling-determined.svg",
       "intent": "連續學習、streak、每日目標",
       "motion": "static-or-short-lift",
-      "artStatus": "placeholder-treatment",
+      "artStatus": "candidate",
       "productionPriority": 4
     }
   ]
