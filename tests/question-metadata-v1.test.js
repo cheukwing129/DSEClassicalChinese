@@ -29,10 +29,10 @@ function byId(questions, id) {
   return found;
 }
 
-test('all 242 reviewed questions receive a curriculum mode', () => {
+test('all 268 reviewed questions receive a curriculum mode', () => {
   const catalog = loadCatalog();
   const questions = metadata.annotateAll(catalog.questions);
-  assert.equal(questions.length, 242);
+  assert.equal(questions.length, 268);
   assert.equal(questions.some(q => q.curriculumMode === 'unmapped'), false);
 
   const validSkills = new Set(curriculum.skills.map(x => x.id));
@@ -74,6 +74,15 @@ test('new transfer questions keep explicit skills provenance and transfer level'
   assert.deepEqual(Array.from(yi.skillIds), ['fw.yi']);
   assert.equal(yi.sourceTextId, 'xiaoyaoyou');
   assert.equal(yi.transferLevel, 2);
+
+  const translation = byId(questions, 'tr2q005');
+  assert.deepEqual(Array.from(translation.skillIds), ['trans.reorder']);
+  assert.equal(translation.sourceTextId, 'lianpo');
+  assert.equal(translation.transferLevel, 2);
+
+  const causative = byId(questions, 'tr2q022');
+  assert.deepEqual(Array.from(causative.skillIds), ['lex.causative']);
+  assert.equal(causative.sourceTextId, 'liuguolun');
 });
 
 test('advanced argumentation remains available but does not compete in the normal language core', () => {
@@ -124,8 +133,8 @@ test('normal core filter excludes set-text recall without deleting the original 
   const core = metadata.normalCoreQuestions(catalog.questions);
   const coreIds = new Set(core.map(q => q.id));
 
-  assert.equal(catalog.questions.length, 242);
-  assert.equal(core.length, 151);
+  assert.equal(catalog.questions.length, 268);
+  assert.equal(core.length, 177);
   assert.equal(coreIds.has('q008'), false);
   assert.equal(coreIds.has('lpq053'), false);
   assert.equal(coreIds.has('p2q042'), false);
@@ -133,20 +142,21 @@ test('normal core filter excludes set-text recall without deleting the original 
   assert.equal(coreIds.has('p2q071'), true);
   assert.equal(coreIds.has('p3q029'), true);
   assert.equal(coreIds.has('tr1q001'), true);
+  assert.equal(coreIds.has('tr2q001'), true);
 });
 
-test('audit quantifies legacy content and keeps new canonical sources out of CROSS', () => {
+test('audit quantifies legacy content and keeps transfer sources out of CROSS', () => {
   const audit = metadata.audit(loadCatalog().questions);
-  assert.equal(audit.total, 242);
-  assert.equal(Object.values(audit.byMode).reduce((a,b) => a + b, 0), 242);
-  assert.equal(audit.byMode.core, 151);
+  assert.equal(audit.total, 268);
+  assert.equal(Object.values(audit.byMode).reduce((a,b) => a + b, 0), 268);
+  assert.equal(audit.byMode.core, 177);
   assert.equal(audit.byMode['set-text'], 78);
   assert.equal(audit.byMode.advanced, 13);
 
   assert.equal(audit.bySourceText.yueyanglou, 38);
   assert.equal(audit.bySourceText.CROSS, 45);
-  assert.equal(audit.bySourceText.lunyu, 9);
-  assert.equal(audit.bySourceText.quanxue, 8);
-  assert.equal(audit.bySourceText['mengzi-lianghuiwang-xia'], 4);
-  assert.equal(audit.bySourceText.xiaoyaoyou, 4);
+  assert.equal(audit.bySourceText.lunyu, 14);
+  assert.equal(audit.bySourceText.quanxue, 11);
+  assert.equal(audit.bySourceText['mengzi-lianghuiwang-xia'], 5);
+  assert.equal(audit.bySourceText.xiaoyaoyou, 7);
 });
