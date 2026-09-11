@@ -8,12 +8,12 @@ root.ManjingoMascotRuntime=api;
 const RECOMMENDED_SIZES=Object.freeze([32,48,64,96,160]);
 const COMPACT_ASSET='./mascot/moling-head.svg';
 const STATE_LIST=Object.freeze([
-  Object.freeze({id:'neutral',label:'一般',asset:'./mascot/moling-neutral.svg',intent:'首頁、一般歡迎、空狀態、品牌展示',motion:'static'}),
-  Object.freeze({id:'happy',label:'開心',asset:'./mascot/moling-happy.svg',intent:'答對、完成小步驟',motion:'short-bounce'}),
-  Object.freeze({id:'celebrate',label:'慶祝',asset:'./mascot/moling-celebrate.svg',intent:'全對、完成一課、解鎖重要內容',motion:'single-celebration'}),
-  Object.freeze({id:'encouraging',label:'鼓勵',asset:'./mascot/moling-encouraging.svg',intent:'答錯、補救學習、弱點診斷',motion:'gentle-lift'}),
-  Object.freeze({id:'thinking',label:'思考',asset:'./mascot/moling-thinking.svg',intent:'提示、概念理解、重新教學',motion:'static-or-fade'}),
-  Object.freeze({id:'determined',label:'堅定',asset:'./mascot/moling-determined.svg',intent:'連續學習、streak、每日目標',motion:'static-or-short-lift'})
+  Object.freeze({id:'neutral',label:'一般',asset:'./mascot/moling-neutral.svg',intent:'首頁、一般歡迎、空狀態、品牌展示',motion:'static',artStatus:'baseline-approved',productionPriority:0}),
+  Object.freeze({id:'happy',label:'開心',asset:'./mascot/moling-happy.svg',intent:'答對、完成小步驟',motion:'short-bounce',artStatus:'placeholder-treatment',productionPriority:1}),
+  Object.freeze({id:'celebrate',label:'慶祝',asset:'./mascot/moling-celebrate.svg',intent:'全對、完成一課、解鎖重要內容',motion:'single-celebration',artStatus:'provisional',productionPriority:5}),
+  Object.freeze({id:'encouraging',label:'鼓勵',asset:'./mascot/moling-encouraging.svg',intent:'答錯、補救學習、弱點診斷',motion:'gentle-lift',artStatus:'placeholder-treatment',productionPriority:2}),
+  Object.freeze({id:'thinking',label:'思考',asset:'./mascot/moling-thinking.svg',intent:'提示、概念理解、重新教學',motion:'static-or-fade',artStatus:'placeholder-treatment',productionPriority:3}),
+  Object.freeze({id:'determined',label:'堅定',asset:'./mascot/moling-determined.svg',intent:'連續學習、streak、每日目標',motion:'static-or-short-lift',artStatus:'placeholder-treatment',productionPriority:4})
 ]);
 const STATES=Object.freeze(Object.fromEntries(STATE_LIST.map(item=>[item.id,item])));
 const THINKING_TOKENS=Object.freeze(['📖','🧠','🔎']);
@@ -24,10 +24,12 @@ function asset(name,options){const opts=options||{},size=Number(opts.size)||0;if
 function stateClass(name){return'mascot-state-'+normalizeState(name)}
 function list(){return STATE_LIST.slice()}
 function isCanonical(name){return normalizeState(name)===String(name||'')}
+function isProductionArt(name){const status=descriptor(name).artStatus;return status==='production'||status==='baseline-approved'}
+function productionQueue(){return STATE_LIST.filter(item=>!isProductionArt(item.id)).slice().sort((a,b)=>Number(a.productionPriority||99)-Number(b.productionPriority||99))}
 function semanticThinkingIcon(node){if(!node||!node.classList)return false;const text=String(node.textContent||'').trim();if(!THINKING_TOKENS.includes(text))return false;node.classList.add('mascot-thinking');if(node.dataset)node.dataset.mascotState='thinking';return true}
 function scanSemantic(rootNode){if(typeof document==='undefined'||!rootNode)return 0;const nodes=[];if(rootNode.matches&&rootNode.matches('#lessonApp .lesson-step>.lesson-icon'))nodes.push(rootNode);if(rootNode.querySelectorAll)rootNode.querySelectorAll('#lessonApp .lesson-step>.lesson-icon').forEach(node=>nodes.push(node));let marked=0;nodes.forEach(node=>{if(semanticThinkingIcon(node))marked+=1});return marked}
 function installSemanticStates(){if(typeof document==='undefined'||!document.documentElement)return false;scanSemantic(document);if(observer||typeof MutationObserver!=='function'||!document.body)return true;observer=new MutationObserver(records=>records.forEach(record=>{if(record.target)scanSemantic(record.target);if(record.addedNodes)record.addedNodes.forEach(scanSemantic)}));observer.observe(document.body,{childList:true,subtree:true,characterData:true});api.observer=observer;return true}
-const api={version:1,name:'小墨靈 / Little Ink Spirit',recommendedSizes:RECOMMENDED_SIZES,compactAsset:COMPACT_ASSET,states:STATES,stateList:STATE_LIST,normalizeState,descriptor,asset,stateClass,list,isCanonical,semanticThinkingIcon,scanSemantic,installSemanticStates,observer:null};
+const api={version:1,name:'小墨靈 / Little Ink Spirit',recommendedSizes:RECOMMENDED_SIZES,compactAsset:COMPACT_ASSET,states:STATES,stateList:STATE_LIST,normalizeState,descriptor,asset,stateClass,list,isCanonical,isProductionArt,productionQueue,semanticThinkingIcon,scanSemantic,installSemanticStates,observer:null};
 if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installSemanticStates);else installSemanticStates()}
 return api;
 });
