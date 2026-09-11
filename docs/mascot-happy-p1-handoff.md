@@ -84,27 +84,41 @@
 
 Artwork 初放入 branch 時，先不要把 `artStatus` 改成 `production`。
 
-## 8. Review gate
+## 8. Candidate gate
 
-第一輪 review：
+候選 artwork 放入 branch 後，先執行：
 
-1. `/mascot-sheet.html` 與 `neutral` 並排看 48 / 64 / 96 / 160px。
-2. 暫時忽略文字標籤，確認可猜出 happy。
-3. 檢查 64px：眼神／手勢沒有消失。
-4. 檢查 48px：仍不像 neutral。
-5. 檢查 160px：角色比例、透明邊緣與筆觸沒有漂移。
-6. 確認沒有跨到 celebrate 的情緒強度。
+```bash
+npm run mascot:happy:p1
+npm run mascot:check
+```
+
+`mascot:happy:p1` 會檢查 P1 專屬結構契約：固定 asset path、P1 priority、215×320 viewBox、accessibility title/desc、禁止 embedded text，以及 promotion 後不得再依賴 `mascot-moling.svg`。
+
+在 `placeholder-treatment` 階段，validator 允許目前 baseline-derived artwork 存在；升為 `production` 後，若仍直接引用 baseline 或仍以 overlay treatment 描述自己，CI 會失敗。
+
+## 9. Review gate
+
+人工驗收使用 `docs/mascot-happy-p1-review.md`，核心順序為：
+
+1. 同一角色 DNA。
+2. 靜態畫面本身已是 happy。
+3. 情緒強度低於 celebrate。
+4. 48 / 64 / 96 / 160px 均可讀。
+5. 放回答對 feedback 時自然、不遮擋學習內容。
 
 通過人工 review 後：
 
 1. 將 manifest/runtime 的 `happy.artStatus` 改為 `production`。
-2. 執行 `npm run mascot:check`。
-3. 執行 `npm test`。
-4. 更新 Issue #4 checklist。
+2. 執行 `npm run mascot:happy:p1`。
+3. 執行 `npm run mascot:check`。
+4. 執行 `npm test`。
+5. 將 PR #5 由 draft 轉為 ready for review。
+6. 更新 Issue #4 checklist。
 
 如果 `artStatus=production` 後 SVG 仍直接引用 `mascot-moling.svg`，validator 會失敗，這是刻意的防線。
 
-## 9. 完成定義
+## 10. 完成定義
 
 `happy` 只有在以下全部成立後才算完成：
 
@@ -114,6 +128,6 @@ Artwork 初放入 branch 時，先不要把 `artStatus` 改成 `production`。
 - 48 / 64 / 96 / 160px visual QA 通過。
 - 未越界成 celebrate。
 - `happy.artStatus = production`。
-- `npm run mascot:check` 及 `npm test` 全綠。
+- `npm run mascot:happy:p1`、`npm run mascot:check` 及 `npm test` 全綠。
 
 Tracks #4 and #3.
