@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -19,6 +20,13 @@ async function readJson(response, label) {
   try { data = await response.json(); }
   catch (_) { throw new Error(`${label} returned non-JSON (${response.status})`); }
   return data;
+}
+async function readTextAsset(pathname, label) {
+  const response = await fetch(`${baseUrl}${pathname}`, { headers: { accept: 'text/javascript,*/*;q=0.8' } });
+  if (!response.ok) throw new Error(`${label} unavailable (${response.status})`);
+  const text = await response.text();
+  check(text.length > 100, `${label} returned an unexpectedly small payload`);
+  return text;
 }
 async function api(pathname, token, init = {}) {
   return fetch(`${baseUrl}${pathname}`, {
@@ -67,6 +75,27 @@ async function firestoreDocument(projectId, documentPath, token) {
 }
 
 console.log(`Smoke testing ${baseUrl}`);
+
+const [calibrationSource, rotationSource, difficultySource] = await Promise.all([
+  readTextAsset('/difficulty-calibration.js', 'difficulty calibration asset'),
+  readTextAsset('/question-rotation.js', 'question rotation asset'),
+  readTextAsset('/question-difficulty.js', 'question difficulty asset')
+]);
+const calibrationContext = { console };
+vm.createContext(calibrationContext);
+vm.runInContext(calibrationSource, calibrationContext, { filename: 'production/difficulty-calibration.js' });
+const calibration = calibrationContext.ManjingoDifficultyCalibration;
+check(calibration && typeof calibration.recordTierOutcome === 'function' && typeof calibration.tierForMastery === 'function', 'deployed calibration API is missing');
+let strongApplication = calibration.emptyTierStats();
+for (let i = 0; i < 4; i += 1) strongApplication = calibration.recordTierOutcome(strongApplication, 'application', true, '2026-09-11T00:00:00.000Z');
+check(calibration.tierForMastery(68, { tierStats: strongApplication }) === 'transfer', 'deployed calibration does not promote sustained application performance');
+let weakTransfer = calibration.emptyTierStats();
+for (const correct of [false, true, false, false]) weakTransfer = calibration.recordTierOutcome(weakTransfer, 'transfer', correct, '2026-09-11T00:00:00.000Z');
+check(calibration.tierForMastery(82, { tierStats: weakTransfer }) === 'application', 'deployed calibration does not protect a struggling transfer learner');
+check(rotationSource.includes('difficulty-calibration.js'), 'deployed question rotation does not load calibration');
+check(rotationSource.indexOf('difficulty-calibration.js') < rotationSource.indexOf('question-difficulty.js'), 'deployed calibration loads after difficulty selection');
+check(difficultySource.includes("ManjingoDifficultyCalibration"), 'deployed question difficulty does not consume calibration');
+console.log('✓ deployed adaptive calibration assets and conservative promotion/demotion rules');
 
 const healthResponse = await api('/api/health');
 const health = await readJson(healthResponse, 'health');
