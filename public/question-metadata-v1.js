@@ -1,0 +1,252 @@
+(function(root,factory){
+'use strict';
+let curriculum=root&&root.ManjingoCurriculumV1;
+if(typeof module==='object'&&module.exports){
+  curriculum=require('./curriculum-v1.js');
+  module.exports=factory(curriculum);
+  return;
+}
+root.ManjingoQuestionMetadataV1=factory(curriculum);
+})(typeof globalThis!=='undefined'?globalThis:this,function(curriculum){
+'use strict';
+
+const VERSION='question-metadata-v1';
+
+// These questions live under article-specific legacy KPs, but the question itself
+// tests a transferable language skill and should survive the curriculum migration.
+const QUESTION_OVERRIDES={
+ p2q001:{mode:'core',skillIds:['lex.context-inference']},
+ p2q002:{mode:'core',skillIds:['trans.integrated']},
+ p2q003:{mode:'core',skillIds:['lex.polysemy']},
+ p2q004:{mode:'core',skillIds:['lex.polysemy']},
+ p2q008:{mode:'core',skillIds:['lex.context-inference']},
+ p2q009:{mode:'core',skillIds:['lex.polysemy']},
+ p2q013:{mode:'core',skillIds:['lex.polysemy']},
+ p2q015:{mode:'core',skillIds:['lex.context-inference']},
+ p2q016:{mode:'core',skillIds:['lex.polysemy']},
+ p2q018:{mode:'core',skillIds:['lex.context-inference']},
+ p2q027:{mode:'core',skillIds:['lex.context-inference']},
+ p2q029:{mode:'core',skillIds:['fw.yu']},
+ p2q031:{mode:'core',skillIds:['read.referent-tracking']},
+ p2q034:{mode:'core',skillIds:['lex.causative']},
+ p2q041:{mode:'core',skillIds:['lex.ancient-modern']},
+ p2q043:{mode:'core',skillIds:['lex.context-inference']},
+ p2q057:{mode:'core',skillIds:['lex.context-inference']},
+ p2q058:{mode:'core',skillIds:['lex.ancient-modern']},
+ p2q060:{mode:'core',skillIds:['lex.polysemy']},
+ p2q065:{mode:'core',skillIds:['lex.polysemy']},
+ p2q071:{mode:'core',skillIds:['syn.object-fronting']},
+ p2q072:{mode:'core',skillIds:['syn.object-fronting']},
+ p2q085:{mode:'core',skillIds:['lex.word-class-shift']},
+ p2q089:{mode:'core',skillIds:['lex.polysemy']},
+ p2q095:{mode:'core',skillIds:['lex.polysemy']},
+ cap1q018:{mode:'core',skillIds:['read.referent-tracking']},
+ cap1q025:{mode:'core',skillIds:['fw.nai']},
+ cap1q026:{mode:'core',skillIds:['fw.qi','read.referent-tracking']},
+ cap1q027:{mode:'core',skillIds:['lex.polysemy']},
+ cap1q028:{mode:'core',skillIds:['lex.polysemy']}
+};
+
+// Legacy CROSS means "cross-text skill", not "no source". Resolve the real
+// source when it is known so a source-diversity planner cannot hide repeated
+// set-text exposure inside the CROSS bucket.
+const SOURCE_TEXT_OVERRIDES={
+ q004:'chenshe-shijia',
+ q005:'lianpo-linxiangru',
+ p3q001:'chenshe-shijia',
+ p3q003:'caogui',
+ p3q005:'lunyu',
+ p3q006:'yuwosuoyu',
+ p3q007:'hezhouji',
+ p3q009:'yueyanglou',
+ p3q010:'tongqu',
+ p3q011:'yueyanglou',
+ p3q013:'xunzi-quanxue',
+ p3q014:'xunzi-quanxue',
+ p3q015:'shengyouhuan',
+ p3q018:'maqianlishuo',
+ p3q019:'maqianlishuo',
+ p3q021:'lianpo-linxiangru',
+ p3q022:'chenshe-shijia',
+ p3q025:'lianpo-linxiangru',
+ p3q026:'liuguolun',
+ p3q027:'lingguanzhuanxu',
+ p3q029:'yueyanglou',
+ p3q030:'loushiming',
+ p3q032:'loushiming',
+ p3q034:'caogui',
+ p3q038:'caogui',
+ p3q041:'yueyanglou',
+
+ lpq005:'ailianshuo',
+ lpq006:'caogui',
+ lpq007:'zuiwengtingji',
+ lpq008:'lunyu',
+ lpq009:'caogui',
+ lpq010:'lang',
+ lpq011:'xiaoshitan',
+ lpq012:'chushibiao',
+ lpq013:'caogui',
+ lpq014:'liji-tangong',
+ lpq015:'yugong-yishan',
+ lpq016:'yugong-yishan',
+ lpq017:'maqianlishuo',
+ lpq020:'lunyu',
+ lpq021:'yueyanglou',
+ lpq066:'shengyouhuan',
+ lpq036:'lianpo-linxiangru',
+ lpq037:'quyuan-liezhuan',
+ lpq039:'lingguanzhuanxu',
+ lpq040:'shishuo',
+ lpq042:'caogui',
+ lpq043:'taohuayuan',
+ lpq045:'loushiming',
+ lpq064:'longzhongdui',
+ lpq065:'shizhongshanji',
+ lpq047:'hongmenyan'
+};
+
+// Distinct question IDs that visibly reuse the same source sentence are grouped
+// so later scheduling can cool down the sentence, not merely the question ID.
+const SOURCE_SENTENCE_GROUPS={
+ q001:'sentence:yueyanglou:tengzijing-zhe-shou-baling',
+ cap1q001:'sentence:yueyanglou:tengzijing-zhe-shou-baling',
+ cap1q002:'sentence:yueyanglou:tengzijing-zhe-shou-baling',
+ cap1q003:'sentence:yueyanglou:tengzijing-zhe-shou-baling',
+
+ q008:'sentence:yueyanglou:xianyou-houle',
+ cap1q004:'sentence:yueyanglou:xianyou-houle',
+ cap1q005:'sentence:yueyanglou:xianyou-houle',
+ cap1q006:'sentence:yueyanglou:xianyou-houle',
+ lpq053:'sentence:yueyanglou:xianyou-houle',
+
+ q006:'sentence:yueyanglou:wei-siren-wushuiyugui',
+ q010:'sentence:yueyanglou:wei-siren-wushuiyugui',
+ cap1q013:'sentence:yueyanglou:wei-siren-wushuiyugui',
+ cap1q014:'sentence:yueyanglou:wei-siren-wushuiyugui',
+ cap1q015:'sentence:yueyanglou:wei-siren-wushuiyugui',
+ p3q029:'sentence:yueyanglou:wei-siren-wushuiyugui',
+ p3q041:'sentence:yueyanglou:wei-siren-wushuiyugui',
+
+ p3q009:'sentence:yueyanglou:buyi-wuxi-jibei',
+ lpq052:'sentence:yueyanglou:buyi-wuxi-jibei',
+
+ p2q071:'sentence:loushiming:helouzhiyou',
+ p2q072:'sentence:loushiming:helouzhiyou',
+ lpq045:'sentence:loushiming:helouzhiyou',
+ p3q030:'sentence:loushiming:helouzhiyou'
+};
+
+const SET_TEXT_IDS=new Set([
+ 'yueyanglou','chushibiao','yuwosuoyu','shengyouhuan','caogui','zouji',
+ 'taohuayuan','loushiming','ailianshuo','maqianlishuo','xiaoshitan'
+]);
+const CORE_ACTIONS=new Set(['retain','refactor','merge']);
+
+function migrationFor(kpId){
+  if(!curriculum)return null;
+  if(typeof curriculum.migrationFor==='function')return curriculum.migrationFor(kpId);
+  return curriculum.migration&&curriculum.migration[String(kpId)]||null;
+}
+
+function normalizeSentence(value){
+  return String(value||'')
+    .replace(/[\s\u3000，。！？；：、,.!?;:“”"'（）()《》〈〉【】\[\]—…]/g,'')
+    .toLowerCase();
+}
+
+function quotedSegments(text){
+  const source=String(text||''),out=[];
+  const re=/「([^」]+)」/g;
+  let match;
+  while((match=re.exec(source)))if(match[1])out.push(match[1]);
+  return out;
+}
+
+function inferSourceSentenceId(question){
+  const id=String(question&&question.id||'');
+  if(SOURCE_SENTENCE_GROUPS[id])return SOURCE_SENTENCE_GROUPS[id];
+  const segments=quotedSegments(question&&question.q);
+  if(!segments.length)return null;
+  const longest=segments.slice().sort((a,b)=>normalizeSentence(b).length-normalizeSentence(a).length)[0];
+  const normalized=normalizeSentence(longest);
+  return normalized.length>=4?'sentence:'+normalized:null;
+}
+
+function resolvedSourceTextId(question){
+  const id=String(question&&question.id||'');
+  return SOURCE_TEXT_OVERRIDES[id]||String(question&&question.textId||'')||null;
+}
+
+function inferSourceKind(question){
+  const sourceTextId=resolvedSourceTextId(question);
+  if(!sourceTextId||sourceTextId==='CROSS')return'mixed';
+  return SET_TEXT_IDS.has(sourceTextId)?'set-text':'classical-canon';
+}
+
+function defaultTransferLevel(question,mode){
+  if(mode!=='core')return 0;
+  return String(question&&question.textId||'')==='CROSS'?1:0;
+}
+
+function classify(question){
+  const id=String(question&&question.id||'');
+  const kpId=String(question&&question.kpId||'');
+  const override=QUESTION_OVERRIDES[id]||null;
+  const migration=migrationFor(kpId);
+  let mode='unmapped',skillIds=[];
+
+  if(override){
+    mode=override.mode;
+    skillIds=override.skillIds.slice();
+  }else if(migration){
+    skillIds=Array.isArray(migration.targetSkillIds)?migration.targetSkillIds.slice():[];
+    if(CORE_ACTIONS.has(migration.action))mode='core';
+    else if(migration.action==='advanced-reading')mode='advanced';
+    else if(migration.action==='optional-set-text')mode='set-text';
+  }
+
+  return{
+    curriculumMode:mode,
+    skillIds,
+    normalCore:mode==='core',
+    sourceTextId:resolvedSourceTextId(question),
+    legacyTextId:String(question&&question.textId||'')||null,
+    sourceSentenceId:inferSourceSentenceId(question),
+    sourceKind:inferSourceKind(question),
+    transferLevel:override&&Number.isInteger(override.transferLevel)?override.transferLevel:defaultTransferLevel(question,mode)
+  };
+}
+
+function annotate(question){return{...question,...classify(question)}}
+function annotateAll(questions){return(Array.isArray(questions)?questions:[]).map(annotate)}
+function normalCoreQuestions(questions){return annotateAll(questions).filter(q=>q.normalCore)}
+
+function audit(questions){
+  const annotated=annotateAll(questions),byMode={},bySkill={},bySourceText={};
+  for(const q of annotated){
+    byMode[q.curriculumMode]=(byMode[q.curriculumMode]||0)+1;
+    const source=q.sourceTextId||'UNKNOWN';
+    bySourceText[source]=(bySourceText[source]||0)+1;
+    for(const skillId of q.skillIds)bySkill[skillId]=(bySkill[skillId]||0)+1;
+  }
+  return{total:annotated.length,byMode,bySkill,bySourceText};
+}
+
+return{
+  VERSION,
+  QUESTION_OVERRIDES,
+  SOURCE_TEXT_OVERRIDES,
+  SOURCE_SENTENCE_GROUPS,
+  SET_TEXT_IDS,
+  normalizeSentence,
+  quotedSegments,
+  inferSourceSentenceId,
+  resolvedSourceTextId,
+  classify,
+  annotate,
+  annotateAll,
+  normalCoreQuestions,
+  audit
+};
+});
