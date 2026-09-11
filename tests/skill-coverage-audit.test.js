@@ -30,10 +30,22 @@ function coverage(){
 
 test('skill coverage audit reports current transfer-content debt without hiding zero-coverage skills',()=>{
  const report=coverage(),core=metadata.normalCoreQuestions(loadCatalog().questions);
- assert.equal(core.length,151);
+ assert.equal(core.length,177);
  assert.equal(report.length,curriculum.coreSkills().length);
  assert.ok(report.some(x=>x.questions===0),'zero-coverage core skills must stay visible in the audit');
  assert.ok(report.some(x=>x.gaps.length===0),'audit should distinguish mature-enough skills from content debt');
  const deficits=report.filter(x=>x.gaps.length).sort((a,b)=>a.questions-b.questions||a.sources-b.sources||a.id.localeCompare(b.id));
  console.log('SKILL_COVERAGE_AUDIT='+JSON.stringify({totalCoreQuestions:core.length,coreSkills:report.length,deficitSkills:deficits.length,deficits}));
+});
+
+test('transfer pack 02 clears the six priority coverage gaps',()=>{
+ const byId=new Map(coverage().map(x=>[x.id,x]));
+ for(const id of ['trans.lexical-fidelity','trans.reorder','trans.integrated','fw.nai','lex.causative','read.referent-tracking']){
+  const row=byId.get(id);
+  assert.ok(row,`missing coverage row for ${id}`);
+  assert.deepEqual(row.gaps,[],`${id} still below quality floor: ${row.gaps.join(', ')}`);
+  assert.ok(row.questions>=6,`${id} needs at least six questions`);
+  assert.ok(row.sources>=3,`${id} needs at least three named sources`);
+  assert.ok(row.unseen>=2,`${id} needs at least two non-set-text questions`);
+ }
 });
