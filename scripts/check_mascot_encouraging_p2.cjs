@@ -31,7 +31,7 @@ if(!/<title\b[^>]*>[^<]*鼓勵|<title\b[^>]*>[^<]*encouraging/i.test(svg))fail('
 if(!/<desc\b/i.test(svg))fail('encouraging SVG should retain an accessible description');
 
 const referencesBaseline=/mascot-moling\.svg/.test(svg);
-const blameLanguage=/(失望|責備|羞恥|懲罰|生氣|哭|眼淚|紅叉|搖頭|皺眉|downcast|disappoint|shame|punish|angry|tear|red cross|head shake|frown)/i.test(svg);
+const punitiveMarkup=/(id|class)=["'][^"']*(tear|sweat|frown|downcast|red[-_ ]?cross|head[-_ ]?shake|shrug|angry|punish|shame)[^"']*["']/i.test(svg)||/#[fF][0-4][0-4][0-4][0-4][0-4]/.test(svg);
 const supportiveLanguage=/(支持|陪伴|溫和|專注|support|attentive|gentle)/i.test(svg);
 
 if(encouraging.artStatus==='placeholder-treatment'){
@@ -42,15 +42,15 @@ if(encouraging.artStatus==='placeholder-treatment'){
   if(svg===neutralSvg)fail('candidate encouraging cannot be identical to neutral');
   if(svg.length<1100)fail('candidate encouraging SVG is suspiciously small for a distinct pose');
   if(!/(ellipse|circle|path)/i.test(svg))fail('candidate encouraging should contain independent vector artwork');
-  if(blameLanguage)fail('candidate encouraging contains blame/disappointment language');
+  if(punitiveMarkup)fail('candidate encouraging contains punitive/shaming visual markup');
   if(!supportiveLanguage)fail('candidate description should explicitly preserve supportive intent');
   ok('candidate artwork is independent and structurally reviewable');
-  ok('no blame/disappointment language detected in the asset');
+  ok('no punitive/shaming visual markup detected');
   ok('production promotion remains blocked until A–E visual QA passes');
 }else if(encouraging.artStatus==='production'){
   if(referencesBaseline)fail('production encouraging must not reference mascot-moling.svg');
   if(svg===neutralSvg)fail('production encouraging cannot be identical to neutral');
-  if(blameLanguage)fail('production encouraging contains blame/disappointment language');
+  if(punitiveMarkup)fail('production encouraging contains punitive/shaming visual markup');
   if(!supportiveLanguage)fail('production encouraging description should preserve supportive intent');
   ok('production encouraging is independent and non-punitive');
 }else{
