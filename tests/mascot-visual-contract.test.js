@@ -36,17 +36,25 @@ test('runtime and manifest stay in exact parity including artwork readiness',()=
   });
   assert.equal(runtime.isProductionArt('neutral'),true);
   assert.equal(runtime.isProductionArt('happy'),false);
+  assert.equal(runtime.descriptor('happy').artStatus,'candidate');
   assert.deepEqual(runtime.productionQueue().map(state=>state.id),expectedPriority);
 });
 
-test('every manifest asset exists and preserves the approved baseline artwork until production replacement',()=>{
+test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and production assets',()=>{
   manifest.states.forEach(state=>{
     const file='public/'+state.asset.replace(/^\.\//,'');
     assert.equal(exists(file),true,file+' should exist');
     const svg=read(file);
     assert.match(svg,/viewBox="0 0 215 320"/);
-    if(state.artStatus!=='production')assert.match(svg,/\.\.\/mascot-moling\.svg/);
+    const referencesBaseline=/\.\.\/mascot-moling\.svg/.test(svg);
+    if(state.artStatus==='placeholder-treatment'||state.artStatus==='provisional'||state.artStatus==='baseline-approved')assert.equal(referencesBaseline,true,state.id+' should still be baseline-derived');
+    if(state.artStatus==='candidate'||state.artStatus==='production')assert.equal(referencesBaseline,false,state.id+' should be independent from the legacy baseline');
   });
+  const happy=manifest.states.find(state=>state.id==='happy');
+  assert.equal(happy.artStatus,'candidate');
+  const happySvg=read('public/mascot/moling-happy.svg');
+  assert.match(happySvg,/<(?:path|ellipse|circle)\b/);
+  assert.match(happySvg,/happy 候選 artwork/);
 });
 
 test('32px uses a dedicated compact head crop instead of shrinking the full body',()=>{
@@ -67,6 +75,7 @@ test('visual QA character sheet exposes production readiness and priority',()=>{
   assert.match(sheet,/data-art-status/);
   assert.match(sheet,/art-status/);
   assert.match(sheet,/placeholder-treatment/);
+  assert.match(sheet,/candidate/);
   assert.match(sheet,/productionPriority/);
   sizes.forEach(size=>assert.match(sheet,new RegExp(String(size))));
   assert.match(sheet,/prefers-reduced-motion:reduce/);
