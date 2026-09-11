@@ -42,12 +42,19 @@ test('completion markup uses state-specific mascot asset instead of the legacy f
   assert.match(good,/\.\/mascot\/moling-happy\.svg/);
 });
 
-test('all six v1 mascot state assets exist and preserve the selected baseline artwork',()=>{
+test('all six v1 mascot state assets exist while candidate artwork can graduate from the baseline',()=>{
+  const baselineDerived=new Set(['neutral','celebrate','encouraging','thinking','determined']);
   ['neutral','happy','celebrate','encouraging','thinking','determined'].forEach(state=>{
     const file=`public/mascot/moling-${state}.svg`;
     assert.equal(exists(file),true,file+' should exist');
-    assert.match(read(file),/\.\.\/mascot-moling\.svg/);
+    const svg=read(file);
+    assert.match(svg,/viewBox="0 0 215 320"/);
+    if(baselineDerived.has(state))assert.match(svg,/\.\.\/mascot-moling\.svg/);
   });
+  const happy=read('public/mascot/moling-happy.svg');
+  assert.doesNotMatch(happy,/\.\.\/mascot-moling\.svg/);
+  assert.match(happy,/<(?:path|ellipse|circle)\b/);
+  assert.match(happy,/happy 候選 artwork/);
 });
 
 test('thinking and determined states are connected to semantic learning UI',()=>{
