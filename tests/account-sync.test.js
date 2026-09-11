@@ -33,6 +33,24 @@ test('question rotation merge keeps local recency then appends remote unique ids
  assert.deepEqual(Array.from(merged.kp),['q5','q4','q3','q2','q1']);
 });
 
+test('ordinary per-KP rotation remains capped at eight across devices',()=>{
+ const local={kp:Array.from({length:7},(_,i)=>'l'+i)};
+ const remote={kp:Array.from({length:7},(_,i)=>'r'+i)};
+ const merged=sync.mergeRotation(local,remote);
+ assert.equal(merged.kp.length,sync.MAX_ROTATION_PER_KP);
+ assert.equal(sync.MAX_ROTATION_PER_KP,8);
+});
+
+test('source sentence cooldown keeps up to 24 entries across devices',()=>{
+ const local={__sourceSentences:Array.from({length:16},(_,i)=>'local:'+i)};
+ const remote={__sourceSentences:Array.from({length:16},(_,i)=>'remote:'+i)};
+ const merged=sync.mergeRotation(local,remote);
+ assert.equal(sync.SENTENCE_HISTORY_KEY,'__sourceSentences');
+ assert.equal(sync.MAX_SENTENCE_HISTORY,24);
+ assert.equal(merged.__sourceSentences.length,24);
+ assert.deepEqual(merged.__sourceSentences.slice(0,3),['local:0','local:1','local:2']);
+});
+
 test('gamification merge never moves total XP or streak backwards',()=>{
  const merged=sync.mergeGame({totalXp:120,todayXp:12,todayDate:'2026-09-10',streak:6},{totalXp:100,todayXp:20,todayXpDate:'2026-09-10',streak:5});
  assert.equal(merged.totalXp,120);

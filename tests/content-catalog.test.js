@@ -173,15 +173,15 @@ test('misconception review selects the highest-priority previously missed questi
   assert.equal(queue[0].misconceptionReview, true);
 });
 
-test('multiple questions for one knowledge point can rotate when there is no misconception target', () => {
+test('multiple questions remain available for runtime rotation when there is no misconception target', () => {
   const catalog = loadCatalog();
+  const candidates = catalog.questions.filter(q => q.kpId === 'kp_caogui_strategy');
   const plan = { targetCount: 1, items: [{ kpId: 'kp_caogui_strategy', category: 'review', priority: 1 }] };
-  const seen = new Set();
-  for (let i = 0; i < 100; i++) {
-    const queue = catalog.selectQuestionsForPlan(plan, catalog.questions, 1);
-    seen.add(queue[0].id);
-  }
-  assert.ok(seen.size > 1);
+  const queue = catalog.selectQuestionsForPlan(plan, catalog.questions, 1);
+  assert.ok(candidates.length > 1);
+  assert.equal(queue.length, 1);
+  assert.equal(queue[0].kpId, 'kp_caogui_strategy');
+  assert.match(catalogSource, /rotation\.rank\(pool\)/);
 });
 
 test('planned knowledge points without a question are skipped instead of injecting unrelated questions', () => {

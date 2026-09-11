@@ -80,3 +80,36 @@ test('duplicate question ids are never emitted even during fallback', () => {
   const selected = diversity.select(candidates, 3);
   assert.deepEqual(selected.map(x => x.id), ['same','other']);
 });
+
+test('choose considers questions already selected in the current session', () => {
+  const selected = [q('y1','yueyanglou','yy:1'), q('y2','yueyanglou','yy:2')];
+  const candidates = [q('y3','yueyanglou','yy:3'), q('c1','caogui','cg:1')];
+  assert.equal(diversity.choose(candidates, selected).id, 'c1');
+});
+
+test('choose avoids a repeated sentence even when the question id differs', () => {
+  const selected = [q('old-a','yueyanglou','sentence:yueyanglou:wei')];
+  const candidates = [
+    q('old-b','yueyanglou','sentence:yueyanglou:wei'),
+    q('fresh','lunyu','sentence:lunyu:1')
+  ];
+  assert.equal(diversity.choose(candidates, selected).id, 'fresh');
+});
+
+test('choose respects recent cross-session sentence history', () => {
+  const candidates = [
+    q('old','caogui','sentence:caogui:old'),
+    q('fresh','lunyu','sentence:lunyu:fresh')
+  ];
+  assert.equal(diversity.choose(candidates, [], {
+    avoidSentenceIds:['sentence:caogui:old']
+  }).id, 'fresh');
+});
+
+test('choose falls back instead of dropping a pedagogically required candidate', () => {
+  const selected = [q('y1','yueyanglou','yy:1'), q('y2','yueyanglou','yy:2')];
+  const candidates = [q('required','yueyanglou','sentence:yueyanglou:required')];
+  assert.equal(diversity.choose(candidates, selected, {
+    avoidSentenceIds:['sentence:yueyanglou:required']
+  }).id, 'required');
+});
