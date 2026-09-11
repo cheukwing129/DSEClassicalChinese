@@ -30,10 +30,10 @@ test('mascot runtime normalizes unknown states and owns compact-size selection',
 test('mascot runtime exposes production artwork readiness in priority order',()=>{
   assert.equal(runtime.isProductionArt('neutral'),true);
   assert.equal(runtime.isProductionArt('happy'),true);
-  assert.equal(runtime.isProductionArt('encouraging'),false);
+  assert.equal(runtime.isProductionArt('encouraging'),true);
   assert.equal(runtime.descriptor('happy').artStatus,'production');
-  assert.equal(runtime.descriptor('encouraging').artStatus,'candidate');
-  assert.deepEqual(runtime.productionQueue().map(state=>state.id),['encouraging','thinking','determined','celebrate']);
+  assert.equal(runtime.descriptor('encouraging').artStatus,'production');
+  assert.deepEqual(runtime.productionQueue().map(state=>state.id),['thinking','determined','celebrate']);
 });
 
 test('semantic lesson icon tagging is explicit rather than styling every lesson icon',()=>{
