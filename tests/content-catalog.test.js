@@ -27,11 +27,11 @@ function loadCatalog() {
   return loadContext().window.ManjingoContent;
 }
 
-test('reviewed local catalog contains 242 questions across the 59 teachable knowledge points', () => {
+test('reviewed local catalog contains 268 questions across the 59 teachable knowledge points', () => {
   const catalog = loadCatalog();
   const kpIds = catalog.getKnowledgePointIds({ teachableOnly: true });
   assert.equal(catalog.catalogVersion, 'reviewed-v1');
-  assert.equal(catalog.questions.length, 242);
+  assert.equal(catalog.questions.length, 268);
   assert.equal(kpIds.length, 59);
   assert.ok(kpIds.includes('sx_006'));
   assert.ok(kpIds.includes('kp_caogui_strategy'));
@@ -55,16 +55,18 @@ test('capacity pack keeps only validated explained questions', () => {
   }
 });
 
-test('first transfer pack adds 20 source-aware unseen-context questions', () => {
+test('transfer packs contain 46 source-aware unseen-context questions', () => {
   const context = loadContext();
   const pack = context.window.ManjingoQuestionPackTransfer01;
-  const allowedKps = new Set(['kp_virtual_zhi','kp_virtual_er','kp_virtual_yi','kp_virtual_yu','kp_virtual_qi','kp_virtual_ze']);
+  const allowedKps = new Set(['kp_virtual_zhi','kp_virtual_er','kp_virtual_yi','kp_virtual_yu','kp_virtual_qi','kp_virtual_ze','kp_p3_translation','cy_006','kp_p3_ellipsis']);
   assert.equal(pack.kind, 'transfer-core');
-  assert.equal(pack.questions.length, 20);
-  assert.equal(new Set(pack.questions.map(q => q.id)).size, 20);
+  assert.equal(pack.questions.length, 46);
+  assert.equal(pack.questions.filter(q => /^tr1q\d{3}$/.test(q.id)).length, 20);
+  assert.equal(pack.questions.filter(q => /^tr2q\d{3}$/.test(q.id)).length, 26);
+  assert.equal(new Set(pack.questions.map(q => q.id)).size, 46);
   for (const q of pack.questions) {
-    assert.match(q.id, /^tr1q\d{3}$/);
-    assert.ok(allowedKps.has(q.kpId), `${q.id}: transfer pack must attach to a core language KP`);
+    assert.match(q.id, /^tr[12]q\d{3}$/);
+    assert.ok(allowedKps.has(q.kpId), `${q.id}: transfer pack must attach to a compatible core KP`);
     assert.equal(q.textId, 'CROSS');
     assert.ok(Array.isArray(q.skillIds) && q.skillIds.length > 0, `${q.id}: explicit skillIds required`);
     assert.ok(String(q.sourceTextId || '').trim(), `${q.id}: real source required`);
