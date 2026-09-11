@@ -20,7 +20,7 @@ Artwork 必須與這句話的情緒完全一致。
 
 ## 2. 目前狀態
 
-P2 已有按產品負責人確認角色參考重製的立體 **candidate v3**：
+P2 已有按產品負責人確認角色參考重製的立體 **candidate v4**：
 
 `public/mascot/moling-encouraging.svg`
 
@@ -28,9 +28,9 @@ P2 已有按產品負責人確認角色參考重製的立體 **candidate v3**：
 
 - `encouraging.artStatus = candidate`；
 - 舊扁平 v2 已被產品負責人否決，不可升 production；
-- v3 使用透明 raster-backed 3D artwork，保留米白面部、大眼睛、金色雲紋、墨冠與獨立墨滴；
-- QA 的 Gate A 身份錨點改為 `moling-reference-approved.svg`，不再使用已否決的扁平 neutral／happy；
-- v3 使用溫和眼神、閉合小笑容、輕微前傾與圓潤開掌姿勢；
+- v4 使用透明 raster-backed 3D artwork；取消米白／肉色面罩，以連續炭灰至深墨藍漸變、豆豆眼、腮紅、金色雲紋、墨冠與獨立墨滴建立身份；
+- 現有 cream-face reference 只作方向比較；正式 Gate A 需另建全墨 neutral anchor；
+- v4 使用清楚豆豆眼、微歪小笑容、笨拙圓潤開掌與穩定站姿；
 - 已建立 P2 專用 validator、size QA 與 wrong-answer context QA page；
 - 尚未升 production，仍需完成最後 A–E 人工 review。
 
@@ -43,9 +43,10 @@ Artwork lifecycle：
 以產品負責人確認的立體角色參考為唯一身份錨點：
 
 - 深色立體墨質與圓潤身體；
-- 米白色面部區域與巨大暖棕黑眼睛；
+- 全墨色連續表面，不設米白／肉色面罩；
+- 眼周以較淺炭灰漸變襯托清楚豆豆眼及亮點；
 - 兩側金色雲紋；
-- 流動墨冠及獨立墨滴；
+- 流動墨冠及獨立墨滴；墨冠是液態表演元素，須隨動作方向轉動、拉伸、壓縮或偏移，不可在所有姿勢固定如帽子；
 - 215×320 透明畫布（內嵌透明 WebP）；
 - 親切、聰明、有韌性，不變成老師、裁判或幼兒角色；
 - 不增加大型道具、服裝或其他改變角色身份的元素。
@@ -69,7 +70,7 @@ Artwork lifecycle：
 
 ## 5. 姿勢方向
 
-P2 v3 採用：
+P2 v4 採用：
 
 - 身體輕微向學生前傾，但重心仍穩；
 - 一手／一臂在胸口高度向前伸出，像「我們再看這裏」；
@@ -116,7 +117,7 @@ P2 必須用真實產品尺寸驗收，而不是只看大圖：
 
 32px 仍使用共用 `moling-head.svg`，不作 P2 pose 驗收。
 
-v3 已做 42px 初步 raster QA；仍須在部署頁完成 34 / 42 / 48 / 64 / 96 / 160px QA；34 / 42px 以眼神與小笑容為主要訊號，手勢作次要訊號。
+v4 已做 34 / 42px 本地 raster QA；仍須在部署頁完成 34 / 42 / 48 / 64 / 96 / 160px QA；34 / 42px 以眼神與小笑容為主要訊號，手勢作次要訊號。
 
 ## 8. Gate A–E
 
