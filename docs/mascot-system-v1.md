@@ -74,11 +74,11 @@
 ## 4. 尺寸規格
 
 ### 32px
-- 只用頭部／極簡輪廓版本。
+- 使用 `moling-head.svg` 頭部／極簡輪廓版本，不把完整身體硬縮到 32px。
 - 不顯示細小手勢、裝飾或文字。
 
 ### 48px
-- 可顯示頭部＋簡化上半身。
+- 可顯示頭部＋簡化上半身或完整角色輪廓。
 - 適合 toast、feedback、列表狀態。
 
 ### 64px
@@ -93,28 +93,24 @@
 - 可加入完整姿勢與情境配件。
 - 適合 onboarding、里程碑、空狀態插圖。
 
-## 5. 建議資產結構
+## 5. 正式資產結構
 
 ```text
 public/
+  mascot-moling.svg          # approved baseline artwork
+  mascot-sheet.html          # visual QA character sheet
   mascot/
+    manifest.json            # machine-readable v1 state contract
     moling-neutral.svg
     moling-happy.svg
     moling-celebrate.svg
     moling-encouraging.svg
     moling-thinking.svg
     moling-determined.svg
-    moling-head.svg
-    moling-app-icon.svg
+    moling-head.svg           # compact 32px crop
 ```
 
-暫時保留：
-
-```text
-public/mascot-moling.svg
-```
-
-作為 legacy/default asset，待所有現有引用完成遷移後才考慮移除。
+暫時保留 `public/mascot-moling.svg` 作 baseline artwork。主要 UI 不再應直接依賴這個 legacy/default 路徑，而是透過正式 state asset 使用角色。
 
 ## 6. UI 使用規則
 
@@ -164,14 +160,22 @@ public/mascot-moling.svg
 - 太多網絡潮語
 - 每次互動都出現長句
 
-## 9. 第一階段實作順序
+## 9. v1 實作狀態
 
-1. 保留現有 `mascot-moling.svg` 作 baseline。
-2. 先產出 `neutral`、`happy`、`celebrate` 三個正式資產。
-3. 首先接入首頁與 session completion，驗證實際尺寸與辨識度。
-4. 再加入 `encouraging`、`thinking`、`determined`。
-5. 加入簡單 asset mapping，讓 UI 用狀態名稱選擇角色，而不是硬編碼檔名。
-6. 補回歸測試，確保 mascot 載入失敗時不影響作答流程。
+已完成：
+
+1. 保留 `mascot-moling.svg` 作 baseline。
+2. 建立 `neutral`、`happy`、`celebrate`、`encouraging`、`thinking`、`determined` 六個正式資產。
+3. 接入首頁、答題 feedback、session completion、概念學習及 streak UI。
+4. 建立 `manifest.json`，固定 state id、用途、資產路徑及尺寸契約。
+5. 建立 32px 專用 `moling-head.svg`，避免完整角色在最小尺寸失去辨識度。
+6. 建立 `/mascot-sheet.html`，可一次檢查六狀態 × 32 / 48 / 64 / 96 / 160px。
+7. 補回歸測試，確保 state assets、尺寸契約、reduced-motion 與主要 UI 引用不回退。
+
+仍待 production artwork 階段深化：
+
+- 將目前「baseline + 克制點綴」逐步升級為真正有不同眼神／手勢／姿勢的 state illustrations。
+- 優先處理 `happy`、`encouraging`、`thinking`、`determined` 的靜態辨識差異。
 
 ## 10. v1 驗收條件
 
@@ -183,7 +187,19 @@ public/mascot-moling.svg
 - mascot asset 載入失敗時，學習流程仍正常。
 - 主要 UI 不直接依賴單一 legacy 檔名。
 
-## 11. v2 候選
+## 11. Visual QA 流程
+
+設計或程式修改 mascot 後，至少做以下檢查：
+
+1. 在 preview deployment 開啟 `/mascot-sheet.html`。
+2. 逐一看六個 states 在 32 / 48 / 64 / 96 / 160px 的輪廓與透明邊緣。
+3. 以 360–430px viewport 檢查 feedback、lesson、streak 不會擠壓文字或 CTA。
+4. 開啟 reduced-motion 偏好，確認資訊仍完整。
+5. 執行完整測試，確認 manifest 與資產契約沒有漂移。
+
+詳細人工檢查表見 `docs/mascot-visual-qa.md`。
+
+## 12. v2 候選
 
 - Daily goal / streak 火焰或墨火版本
 - 弱點補強專用情境插圖
