@@ -20,15 +20,17 @@ Artwork 必須與這句話的情緒完全一致。
 
 ## 2. 目前狀態
 
-P2 已有獨立 vector **candidate v2**：
+P2 已有按產品負責人確認角色參考重製的立體 **candidate v3**：
 
 `public/mascot/moling-encouraging.svg`
 
 目前：
 
 - `encouraging.artStatus = candidate`；
-- 不再引用 approved `mascot-moling.svg` baseline；
-- 已使用獨立眼神、嘴形、輕微前傾與開放伸手姿勢；
+- 舊扁平 v2 已被產品負責人否決，不可升 production；
+- v3 使用透明 raster-backed 3D artwork，保留米白面部、大眼睛、金色雲紋、墨冠與獨立墨滴；
+- QA 的 Gate A 身份錨點改為 `moling-reference-approved.svg`，不再使用已否決的扁平 neutral／happy；
+- v3 使用溫和眼神、閉合小笑容、輕微前傾與圓潤開掌姿勢；
 - 已建立 P2 專用 validator、size QA 與 wrong-answer context QA page；
 - 尚未升 production，仍需完成最後 A–E 人工 review。
 
@@ -38,12 +40,13 @@ Artwork lifecycle：
 
 ## 3. 必須保留的角色 DNA
 
-與 neutral 及 production happy 一致：
+以產品負責人確認的立體角色參考為唯一身份錨點：
 
-- 墨滴／墨靈上窄下寬主輪廓；
-- 大眼睛仍是第一視覺識別；
-- 墨青／深墨色為角色本體主色；
-- 215×320 透明畫布；
+- 深色立體墨質與圓潤身體；
+- 米白色面部區域與巨大暖棕黑眼睛；
+- 兩側金色雲紋；
+- 流動墨冠及獨立墨滴；
+- 215×320 透明畫布（內嵌透明 WebP）；
 - 親切、聰明、有韌性，不變成老師、裁判或幼兒角色；
 - 不增加大型道具、服裝或其他改變角色身份的元素。
 
@@ -66,7 +69,7 @@ Artwork lifecycle：
 
 ## 5. 姿勢方向
 
-P2 v2 採用：
+P2 v3 採用：
 
 - 身體輕微向學生前傾，但重心仍穩；
 - 一手／一臂在胸口高度向前伸出，像「我們再看這裏」；
@@ -113,7 +116,7 @@ P2 必須用真實產品尺寸驗收，而不是只看大圖：
 
 32px 仍使用共用 `moling-head.svg`，不作 P2 pose 驗收。
 
-v2 已做 34 / 42 / 48 / 64 / 96 / 160px raster QA；34 / 42px 以眼神與小笑容為主要訊號，手勢作次要訊號。
+v3 已做 42px 初步 raster QA；仍須在部署頁完成 34 / 42 / 48 / 64 / 96 / 160px QA；34 / 42px 以眼神與小笑容為主要訊號，手勢作次要訊號。
 
 ## 8. Gate A–E
 
@@ -166,7 +169,7 @@ P2 專用 validator 會確認：
 - 215×320 viewBox、accessible title/desc、無 embedded text；
 - candidate / production 均不得再依賴 legacy baseline；
 - candidate / production 不得與 neutral 完全相同；
-- artwork 有足夠獨立 vector 結構；
+- artwork 是獨立、內嵌透明 WebP 的 raster-backed SVG；
 - SVG 不含 punitive / shaming visual markup；
 - description 明確保留 supportive intent。
 
