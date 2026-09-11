@@ -43,7 +43,7 @@ test('completion markup uses state-specific mascot asset instead of the legacy f
 });
 
 test('all six v1 mascot state assets exist while candidate and production artwork can graduate from the baseline',()=>{
-  const baselineDerived=new Set(['neutral','celebrate','thinking','determined']);
+  const baselineDerived=new Set(['neutral','celebrate','determined']);
   ['neutral','happy','celebrate','encouraging','thinking','determined'].forEach(state=>{
     const file=`public/mascot/moling-${state}.svg`;
     assert.equal(exists(file),true,file+' should exist');
@@ -55,6 +55,11 @@ test('all six v1 mascot state assets exist while candidate and production artwor
   assert.doesNotMatch(happy,/\.\.\/mascot-moling\.svg/);
   assert.match(happy,/<(?:path|ellipse|circle)\b/);
   assert.match(happy,/happy production artwork/);
+  const thinking=read('public/mascot/moling-thinking.svg');
+  assert.doesNotMatch(thinking,/\.\.\/mascot-moling\.svg/);
+  assert.match(thinking,/<image\b/);
+  assert.match(thinking,/data:image\/webp;base64,/);
+  assert.match(thinking,/thinking production artwork v2/);
   const encouraging=read('public/mascot/moling-encouraging.svg');
   assert.doesNotMatch(encouraging,/\.\.\/mascot-moling\.svg/);
   assert.match(encouraging,/<image\b/);
@@ -70,7 +75,7 @@ test('thinking and determined states are connected to semantic learning UI',()=>
   assert.match(css,/#lessonApp \.lesson-step>\.lesson-icon\.mascot-thinking[^}]*moling-thinking\.svg/);
   assert.match(runtime,/semanticThinkingIcon/);
   assert.match(runtime,/mascot-thinking/);
-  assert.match(read('public/mascot/moling-thinking.svg'),/thinking 狀態/);
+  assert.match(read('public/mascot/moling-thinking.svg'),/thinking production artwork v2/);
   assert.match(read('public/mascot/moling-determined.svg'),/determined 狀態/);
 });
 

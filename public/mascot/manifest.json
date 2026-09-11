@@ -47,7 +47,7 @@
       "asset": "./mascot/moling-thinking.svg",
       "intent": "提示、概念理解、重新教學",
       "motion": "static-or-fade",
-      "artStatus": "placeholder-treatment",
+      "artStatus": "production",
       "productionPriority": 3
     },
     {
