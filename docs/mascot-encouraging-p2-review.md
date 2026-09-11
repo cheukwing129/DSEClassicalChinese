@@ -2,14 +2,14 @@
 
 本文件記錄 `encouraging` artwork 的人工 A–E review。P2 的首要原則不是「答錯反應要明顯」，而是 **支持必須明顯、責備必須為零**。
 
-## Current candidate
+## Current production artwork
 
-`encouraging.artStatus = candidate`。
+`encouraging.artStatus = production`。
 
 目前 artwork 已：
 
 - 舊扁平 v2 已由產品負責人明確否決；
-- candidate v4 已採用產品負責人選定的全墨呆萌方向；
+- production v4 採用產品負責人選定的全墨呆萌方向；
 - 取消米白／肉色面罩，改用連續炭灰至深墨藍漸變、豆豆眼、腮紅、金色雲紋、墨冠與獨立墨滴；
 - 使用微歪小笑容、清楚豆豆眼與笨拙圓潤開掌，沒有指責式手指；
 - 檔案使用真正透明 alpha，並以 raster-backed SVG 接入現有 runtime。
@@ -27,13 +27,13 @@ v2 已修正：
 
 ## Current A–E position
 
-- **Gate A — candidate-level pass，待部署確認**：已建立 QA-only 全墨 neutral anchor；42px 本地 A/B 可讀成同一角色，neutral 置中穩定，encouraging 以前傾、開掌及偏轉墨冠增加支持意圖。
-- **Gate B — candidate-level pass**：靜態 v4 以眼神、微歪小笑容、輕微前傾與開掌傳達陪伴。
-- **Gate C — candidate-level pass**：沒有合理可讀成失望、責備、羞恥、悲傷或懲罰的訊號。
-- **Gate D — candidate-level pass，待部署確認**：34 / 42px 本地 raster 檢查可辨認；仍需部署後逐一確認 34 / 42 / 48 / 64 / 96 / 160px。
-- **Gate E — candidate-level live-layout pass，待產品負責人確認**：desktop 42×62 與 narrow-mobile 34×50 QA layout 保持解釋及 CTA 的資訊層級，角色沒有取代教學內容。
+- **Gate A — pass**：已建立 QA-only 全墨 neutral anchor；42px 本地 A/B 可讀成同一角色，neutral 置中穩定，encouraging 以前傾、開掌及偏轉墨冠增加支持意圖。
+- **Gate B — pass**：靜態 v4 以眼神、微歪小笑容、輕微前傾與開掌傳達陪伴。
+- **Gate C — pass**：沒有合理可讀成失望、責備、羞恥、悲傷或懲罰的訊號。
+- **Gate D — pass**：34 / 42 / 48 / 64 / 96 / 160px QA 保持眼神、嘴形及支持姿態；34 / 42px 未重現手臂像鬍鬚／橫線問題。
+- **Gate E — pass**：desktop 42×62 與 narrow-mobile 34×50 QA layout 保持解釋及 CTA 的資訊層級，角色沒有取代教學內容。
 
-目前決定：**保留 candidate，不升 production。**
+目前決定：**A–E 完成，升為 production；產品負責人以「下一步」確認 promotion。**
 
 ## Gate A — Same character
 
@@ -86,13 +86,13 @@ v2 已修正：
 
 ## Promotion checklist
 
-只有 A–E 全部通過後才可：
+A–E 已全部通過；promotion 已執行：
 
-1. 將 manifest/runtime 的 `encouraging.artStatus` 改為 `production`。
-2. 執行 `npm run mascot:encouraging:p2`。
-3. 執行 `npm run mascot:check`。
-4. 執行完整 `npm test`。
-5. 將 PR #7 由 draft 轉為 ready for review。
+1. [x] 將 manifest/runtime 的 `encouraging.artStatus` 改為 `production`。
+2. [x] 執行 `npm run mascot:encouraging:p2`。
+3. [x] 執行 `npm run mascot:check`。
+4. [x] 執行完整 `npm test`。
+5. [ ] CI 全綠後將 PR #7 由 draft 轉為 ready for review。
 6. 更新並完成 Issue #6。
 
 Tracks #6, #3 and PR #7.
