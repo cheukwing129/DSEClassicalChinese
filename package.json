@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "wrangler pages dev public",
     "test": "node --test functions/*.test.js tests/*.test.js",
-    "smoke:pages": "node scripts/smoke_pages_api.mjs",
+    "smoke:pages": "node scripts/smoke_sync_guard.mjs && node scripts/smoke_pages_api.mjs",
     "deploy": "wrangler pages deploy public"
   },
   "devDependencies": {
