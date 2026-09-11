@@ -102,11 +102,12 @@ test('visual QA character sheet retains happy production regression surfaces',()
   assert.match(sheet,/prefers-reduced-motion:reduce/);
 });
 
-test('encouraging P2 QA page covers approved-reference A/B and real wrong-answer sizes',()=>{
+test('encouraging P2 QA page covers all-ink identity A/B and real wrong-answer sizes',()=>{
   const qa=read('public/mascot-encouraging-p2-qa.html');
   assert.match(qa,/Encouraging P2 Visual QA/);
   assert.match(qa,/const sizes=\[34,42,48,64,96,160\]/);
-  assert.match(qa,/moling-reference-approved\.svg/);
+  assert.match(qa,/moling-neutral-all-ink-candidate\.svg/);
+  assert.doesNotMatch(qa,/previous cream-face direction/);
   assert.match(qa,/runtime\.asset\('encouraging'\)/);
   assert.match(qa,/這題答錯了/);
   assert.match(qa,/一起看清這一步。/);
@@ -114,6 +115,13 @@ test('encouraging P2 QA page covers approved-reference A/B and real wrong-answer
   assert.match(qa,/Narrow mobile · 34×50px/);
   assert.match(qa,/不低頭、不皺眉/);
   assert.match(qa,/prefers-reduced-motion:reduce/);
+  const neutralCandidate='public/mascot/moling-neutral-all-ink-candidate.svg';
+  assert.equal(exists(neutralCandidate),true);
+  const neutral=read(neutralCandidate);
+  assert.match(neutral,/viewBox="0 0 215 320"/);
+  assert.match(neutral,/neutral 全墨角色基準 candidate/);
+  assert.match(neutral,/data:image\/webp;base64,/);
+  assert.doesNotMatch(neutral,/mascot-moling\.svg/);
 });
 
 test('production placements use canonical state assets instead of the legacy baseline directly',()=>{
