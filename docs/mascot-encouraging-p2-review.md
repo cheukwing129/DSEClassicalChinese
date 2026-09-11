@@ -9,12 +9,12 @@
 目前 artwork 已：
 
 - 舊扁平 v2 已由產品負責人明確否決；
-- candidate v3 已按確認的立體小墨靈參考重製；
-- 保留深色立體墨質、米白面部、大眼睛、金色雲紋、墨冠與獨立墨滴；
-- 使用閉合小笑容、正向眼神與圓潤開掌，沒有指責式手指；
+- candidate v4 已採用產品負責人選定的全墨呆萌方向；
+- 取消米白／肉色面罩，改用連續炭灰至深墨藍漸變、豆豆眼、腮紅、金色雲紋、墨冠與獨立墨滴；
+- 使用微歪小笑容、清楚豆豆眼與笨拙圓潤開掌，沒有指責式手指；
 - 檔案使用真正透明 alpha，並以 raster-backed SVG 接入現有 runtime。
 
-## Rejected v2 → candidate v3
+## Rejected v2 → candidate v4
 
 第一版在 34 / 42px raster review 暴露一個小尺寸問題：兩條手臂位置太靠近臉部，縮小後容易像橫線／鬍鬚，反而干擾眼神與嘴形。
 
@@ -27,10 +27,10 @@ v2 已修正：
 
 ## Current A–E position
 
-- **Gate A — pending deployed A/B**：QA 已改用產品負責人確認的 3D reference；舊扁平 neutral／happy 不再作身份錨點。
+- **Gate A — pending deployed A/B**：新方向已由產品負責人選定；正式 pass 仍需建立全墨 neutral anchor 作 identity A/B。
 - **Gate B — candidate-level pass**：靜態 v3 以眼神、閉合小笑容、輕微前傾與開掌傳達陪伴。
 - **Gate C — candidate-level pass**：沒有合理可讀成失望、責備、羞恥、悲傷或懲罰的訊號。
-- **Gate D — pending deployed size QA**：42px 本地 raster 檢查可辨認；仍需部署後逐一確認 34 / 42 / 48 / 64 / 96 / 160px。
+- **Gate D — pending deployed size QA**：34 / 42px 本地 raster 檢查可辨認；仍需部署後逐一確認 34 / 42 / 48 / 64 / 96 / 160px。
 - **Gate E — pending live layout**：必須在 branch preview 的真實 wrong-answer layout 驗收。
 
 目前決定：**保留 candidate，不升 production。**
