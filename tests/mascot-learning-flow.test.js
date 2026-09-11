@@ -4,26 +4,71 @@ const fs=require('node:fs');
 const path=require('node:path');
 const summary=require('../public/session-summary.js');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
+const exists=p=>fs.existsSync(path.join(__dirname,'..',p));
 
-test('answer feedback gives Little Ink Spirit distinct correct and thinking reactions',()=>{
+test('answer feedback maps Little Ink Spirit through the shared runtime',()=>{
   const source=read('public/feedback-ui.js');
-  assert.match(source,/function mascotFeedback\(isCorrect\)/);
-  assert.match(source,/\.\/mascot-moling\.svg/);
+  assert.match(source,/mascot-runtime\.js/);
+  assert.match(source,/function mascotFeedbackState\(isCorrect\)/);
+  assert.match(source,/runtime\.asset\(state\)/);
+  assert.match(source,/mascot-state-'\+state/);
   assert.match(source,/抓到重點了！/);
   assert.match(source,/一起看清這一步。/);
   assert.match(source,/moling-correct/);
-  assert.match(source,/moling-think/);
+  assert.match(source,/moling-encourage/);
+  assert.doesNotMatch(source,/img\.src='\.\/mascot-moling\.svg'/);
   assert.match(source,/prefers-reduced-motion:reduce/);
 });
 
-test('completion summary celebrates with the same mascot and adapts the message to results',()=>{
+test('completion summary maps results to canonical mascot states',()=>{
   assert.equal(summary.celebrationCopy({answered:10,wrong:0},100),'全對！太棒了！');
   assert.equal(summary.celebrationCopy({answered:10,wrong:1},90),'很穩，繼續保持！');
   assert.equal(summary.celebrationCopy({answered:10,wrong:3},70),'完成了，錯題也會變成下一步。');
-  const html=summary.markup({page:'home',answered:10,correct:10,xp:80,masteryDelta:12,resolved:[],unlockedStages:[]});
-  assert.match(html,/session-summary-icon mascot-celebrate/);
-  assert.match(html,/mascot-moling\.svg/);
-  assert.match(html,/全對！太棒了！/);
+  assert.equal(summary.mascotState({answered:0,unlockedStages:[]},0),'neutral');
+  assert.equal(summary.mascotState({answered:10,unlockedStages:[]},90),'happy');
+  assert.equal(summary.mascotState({answered:10,unlockedStages:[]},100),'celebrate');
+  assert.equal(summary.mascotState({answered:10,unlockedStages:['第二階段']},80),'celebrate');
+  assert.equal(summary.mascotAsset('happy'),'./mascot/moling-happy.svg');
+  assert.equal(summary.mascotAsset('unknown'),'./mascot/moling-neutral.svg');
+});
+
+test('completion markup uses state-specific mascot asset instead of the legacy filename',()=>{
+  const perfect=summary.markup({page:'home',answered:10,correct:10,xp:80,masteryDelta:12,resolved:[],unlockedStages:[]});
+  assert.match(perfect,/mascot-state-celebrate/);
+  assert.match(perfect,/\.\/mascot\/moling-celebrate\.svg/);
+  assert.doesNotMatch(perfect,/src="\.\/mascot-moling\.svg"/);
+  const good=summary.markup({page:'home',answered:10,correct:9,xp:70,masteryDelta:8,resolved:[],unlockedStages:[]});
+  assert.match(good,/mascot-state-happy/);
+  assert.match(good,/\.\/mascot\/moling-happy\.svg/);
+});
+
+test('all six v1 mascot state assets exist and preserve the selected baseline artwork',()=>{
+  ['neutral','happy','celebrate','encouraging','thinking','determined'].forEach(state=>{
+    const file=`public/mascot/moling-${state}.svg`;
+    assert.equal(exists(file),true,file+' should exist');
+    assert.match(read(file),/\.\.\/mascot-moling\.svg/);
+  });
+});
+
+test('thinking and determined states are connected to semantic learning UI',()=>{
+  const css=read('public/app-ui.css');
+  const runtime=read('public/mascot-runtime.js');
+  assert.match(css,/body\.app-nav-ready>\.title::after[^}]*moling-neutral\.svg/);
+  assert.match(css,/\.player-status \.streak::before[^}]*moling-determined\.svg/);
+  assert.match(css,/#lessonApp \.lesson-step>\.lesson-icon\.mascot-thinking[^}]*moling-thinking\.svg/);
+  assert.match(runtime,/semanticThinkingIcon/);
+  assert.match(runtime,/mascot-thinking/);
+  assert.match(read('public/mascot/moling-thinking.svg'),/thinking 狀態/);
+  assert.match(read('public/mascot/moling-determined.svg'),/determined 狀態/);
+});
+
+test('encouraging state avoids punitive reaction language and motion',()=>{
+  const encouraging=read('public/mascot/moling-encouraging.svg');
+  const feedback=read('public/feedback-ui.js');
+  assert.match(encouraging,/encouraging 狀態/);
+  assert.match(encouraging,/支持而非責備/);
+  assert.doesNotMatch(feedback,/moling-think/);
+  assert.doesNotMatch(feedback,/shake/i);
 });
 
 test('mascot reactions stay decorative and do not replace learning controls',()=>{

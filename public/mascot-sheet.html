@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manjingo｜小墨靈 Visual QA</title>
+<style>
+:root{--bg:#f7f9f5;--surface:#fff;--border:#dfe5dc;--ink:#000437;--text:#4b4b4b;--muted:#7b8278;--teal:#0f5a5a;--gold:#d4a85b;--green:#58cc02}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text)}main{width:min(1180px,calc(100% - 28px));margin:0 auto;padding:32px 0 56px}.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end;margin-bottom:20px}.eyebrow{color:var(--teal);font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.hero h1{margin:5px 0 7px;color:var(--ink);font-size:clamp(28px,5vw,46px);line-height:1.05}.hero p{max-width:760px;margin:0;color:var(--muted);line-height:1.6}.badge{align-self:start;padding:8px 11px;border:1px solid #c9dfbf;border-radius:999px;background:#eff8ea;color:#347400;font-size:12px;font-weight:900}.queue{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 16px}.queue span{padding:6px 9px;border-radius:999px;background:#fff2d8;border:1px solid #efd5a2;color:#755313;font-size:11px;font-weight:900}.notice{margin:0 0 22px;padding:12px 14px;border:1px solid #eadcbf;border-radius:14px;background:#fff9ed;font-size:13px;line-height:1.55}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.state-card{overflow:hidden;border:1px solid var(--border);border-radius:20px;background:var(--surface);box-shadow:0 8px 26px rgba(0,4,55,.05)}.state-head{display:flex;align-items:start;justify-content:space-between;gap:12px;padding:16px 17px 10px}.state-head h2{margin:0;color:var(--ink);font-size:20px}.state-id{display:block;margin-top:2px;color:var(--teal);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:800}.state-meta{display:flex;max-width:60%;flex-direction:column;align-items:flex-end;gap:5px;text-align:right}.intent{color:var(--muted);font-size:11px;line-height:1.45}.art-status{display:inline-flex;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:950;letter-spacing:.02em}.art-status.production,.art-status.baseline-approved{background:#eaf8e4;color:#347400}.art-status.placeholder-treatment{background:#fff2d8;color:#755313}.art-status.provisional{background:#eef2ff;color:#4255a4}.hero-preview{display:flex;align-items:center;justify-content:center;min-height:220px;margin:0 14px;border:1px solid #e6e9e3;border-radius:16px;background-color:#fff;background-image:linear-gradient(45deg,#f2f4f0 25%,transparent 25%),linear-gradient(-45deg,#f2f4f0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f2f4f0 75%),linear-gradient(-45deg,transparent 75%,#f2f4f0 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}.hero-preview img{display:block;width:160px;height:190px;object-fit:contain}.size-strip{display:flex;align-items:end;gap:14px;min-height:182px;padding:16px 14px 18px;overflow-x:auto}.size-item{display:flex;min-width:54px;flex-direction:column;align-items:center;gap:7px}.size-box{display:flex;align-items:center;justify-content:center;min-width:48px;min-height:52px}.size-box img{display:block;object-fit:contain}.size-label{color:var(--muted);font-size:10px;font-weight:850}.size-item.compact .size-label::after{content:' head';color:var(--teal)}.footer-note{margin-top:22px;padding:17px;border:1px solid var(--border);border-radius:18px;background:var(--surface)}.footer-note h2{margin:0 0 7px;color:var(--ink);font-size:17px}.footer-note ul{margin:0;padding-left:20px;line-height:1.7;font-size:13px}.error{padding:30px;border:1px solid #ffc5c5;border-radius:16px;background:#fff3f3;color:#8e1b1b;font-weight:800}@media(max-width:760px){main{width:min(100% - 20px,640px);padding-top:20px}.hero{grid-template-columns:1fr}.badge{justify-self:start}.grid{grid-template-columns:1fr}.state-meta{max-width:55%}.hero-preview{min-height:200px}.size-strip{gap:10px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div>
+      <div class="eyebrow">Visual QA / Mascot System v1</div>
+      <h1>小墨靈角色檢查表</h1>
+      <p>一次檢查六個正式狀態在 32 / 48 / 64 / 96 / 160px 的輪廓、辨識度、一致性及 artwork readiness。此頁直接使用 production mascot runtime。</p>
+    </div>
+    <div class="badge">v1 · runtime-backed</div>
+  </section>
+  <div class="queue" id="productionQueue" aria-label="Production artwork priority"></div>
+  <div class="notice"><strong>Artwork 狀態：</strong><code>baseline-approved</code> 表示角色基準已確認；<code>placeholder-treatment</code> 表示產品 state contract 已可用，但仍需真正不同的表情／姿勢；<code>provisional</code> 表示可用但會在優先狀態完成後再深化。32px 一律使用 head crop。</div>
+  <section class="grid" id="stateGrid" aria-live="polite"></section>
+  <section class="footer-note">
+    <h2>人工 QA 檢查重點</h2>
+    <ul>
+      <li>32–48px：第一眼仍辨認為同一個小墨靈，不靠文字才能認出角色。</li>
+      <li>64–96px：happy / encouraging / thinking / determined 的差異要能在靜態畫面成立。</li>
+      <li>160px：celebrate 可以最有動勢，但不可因裝飾蓋過角色輪廓。</li>
+      <li>Production artwork 不可只靠 overlay、顏色或動畫傳達狀態。</li>
+    </ul>
+  </section>
+</main>
+<script src="./mascot-runtime.js"></script>
+<script>
+(function(){
+  const grid=document.getElementById('stateGrid'),queue=document.getElementById('productionQueue');
+  const runtime=window.ManjingoMascotRuntime;
+  try{
+    if(!runtime||typeof runtime.list!=='function')throw new Error('mascot runtime unavailable');
+    const sizes=runtime.recommendedSizes||[32,48,64,96,160];
+    const pending=typeof runtime.productionQueue==='function'?runtime.productionQueue():[];
+    queue.innerHTML=pending.length?pending.map(state=>'<span>P'+state.productionPriority+' · '+state.id+'</span>').join(''):'<span>All production artwork approved</span>';
+    grid.innerHTML=runtime.list().map(state=>{
+      const sizeItems=sizes.map(size=>{
+        const compact=size<=32,asset=runtime.asset(state.id,{size}),height=compact?Math.round(size*190/215):Math.round(size*320/215);
+        return '<div class="size-item'+(compact?' compact':'')+'"><div class="size-box"><img src="'+asset+'" width="'+size+'" height="'+height+'" alt="" aria-hidden="true"></div><div class="size-label">'+size+'px</div></div>';
+      }).join('');
+      return '<article class="state-card" data-mascot-state="'+state.id+'" data-art-status="'+state.artStatus+'"><div class="state-head"><div><h2>'+state.label+'</h2><span class="state-id">'+state.id+'</span></div><div class="state-meta"><span class="art-status '+state.artStatus+'">'+state.artStatus+'</span><div class="intent">'+state.intent+'</div></div></div><div class="hero-preview"><img src="'+runtime.asset(state.id)+'" alt="小墨靈 '+state.label+' 狀態"></div><div class="size-strip">'+sizeItems+'</div></article>';
+    }).join('');
+  }catch(error){
+    console.error(error);
+    grid.innerHTML='<div class="error">無法載入 mascot runtime；請檢查 <code>public/mascot-runtime.js</code> 與 mascot assets。</div>';
+  }
+})();
+</script>
+</body>
+</html>

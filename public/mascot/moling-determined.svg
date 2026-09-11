@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 215 320" role="img" aria-labelledby="title desc">
+<title id="title">小墨靈・堅定</title>
+<desc id="desc">Manjingo 小墨靈的 determined 狀態；保留正式角色 artwork，以暖金與向上標記呈現 streak 與每日目標的持續感。</desc>
+<image href="../mascot-moling.svg" width="215" height="320"/>
+<g fill="none" stroke="#d4a85b" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="M176 105V63"/>
+  <path d="M160 79l16-16 16 16"/>
+  <path d="M157 118h38"/>
+</g>
+</svg>

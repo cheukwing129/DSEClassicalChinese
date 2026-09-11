@@ -18,12 +18,13 @@ test('selected Little Ink Spirit asset is embedded as a valid webp-backed svg',(
   assert.ok(bytes.length>10000,'mascot artwork should not collapse into a placeholder');
 });
 
-test('homepage brand renders mascot without entering the focused study surface',()=>{
+test('homepage brand renders canonical neutral mascot without entering the focused study surface',()=>{
   const css=read('public/app-ui.css');
   const shell=read('public/home-shell.js');
   assert.match(css,/--brand-ink-teal:#0f5a5a/);
   assert.match(css,/body\.app-nav-ready>\.title::after/);
-  assert.match(css,/background:url\('\.\/mascot-moling\.svg'\) center\/contain no-repeat/);
+  assert.match(css,/background:url\('\.\/mascot\/moling-neutral\.svg'\) center\/contain no-repeat/);
+  assert.doesNotMatch(css,/body\.app-nav-ready>\.title::after[^}]*background:url\('\.\/mascot-moling\.svg'\)/);
   assert.match(css,/@media\(max-width:430px\)[\s\S]*body\.app-nav-ready>\.title::after\{width:44px;height:66px/);
   assert.match(shell,/body\.'\+STUDY_CLASS\+'>\.title/);
 });
