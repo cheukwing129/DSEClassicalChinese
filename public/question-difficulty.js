@@ -14,7 +14,9 @@ function clampMastery(value){const n=Number(value);return Math.max(0,Math.min(10
 function tierIndex(tier){const i=TIERS.indexOf(String(tier||''));return i>=0?i:1}
 function tierOf(question){return TIERS.includes(question&&question.difficultyTier)?question.difficultyTier:'application'}
 function tierForMastery(mastery,options){
- const opts=options||{},mode=String(opts.mode||'normal');
+ const opts=options||{},calibration=fromRoot('ManjingoDifficultyCalibration');
+ if(calibration&&typeof calibration.tierForMastery==='function')return calibration.tierForMastery(mastery,opts);
+ const mode=String(opts.mode||'normal');
  if(mode==='remedial')return'foundation';
  if(mode==='reteach')return'transfer';
  const value=clampMastery(mastery);
@@ -48,7 +50,7 @@ function practiceMode(kpId){
 function contextFor(list,preferredIds){
  const source=Array.isArray(list)?list:[],first=source.find(q=>q&&q.kpId),kpId=first&&first.kpId,learning=fromRoot('ManjingoLocalLearning');
  let record={};if(kpId&&learning&&typeof learning.getKnowledge==='function'){try{record=learning.getKnowledge(kpId)||{}}catch(e){}}
- return{mastery:Number(record.mastery)||0,lastCorrect:record.lastCorrect,mode:practiceMode(kpId),preferredIds};
+ return{mastery:Number(record.mastery)||0,lastCorrect:record.lastCorrect,tierStats:record.tierStats||null,mode:practiceMode(kpId),preferredIds};
 }
 function adaptivePacks(){
  return['ManjingoQuestionPackAdaptive01','ManjingoQuestionPackAdaptive02','ManjingoQuestionPackAdaptive03'].map(fromRoot).filter(pack=>pack&&Array.isArray(pack.questions));
