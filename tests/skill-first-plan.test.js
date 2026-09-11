@@ -1,0 +1,107 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+
+const root=path.join(__dirname,'..');
+const metadata=require('../public/question-metadata-v1.js');
+const diversity=require('../public/question-diversity-v1.js');
+const skillPlan=require('../public/skill-first-plan.js');
+function source(file){return fs.readFileSync(path.join(root,file),'utf8')}
+function loadCatalog(){
+ const context={window:{},Map,Set,Array,Object,Number,String,Math,RegExp};vm.createContext(context);
+ for(const file of ['public/question-pack-02.js','public/question-pack-03.js','public/question-pack-lesson.js','public/question-pack-capacity-01.js','public/question-pack-transfer-01.js','public/content-catalog.js'])vm.runInContext(source(file),context,{filename:file});
+ return context.window.ManjingoContent;
+}
+function engine(records={}){
+ const empty={mastery:0,attempts:0,correctCount:0,wrongCount:0,lastCorrect:null,lastAnsweredAt:null,nextReviewAt:null};
+ return{
+  getKnowledge(id){return records[id]?{...empty,...records[id]}:{...empty}},
+  isDue(record){return !!(record&&record.lastAnsweredAt)&&(!record.nextReviewAt||new Date(record.nextReviewAt).getTime()<=Date.now())}
+ };
+}
+const rotation={rank:list=>list.slice(),recentSentenceIds:()=>[]};
+
+function legacyFreshPlan(){
+ return{targetCount:10,items:[
+  {kpId:'kp_yueyang_001',category:'new',priority:3},
+  {kpId:'kp_yueyang_004',category:'new',priority:3},
+  {kpId:'kp_virtual_zhi',category:'new',priority:3},
+  {kpId:'kp_virtual_er',category:'new',priority:3},
+  {kpId:'kp_virtual_yi',category:'new',priority:3},
+  {kpId:'kp_virtual_yu',category:'new',priority:3},
+  {kpId:'kp_virtual_qi',category:'new',priority:3},
+  {kpId:'kp_virtual_ze',category:'new',priority:3},
+  {kpId:'gj_004',category:'new',priority:3},
+  {kpId:'gj_005',category:'new',priority:3}
+ ]};
+}
+
+test('legacy set-text plan is converted into ten unique language skills',()=>{
+ const catalog=loadCatalog(),adapted=skillPlan.adaptPlan(legacyFreshPlan(),catalog.questions,10,{learning:engine()});
+ assert.equal(adapted.skillFirst,true);
+ assert.equal(adapted.items.length,10);
+ assert.equal(new Set(adapted.items.map(x=>x.skillId)).size,10);
+ assert.equal(adapted.items.some(x=>x.skillId===''),false);
+ assert.equal(adapted.items.some(x=>x.kpId==='kp_yueyang_004'),false,'pure memorisation KP must not survive normal skill-first planning');
+});
+
+test('legacy aliases merge into one skill target instead of consuming duplicate slots',()=>{
+ const catalog=loadCatalog(),plan={targetCount:3,items:[
+  {kpId:'kp_virtual_zhi',category:'new',priority:3},
+  {kpId:'kp_p3_zhi',category:'new',priority:3},
+  {kpId:'kp_virtual_er',category:'new',priority:3}
+ ]},adapted=skillPlan.adaptPlan(plan,catalog.questions,3,{learning:engine()});
+ assert.equal(adapted.items.length,3);
+ assert.equal(adapted.items.filter(x=>x.skillId==='fw.zhi').length,1);
+ assert.ok(adapted.items.some(x=>x.skillId==='fw.er'));
+ assert.equal(new Set(adapted.items.map(x=>x.skillId)).size,3);
+});
+
+test('mastery evidence from one legacy alias changes the shared skill category',()=>{
+ const catalog=loadCatalog(),plan={targetCount:1,items:[{kpId:'kp_virtual_zhi',category:'new',priority:3}]};
+ const weak=engine({kp_p3_zhi:{attempts:3,mastery:35,lastCorrect:false,lastAnsweredAt:'2026-09-11T10:00:00Z',nextReviewAt:'2099-01-01T00:00:00Z'}});
+ const adapted=skillPlan.adaptPlan(plan,catalog.questions,1,{learning:weak});
+ assert.equal(adapted.items[0].skillId,'fw.zhi');
+ assert.equal(adapted.items[0].category,'weak');
+});
+
+test('stable mastery on an alias prevents the same skill being treated as fresh',()=>{
+ const catalog=loadCatalog(),plan={targetCount:1,items:[{kpId:'kp_virtual_zhi',category:'new',priority:3}]};
+ const stable=engine({kp_p3_zhi:{attempts:8,mastery:92,lastCorrect:true,lastAnsweredAt:'2026-09-11T10:00:00Z',nextReviewAt:'2099-01-01T00:00:00Z'}});
+ const adapted=skillPlan.adaptPlan(plan,catalog.questions,1,{learning:stable});
+ assert.equal(adapted.items.length,1);
+ assert.notEqual(adapted.items[0].skillId,'fw.zhi');
+ assert.equal(adapted.items[0].category,'new');
+});
+
+test('learner-facing selection emits only normal-core questions and one question per planned skill',()=>{
+ const catalog=loadCatalog(),selected=skillPlan.selectQuestionsForPlan(legacyFreshPlan(),catalog.questions,10,{learning:engine(),rotation,diversity});
+ assert.equal(selected.length,10);
+ assert.equal(new Set(selected.map(x=>x.skillId)).size,10);
+ for(const q of selected){const tagged=metadata.annotate(q);assert.equal(tagged.normalCore,true,`${q.id} must stay in normal core`);}
+ const banned=new Set(['q008','lpq052','lpq053','lpq054','p2q042']);
+ assert.equal(selected.some(q=>banned.has(q.id)),false);
+});
+
+test('skill-first selection keeps misconception remediation exact when the question belongs to that skill',()=>{
+ const catalog=loadCatalog(),plan={targetCount:1,items:[{kpId:'kp_p3_yi',category:'weak',priority:2,misconceptionQuestionIds:['p3q009']}]};
+ const selected=skillPlan.selectQuestionsForPlan(plan,catalog.questions,1,{learning:engine({kp_p3_yi:{attempts:2,mastery:30,lastCorrect:false,lastAnsweredAt:'2026-09-11T10:00:00Z',nextReviewAt:'2099-01-01T00:00:00Z'}}),rotation,diversity});
+ assert.equal(selected.length,1);
+ assert.equal(selected[0].id,'p3q009');
+ assert.equal(selected[0].skillId,'fw.yi');
+ assert.equal(selected[0].misconceptionReview,true);
+});
+
+test('fresh skill order interleaves domains instead of walking legacy article order',()=>{
+ const catalog=loadCatalog(),pools=skillPlan.poolsFor(catalog.questions),ordered=skillPlan.orderedSkillIds(pools).slice(0,6);
+ const domains=ordered.map(id=>require('../public/curriculum-v1.js').skill(id).domain);
+ assert.ok(new Set(domains).size>=4,`expected broad domain mix, got ${domains.join(',')}`);
+});
+
+test('question rotation browser loader installs skill-first layer before adaptive packs',()=>{
+ const source=fs.readFileSync(path.join(root,'public/question-rotation.js'),'utf8');
+ const skillIndex=source.indexOf('./skill-first-plan.js'),adaptiveIndex=source.indexOf('./question-pack-adaptive-01.js');
+ assert.ok(skillIndex>=0&&adaptiveIndex>skillIndex);
+});
