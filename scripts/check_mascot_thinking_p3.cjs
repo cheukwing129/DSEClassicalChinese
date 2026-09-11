@@ -34,6 +34,11 @@ if(!/<desc\b/i.test(svg))fail('thinking should retain an accessible description'
 const referencesBaseline=/mascot-moling\.svg/.test(svg);
 const distressedMarkup=/(id|class)=["'][^"']*(confus|worry|sweat|frown|downcast|spiral|sleep|angry|frustrat|shrug|question)[^"']*["']/i.test(svg);
 const thinkingLanguage=/(思考|好奇|專注|thinking|curious|attentive)/i.test(svg);
+const embeddedWebp=svg.match(/data:image\/webp;base64,([^"']+)/i);
+const webp=embeddedWebp?Buffer.from(embeddedWebp[1],'base64'):null;
+const validWebp=webp&&webp.subarray(0,4).toString('ascii')==='RIFF'&&webp.subarray(8,12).toString('ascii')==='WEBP';
+const vp8xAlpha=validWebp&&webp.subarray(12,16).toString('ascii')==='VP8X'&&(webp[20]&0x10)!==0;
+const alphaChunk=validWebp&&webp.includes(Buffer.from('ALPH'));
 
 if(thinking.artStatus==='placeholder-treatment'){
   if(!referencesBaseline)fail('placeholder-treatment should reference the approved baseline');
@@ -42,7 +47,9 @@ if(thinking.artStatus==='placeholder-treatment'){
   if(referencesBaseline)fail(thinking.artStatus+' thinking must be independent from mascot-moling.svg');
   if(svg===neutralSvg||svg===encouragingSvg)fail('thinking artwork must be a genuinely distinct pose');
   if(svg.length<50000)fail('thinking SVG is suspiciously small for embedded 3D artwork');
-  if(!/<image\b/i.test(svg)||!/data:image\/webp;base64,/i.test(svg))fail('thinking should contain embedded transparent 3D artwork');
+  if(!/<image\b/i.test(svg)||!embeddedWebp)fail('thinking should contain embedded transparent 3D artwork');
+  if(!validWebp)fail('thinking data URI must decode to a valid WebP');
+  if(!vp8xAlpha&&!alphaChunk)fail('thinking WebP must contain a real alpha channel, not a flattened checkerboard');
   if(distressedMarkup)fail('thinking contains confused/distressed visual markup');
   if(!thinkingLanguage)fail('thinking description should preserve curious attentive intent');
   ok(thinking.artStatus+' thinking artwork is independent and structurally reviewable');
