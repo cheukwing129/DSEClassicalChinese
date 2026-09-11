@@ -4,20 +4,25 @@ const fs=require('node:fs');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
-test('Pages smoke verifies deployed calibration before exercising the learning API',()=>{
+test('Pages smoke verifies deployed calibration and observability before exercising the learning API',()=>{
   const source=read('scripts/smoke_pages_api.mjs');
   assert.match(source,/from 'node:vm'/);
   assert.match(source,/readTextAsset\('\/difficulty-calibration\.js'/);
   assert.match(source,/readTextAsset\('\/question-rotation\.js'/);
   assert.match(source,/readTextAsset\('\/question-difficulty\.js'/);
+  assert.match(source,/readTextAsset\('\/difficulty-observability\.js'/);
   assert.match(source,/calibration\.tierForMastery\(68/);
   assert.match(source,/=== 'transfer'/);
   assert.match(source,/calibration\.tierForMastery\(82/);
   assert.match(source,/=== 'application'/);
+  assert.match(source,/observability\.reasonLabel\('application-ready'\)/);
+  assert.match(source,/observability\.selectionLabel\('misconception-target'\)/);
   assert.match(source,/indexOf\('difficulty-calibration\.js'\) < rotationSource\.indexOf\('question-difficulty\.js'\)/);
+  assert.match(source,/indexOf\('question-difficulty\.js'\) < rotationSource\.indexOf\('difficulty-observability\.js'\)/);
   const calibrationCheck=source.indexOf("readTextAsset('/difficulty-calibration.js'");
+  const observabilityCheck=source.indexOf("readTextAsset('/difficulty-observability.js'");
   const healthCheck=source.indexOf("api('/api/health'");
-  assert.ok(calibrationCheck>=0 && healthCheck>calibrationCheck,'production calibration must be checked before backend smoke');
+  assert.ok(calibrationCheck>=0 && observabilityCheck>=0 && healthCheck>observabilityCheck,'production calibration and observability must be checked before backend smoke');
 });
 
 test('Pages smoke performs one real reviewed answer and verifies all learning writes',()=>{
