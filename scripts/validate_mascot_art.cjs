@@ -4,7 +4,7 @@ const path=require('node:path');
 const root=path.join(__dirname,'..');
 const manifestPath=path.join(root,'public','mascot','manifest.json');
 const manifest=JSON.parse(fs.readFileSync(manifestPath,'utf8'));
-const allowedStatuses=new Set(['baseline-approved','placeholder-treatment','provisional','production']);
+const allowedStatuses=new Set(['baseline-approved','placeholder-treatment','candidate','provisional','production']);
 const failures=[];
 
 function fail(message){failures.push(message)}
@@ -31,7 +31,8 @@ for(const state of manifest.states||[]){
 
   const referencesBaseline=/\.\.\/mascot-moling\.svg/.test(svg);
   if(state.artStatus==='production'&&referencesBaseline)fail(`${state.id}: artStatus=production cannot still reference mascot-moling.svg baseline artwork`);
-  if(state.artStatus==='placeholder-treatment'&&!referencesBaseline)fail(`${state.id}: placeholder-treatment should still be an explicit baseline-derived treatment until its status is promoted`);
+  if(state.artStatus==='candidate'&&referencesBaseline)fail(`${state.id}: candidate artwork must already be independent from mascot-moling.svg before visual review`);
+  if(state.artStatus==='placeholder-treatment'&&!referencesBaseline)fail(`${state.id}: placeholder-treatment should still be an explicit baseline-derived treatment until a real candidate is installed`);
 }
 
 const neutral=(manifest.states||[]).find(state=>state.id==='neutral');
