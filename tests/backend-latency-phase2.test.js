@@ -1,0 +1,41 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+
+const worker=fs.readFileSync(path.join(__dirname,'..','public','_worker.js'),'utf8');
+
+test('answer transaction batches user-state reads into one Firestore batchGet',()=>{
+  assert.match(worker,/documents:batchGet/);
+  assert.match(worker,/function batchGetDocuments\(env, token, paths, transaction\)/);
+  assert.match(worker,/body:JSON\.stringify\(\{documents:names,\.\.\.\(transaction\?\{transaction\}:\{\}\)\}\)/);
+  assert.match(worker,/timed\(trace,'tx_reads',\(\)=>batchGetDocuments\(env,token,txPaths,tx\)\)/);
+  assert.match(worker,/const txPaths=\[kpPath,gamePath,logPath,\.\.\.\(conceptPath\?\[conceptPath\]:\[\]\)\]/);
+  assert.doesNotMatch(worker,/timed\(trace,'tx_reads',\(\)=>Promise\.all/);
+});
+
+test('only reviewed static metadata is cached and caches stay bounded',()=>{
+  assert.match(worker,/const QUESTION_CACHE_TTL_MS = 10 \* 60 \* 1000/);
+  assert.match(worker,/const STATIC_CACHE_TTL_MS = 5 \* 60 \* 1000/);
+  assert.match(worker,/const QUESTION_CACHE_MAX = 400/);
+  assert.match(worker,/const questionMetadataCache = new Map\(\)/);
+  assert.match(worker,/let kpUniverseCache = null/);
+  assert.match(worker,/while\(questionMetadataCache\.size>QUESTION_CACHE_MAX\)/);
+  assert.match(worker,/getQuestionMetadata\(env, token, questionId\)/);
+  assert.match(worker,/getKnowledgePointUniverse\(env, token\)/);
+  assert.doesNotMatch(worker,/knowledgeCache|conceptCache|gamificationCache|answerLogCache/);
+});
+
+test('latency optimization preserves authoritative question validation and OAuth exchange',()=>{
+  assert.match(worker,/grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer'/);
+  assert.match(worker,/const questionKpId = question\.data\.kpId/);
+  assert.match(worker,/questionKpId && questionKpId !== answer\.kpId/);
+  assert.match(worker,/getQuestionMetadata\(env, token, answer\.questionId\)/);
+  assert.match(worker,/if \(!conceptKey && question\.data\.misconceptionKey\)/);
+});
+
+test('daily plan reuses only the global knowledge-point universe cache',()=>{
+  assert.match(worker,/timed\(trace,'knowledge_list',\(\)=>listDocuments\(env, token, `users\/\$\{uid\}\/knowledge`\)\)/);
+  assert.match(worker,/timed\(trace,'concepts_list',\(\)=>listDocuments\(env, token, `users\/\$\{uid\}\/concepts`\)\)/);
+  assert.match(worker,/timed\(trace,'kp_list',\(\)=>getKnowledgePointUniverse\(env, token\)\)/);
+});
