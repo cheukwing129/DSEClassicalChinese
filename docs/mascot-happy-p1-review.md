@@ -1,6 +1,17 @@
 # 小墨靈 `happy` P1 Review Rubric
 
-本文件把 `happy` artwork 的人工驗收拆成可重複、可記錄的 review gate。目的不是用分數取代設計判斷，而是避免「看起來差不多」就把 placeholder 誤升為 production。
+本文件把 `happy` artwork 的人工驗收拆成可重複、可記錄的 review gate。目的不是用分數取代設計判斷，而是避免「看起來差不多」就把 candidate 誤升為 production。
+
+## Current candidate
+
+P1 已有第一版獨立 vector candidate，`happy.artStatus = candidate`。這表示：
+
+- artwork 已不再引用 `mascot-moling.svg` baseline；
+- 215×320 viewBox、accessible title/desc、無 embedded text 等結構契約已可自動驗證；
+- 本地已成功 rasterize 48 / 64 / 96 / 160px 作尺寸檢查；
+- **尚未**因為工程檢查通過而視為 production；仍需 A–E 人工 Visual QA。
+
+`candidate` 是刻意加入的中間狀態：比 `placeholder-treatment` 更進一步，但不等於已核准。
 
 ## Gate A — 同一角色
 
@@ -65,7 +76,7 @@
 
 只有 A–E 全部通過後才可：
 
-1. 將 `happy.artStatus` 由 `placeholder-treatment` 改為 `production`。
+1. 將 `happy.artStatus` 由 `candidate` 改為 `production`。
 2. 同步更新 `public/mascot-runtime.js` 的 `happy.artStatus`。
 3. 執行 `npm run mascot:happy:p1`。
 4. 執行 `npm run mascot:check`。
