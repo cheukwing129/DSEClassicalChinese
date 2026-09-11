@@ -67,6 +67,10 @@ function enhance(feedback){
  feedback.dataset.feedbackRendered=clean(feedback.textContent);
  return true;
 }
+function unlockNextSoon(scope){
+ const run=()=>{if(!scope||!scope.dataset||!scope.dataset.answered)return;const next=scope.querySelector&&scope.querySelector('#next');if(next)next.disabled=false};
+ if(typeof queueMicrotask==='function')queueMicrotask(run);else Promise.resolve().then(run);
+}
 function instantAnswer(event){
  const target=event&&event.target&&event.target.closest?event.target.closest('.option,#check'):null;if(!target)return false;
  const scope=target.closest&&target.closest('#quiz');if(!scope||scope.dataset.answered)return false;
@@ -74,6 +78,7 @@ function instantAnswer(event){
  const input=scope.querySelector('.input'),value=target.classList&&target.classList.contains('option')?clean(target.textContent):clean(input&&input.value),correct=answerKey(value)===answerKey(question.a);
  if(target.classList&&target.classList.contains('option'))scope.querySelectorAll('.option').forEach(button=>{if(button===target)button.classList.add(correct?'correct':'wrong');if(!correct&&answerKey(button.textContent)===answerKey(question.a))button.classList.add('correct')});
  delete feedback.dataset.feedbackUi;delete feedback.dataset.feedbackRendered;feedback.className='feedback '+(correct?'correct':'wrong');feedback.textContent=correct?'答對了！':'正確答案：'+clean(question.a);
+ unlockNextSoon(scope);
  return true;
 }
 function scan(root){if(!root)return;if(root.matches&&root.matches('.feedback'))enhance(root);if(root.querySelectorAll)root.querySelectorAll('.feedback').forEach(enhance)}
@@ -82,6 +87,6 @@ function install(){
  scan(document);if(typeof MutationObserver!=='function'||!document.body)return;
  const observer=new MutationObserver(records=>records.forEach(record=>{if(record.target&&record.target.classList&&record.target.classList.contains('feedback'))enhance(record.target);record.addedNodes&&record.addedNodes.forEach(scan)}));observer.observe(document.body,{childList:true,subtree:true});window.ManjingoFeedbackUI.observer=observer
 }
-window.ManjingoFeedbackUI={enhance,scan,install,instantAnswer,questionFor,questionForScope,answerKey,explanationFromText,parseCorrectAnswer,metricLines,supportingLines,clean,observer:null};
+window.ManjingoFeedbackUI={enhance,scan,install,instantAnswer,unlockNextSoon,questionFor,questionForScope,answerKey,explanationFromText,parseCorrectAnswer,metricLines,supportingLines,clean,observer:null};
 if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install()}
 })();
