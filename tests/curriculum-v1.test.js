@@ -32,7 +32,7 @@ test('curriculum v1 defines a unique transfer-first skill tree', () => {
 
 test('all 59 current teachable knowledge points have an explicit migration decision', () => {
   const catalog = loadCatalog();
-  const kpIds = catalog.getKnowledgePointIds({ teachableOnly:true }).map(String).sort();
+  const kpIds = Array.from(catalog.getKnowledgePointIds({ teachableOnly:true }), String).sort();
   const mapped = Object.keys(curriculum.migration).sort();
   assert.equal(kpIds.length, 59);
   assert.deepEqual(mapped, kpIds);
