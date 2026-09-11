@@ -42,15 +42,17 @@ test('32px uses a dedicated compact head crop instead of shrinking the full body
   assert.match(svg,/32px/);
 });
 
-test('visual QA character sheet renders from the manifest across required sizes',()=>{
+test('visual QA character sheet renders from the production runtime across required sizes',()=>{
   const sheet=read('public/mascot-sheet.html');
-  assert.match(sheet,/fetch\('\.\/mascot\/manifest\.json'/);
-  assert.match(sheet,/manifest\.recommendedSizes/);
-  assert.match(sheet,/size===32/);
-  assert.match(sheet,/manifest\.compactAsset/);
+  assert.match(sheet,/script src="\.\/mascot-runtime\.js"/);
+  assert.match(sheet,/ManjingoMascotRuntime/);
+  assert.match(sheet,/runtime\.recommendedSizes/);
+  assert.match(sheet,/runtime\.asset\(state\.id,\{size\}\)/);
+  assert.match(sheet,/size<=32/);
   assert.match(sheet,/data-mascot-state/);
   sizes.forEach(size=>assert.match(sheet,new RegExp(String(size))));
   assert.match(sheet,/prefers-reduced-motion:reduce/);
+  assert.doesNotMatch(sheet,/fetch\('\.\/mascot\/manifest\.json'/);
 });
 
 test('production placements use canonical state assets instead of the legacy baseline directly',()=>{
