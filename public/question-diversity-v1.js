@@ -3,6 +3,7 @@
 const api=factory();
 if(typeof module==='object'&&module.exports)module.exports=api;
 root.ManjingoQuestionDiversityV1=api;
+if(root.window&&root.window!==root)root.window.ManjingoQuestionDiversityV1=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
 'use strict';
 
@@ -18,15 +19,31 @@ function sourceOf(q){
  return !source||source==='CROSS'||source==='UNKNOWN'?null:source;
 }
 function sentenceOf(q){return String(q&&q.sourceSentenceId||'')||null}
-
-function canTake(q,state,policy,options){
+function policyFrom(options){
+ const value=options||{};
+ return{
+  maxQuestionsPerSourceText:Math.max(1,Number(value.maxQuestionsPerSourceText)||DEFAULTS.maxQuestionsPerSourceText),
+  maxQuestionsPerSourceSentence:Math.max(1,Number(value.maxQuestionsPerSourceSentence)||DEFAULTS.maxQuestionsPerSourceSentence)
+ };
+}
+function buildState(questions){
+ const state={ids:new Set(),sources:new Map(),sentences:new Map()};
+ for(const q of Array.isArray(questions)?questions:[]){
+  const id=idOf(q),source=sourceOf(q),sentence=sentenceOf(q);
+  if(id)state.ids.add(id);
+  if(source)state.sources.set(source,(state.sources.get(source)||0)+1);
+  if(sentence)state.sentences.set(sentence,(state.sentences.get(sentence)||0)+1);
+ }
+ return state;
+}
+function canTake(q,state,policy,avoidSentenceIds){
  const source=sourceOf(q),sentence=sentenceOf(q);
- if(sentence&&state.sentences.get(sentence)>=policy.maxQuestionsPerSourceSentence)return false;
- if(source&&state.sources.get(source)>=policy.maxQuestionsPerSourceText)return false;
- if(sentence&&options.avoidSentenceIds.has(sentence))return false;
+ if(!idOf(q)||state.ids.has(idOf(q)))return false;
+ if(sentence&&(state.sentences.get(sentence)||0)>=policy.maxQuestionsPerSourceSentence)return false;
+ if(source&&(state.sources.get(source)||0)>=policy.maxQuestionsPerSourceText)return false;
+ if(sentence&&avoidSentenceIds.has(sentence))return false;
  return true;
 }
-
 function add(q,state,out){
  const source=sourceOf(q),sentence=sentenceOf(q),id=idOf(q);
  if(!id||state.ids.has(id))return false;
@@ -37,7 +54,24 @@ function add(q,state,out){
  return true;
 }
 
-function buildState(){return{ids:new Set(),sources:new Map(),sentences:new Map()}}
+/**
+ * Pick one candidate against questions already selected for the session.
+ * Candidate order is pedagogical priority: callers may put misconception or
+ * rotation-preferred questions first. Diversity only changes the choice when a
+ * same-priority alternative can avoid source/sentence repetition.
+ */
+function choose(candidates,selected,opts){
+ const source=Array.isArray(candidates)?candidates.filter(Boolean):[];
+ if(!source.length)return null;
+ const state=buildState(selected),policy=policyFrom(opts),options=opts||{};
+ const avoidSentenceIds=new Set((options.avoidSentenceIds||[]).map(String));
+ for(const q of source)if(canTake(q,state,policy,avoidSentenceIds))return q;
+ if(avoidSentenceIds.size){
+  const none=new Set();
+  for(const q of source)if(canTake(q,state,policy,none))return q;
+ }
+ return source.find(q=>idOf(q)&&!state.ids.has(idOf(q)))||null;
+}
 
 /**
  * Preserve candidate priority/order while enforcing source diversity when alternatives exist.
@@ -46,41 +80,27 @@ function buildState(){return{ids:new Set(),sources:new Map(),sentences:new Map()
  */
 function select(candidates,limit,opts){
  const source=Array.isArray(candidates)?candidates.filter(Boolean):[];
- const max=Math.max(0,Number(limit)||0);
- const options=opts||{};
- const policy={
-  maxQuestionsPerSourceText:Math.max(1,Number(options.maxQuestionsPerSourceText)||DEFAULTS.maxQuestionsPerSourceText),
-  maxQuestionsPerSourceSentence:Math.max(1,Number(options.maxQuestionsPerSourceSentence)||DEFAULTS.maxQuestionsPerSourceSentence)
- };
+ const max=Math.max(0,Number(limit)||0),options=opts||{},policy=policyFrom(options);
  const avoidSentenceIds=new Set((options.avoidSentenceIds||[]).map(String));
  const state=buildState(),out=[];
- const strictOptions={avoidSentenceIds};
-
  for(const q of source){
   if(out.length>=max)break;
-  if(!idOf(q)||state.ids.has(idOf(q)))continue;
-  if(canTake(q,state,policy,strictOptions))add(q,state,out);
+  if(canTake(q,state,policy,avoidSentenceIds))add(q,state,out);
  }
-
  if(out.length<max&&avoidSentenceIds.size){
-  const relaxedHistory={avoidSentenceIds:new Set()};
+  const none=new Set();
   for(const q of source){
    if(out.length>=max)break;
-   if(!idOf(q)||state.ids.has(idOf(q)))continue;
-   if(canTake(q,state,policy,relaxedHistory))add(q,state,out);
+   if(canTake(q,state,policy,none))add(q,state,out);
   }
  }
-
  if(out.length<max){
   for(const q of source){
    if(out.length>=max)break;
    if(!idOf(q)||state.ids.has(idOf(q)))continue;
-   // Last-resort fill: preserve unique IDs. Same-sentence/source overflow is explicit
-   // and only happens when the available pool cannot satisfy the diversity policy.
    add(q,state,out);
   }
  }
-
  return out;
 }
 
@@ -94,5 +114,5 @@ function measure(questions){
  return{sourceCounts,sentenceCounts};
 }
 
-return{VERSION,DEFAULTS,select,measure,sourceOf,sentenceOf};
+return{VERSION,DEFAULTS,select,choose,measure,sourceOf,sentenceOf,buildState};
 });
