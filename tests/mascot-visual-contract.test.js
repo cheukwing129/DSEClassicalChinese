@@ -71,7 +71,7 @@ test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
 
 test('encouraging P2 candidate encodes supportive cues without blame cues',()=>{
   const encouraging=read('public/mascot/moling-encouraging.svg');
-  assert.match(encouraging,/輕微前傾/);
+  assert.match(encouraging,/微歪小笑容/);
   assert.match(encouraging,/陪伴與支持/);
   assert.match(encouraging,/全墨色/);
   assert.match(encouraging,/金色雲紋/);
