@@ -82,7 +82,7 @@ v2 已修正：
 
 角色必須是陪伴層，不可搶走教學內容的情緒焦點。
 
-目前 live-layout 檢查未見遮擋、溢出或資訊層級反轉；最後人工確認要特別看 34px mobile 是否因眼睛與手勢擠在一起而顯得緊張，以及錯題紅／橙色訊號是否把腮紅誤讀成尷尬或羞恥。
+live-layout 人工確認已特別檢查 34px mobile 的眼睛／手勢間距，以及錯題紅／橙色訊號與腮紅的關係；未見遮擋、溢出、緊張／羞恥誤讀或資訊層級反轉。
 
 ## Promotion checklist
 
@@ -92,7 +92,7 @@ A–E 已全部通過；promotion 已執行：
 2. [x] 執行 `npm run mascot:encouraging:p2`。
 3. [x] 執行 `npm run mascot:check`。
 4. [x] 執行完整 `npm test`。
-5. [x] Tests #391 全綠；將 PR #7 由 draft 轉為 ready for review。
+5. [x] 最新 CI 全綠；PR #7 已由 draft 轉為 ready for review。
 6. 更新並完成 Issue #6。
 
 Tracks #6, #3 and PR #7.
