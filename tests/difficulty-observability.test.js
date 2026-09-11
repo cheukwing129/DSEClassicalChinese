@@ -32,7 +32,7 @@ test('observability explains calibration and actual selection separately',()=>{
  assert.equal(decision.selectedTier,'transfer');
  assert.equal(decision.reason,'application-ready');
  assert.equal(decision.selectionReason,'target-tier');
- assert.match(decision.reasonLabel,/提早試跨篇遷移/);
+ assert.match(decision.reasonLabel,/挑戰跨篇遷移/);
  assert.equal(decision.profile.recentAttempts,4);
  assert.equal(decision.profile.recentAccuracy,100);
 });
@@ -45,12 +45,25 @@ test('misconception targeting is visible even when selected tier differs from ta
  assert.equal(decision.targetTier,'transfer');
  assert.equal(decision.selectedTier,'foundation');
  assert.equal(decision.selectionReason,'misconception-target');
- assert.match(decision.selectionLabel,/錯誤概念/);
+ assert.match(decision.selectionLabel,/容易混淆/);
+});
+
+test('student summary turns internal decisions into concise learning guidance',()=>{
+ const env=browserContext({knowledge:{}});
+ const summary=env.observability.studentSummary({mastery:68,baseTier:'application',targetTier:'transfer',selectedTier:'transfer',reason:'application-ready',selectionReason:'target-tier',profile:{recentAttempts:4,recentAccuracy:100,recentCorrectStreak:4}});
+ assert.equal(summary.tier,'跨篇遷移');
+ assert.match(summary.reason,/語境應用近期表現穩定/);
+ assert.match(summary.evidence,/掌握度 68%/);
+ assert.match(summary.evidence,/近期同層 4 題 100%/);
+ assert.match(summary.adjustment,/語境應用調整至跨篇遷移/);
+ const targeted=env.observability.studentSummary({mastery:82,baseTier:'transfer',targetTier:'transfer',selectedTier:'foundation',reason:'mastery',selectionReason:'misconception-target',profile:{recentAttempts:0,recentAccuracy:null,recentCorrectStreak:0}});
+ assert.match(targeted.reason,/容易混淆/);
+ assert.match(targeted.adjustment,/本題實際使用基礎辨識/);
 });
 
 test('observed choices persist bounded deduplicated decision history inside the KP record',()=>{
  const env=browserContext({knowledge:{kp1:{mastery:40}}});
- const base={kpId:'kp1',questionId:'q1',mastery:40,mode:'normal',lastCorrect:true,baseTier:'application',targetTier:'application',selectedTier:'application',reason:'mastery',reasonLabel:'依目前掌握度安排',selectionReason:'target-tier',selectionLabel:'選用目前目標難度',profile:{recentAttempts:0,recentAccuracy:null,recentCorrectStreak:0,overallAccuracy:null}};
+ const base={kpId:'kp1',questionId:'q1',mastery:40,mode:'normal',lastCorrect:true,baseTier:'application',targetTier:'application',selectedTier:'application',reason:'mastery',reasonLabel:'依你目前的掌握度安排',selectionReason:'target-tier',selectionLabel:'選用目前適合你的難度',profile:{recentAttempts:0,recentAccuracy:null,recentCorrectStreak:0,overallAccuracy:null}};
  env.observability.persistDecision({...base,observedAt:'2026-09-11T00:00:00.000Z'});
  env.observability.persistDecision({...base,observedAt:'2026-09-11T00:00:05.000Z'});
  for(let i=0;i<15;i++)env.observability.persistDecision({...base,questionId:'q'+(i+2),observedAt:new Date(Date.UTC(2026,8,11,0,1,i)).toISOString()});
@@ -70,13 +83,16 @@ test('cross-device merge treats a newer difficulty observation as newer state wh
  assert.equal(accountSync.recordTime(local),new Date('2026-09-11T00:10:00.000Z').getTime());
 });
 
-test('browser runtime loads observability after difficulty policy and schedules private account sync',()=>{
+test('browser runtime integrates difficulty explanations inside learning results',()=>{
  const rotation=source('public/question-rotation.js'),observability=source('public/difficulty-observability.js');
  const difficultyPos=rotation.indexOf('question-difficulty.js'),observabilityPos=rotation.indexOf('difficulty-observability.js');
  assert.ok(difficultyPos>=0&&observabilityPos>difficultyPos,'observability must wrap the calibrated difficulty selector');
  assert.match(observability,/ManjingoAccountSync/);
  assert.match(observability,/sync\.schedule\(\)/);
  assert.match(observability,/manjingo:difficulty-observed/);
- assert.match(observability,/自適應難度依據/);
+ assert.match(observability,/為甚麼系統安排這個難度？/);
+ assert.match(observability,/近期同層/);
+ assert.match(observability,/dashboard\.querySelector&&dashboard\.querySelector\('\.dashboard-hero'\)/);
+ assert.match(observability,/查看另外/);
  assert.match(observability,/difficultyObservability/);
 });
