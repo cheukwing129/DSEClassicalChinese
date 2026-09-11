@@ -8,7 +8,8 @@
     "mascot:happy:p1": "node scripts/check_mascot_happy_p1.cjs",
     "mascot:encouraging:p2": "node scripts/check_mascot_encouraging_p2.cjs",
     "mascot:thinking:p3": "node scripts/check_mascot_thinking_p3.cjs",
-    "test": "node scripts/validate_mascot_art.cjs && node scripts/check_mascot_happy_p1.cjs && node scripts/check_mascot_encouraging_p2.cjs && node scripts/check_mascot_thinking_p3.cjs && node --test functions/*.test.js tests/*.test.js",
+    "mascot:determined:p4": "node scripts/check_mascot_determined_p4.cjs",
+    "test": "node scripts/validate_mascot_art.cjs && node scripts/check_mascot_happy_p1.cjs && node scripts/check_mascot_encouraging_p2.cjs && node scripts/check_mascot_thinking_p3.cjs && node scripts/check_mascot_determined_p4.cjs && node --test functions/*.test.js tests/*.test.js",
     "smoke:pages": "node scripts/smoke_sync_guard.mjs && node scripts/smoke_answer_outbox.mjs && node scripts/smoke_pages_api.mjs",
     "deploy": "wrangler pages deploy public"
   },

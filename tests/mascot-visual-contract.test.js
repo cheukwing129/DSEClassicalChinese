@@ -12,7 +12,7 @@ const manifest=JSON.parse(read('public/mascot/manifest.json'));
 const stateIds=['neutral','happy','celebrate','encouraging','thinking','determined'];
 const sizes=[32,48,64,96,160];
 const productionPriority=['happy','encouraging','thinking','determined','celebrate'];
-const pendingPriority=['determined','celebrate'];
+const pendingPriority=['celebrate'];
 
 test('mascot manifest is the complete six-state v1 contract',()=>{
   assert.equal(manifest.version,1);
