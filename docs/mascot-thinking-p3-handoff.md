@@ -64,7 +64,7 @@
 
 `placeholder-treatment → candidate → production`
 
-建立 independent candidate 前，`thinking.artStatus` 保持 `placeholder-treatment`。A–E 全部通過後才可升 production，並執行：
+Independent v2 已通過 A–E，`thinking.artStatus` 已升為 `production`。Production verification 執行：
 
 ```bash
 npm run mascot:thinking:p3
