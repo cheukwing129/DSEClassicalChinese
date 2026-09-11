@@ -44,12 +44,14 @@ if(encouraging.artStatus==='placeholder-treatment'){
   if(!/<image\b/i.test(svg)||!/data:image\/webp;base64,/i.test(svg))fail('candidate encouraging should contain embedded transparent 3D artwork');
   if(punitiveMarkup)fail('candidate encouraging contains punitive/shaming visual markup');
   if(!supportiveLanguage)fail('candidate description should explicitly preserve supportive intent');
-  ok('candidate v3 artwork is independent, 3D, and structurally reviewable');
+  ok('candidate v4 artwork is independent, 3D, and structurally reviewable');
   ok('no punitive/shaming visual markup detected');
   ok('production promotion remains blocked until A–E visual QA passes');
 }else if(encouraging.artStatus==='production'){
   if(referencesBaseline)fail('production encouraging must not reference mascot-moling.svg');
   if(svg===neutralSvg)fail('production encouraging cannot be identical to neutral');
+  if(svg.length<50000)fail('production encouraging SVG is suspiciously small for the embedded 3D artwork');
+  if(!/<image\b/i.test(svg)||!/data:image\/webp;base64,/i.test(svg))fail('production encouraging should contain embedded transparent 3D artwork');
   if(punitiveMarkup)fail('production encouraging contains punitive/shaming visual markup');
   if(!supportiveLanguage)fail('production encouraging description should preserve supportive intent');
   ok('production encouraging is independent and non-punitive');
