@@ -65,14 +65,14 @@ test('new transfer questions keep explicit skills provenance and transfer level'
   assert.equal(zhi.curriculumMode, 'core');
   assert.deepEqual(Array.from(zhi.skillIds), ['fw.zhi']);
   assert.equal(zhi.legacyTextId, 'CROSS');
-  assert.equal(zhi.sourceTextId, 'lunyu-xueer');
+  assert.equal(zhi.sourceTextId, 'lunyu');
   assert.equal(zhi.sourceSentenceId, 'sentence:lunyu-xueer:xue-er-shixi-zhi');
   assert.equal(zhi.sourceKind, 'classical-canon');
   assert.equal(zhi.transferLevel, 2);
 
   const yi = byId(questions, 'tr1q019');
   assert.deepEqual(Array.from(yi.skillIds), ['fw.yi']);
-  assert.equal(yi.sourceTextId, 'zhuangzi-xiaoyaoyou');
+  assert.equal(yi.sourceTextId, 'xiaoyaoyou');
   assert.equal(yi.transferLevel, 2);
 });
 
@@ -145,8 +145,8 @@ test('audit quantifies legacy content and keeps new canonical sources out of CRO
 
   assert.equal(audit.bySourceText.yueyanglou, 38);
   assert.equal(audit.bySourceText.CROSS, 45);
-  assert.equal(audit.bySourceText['lunyu-xueer'], 6);
-  assert.equal(audit.bySourceText['xunzi-quanxue'], 8);
+  assert.equal(audit.bySourceText.lunyu, 9);
+  assert.equal(audit.bySourceText.quanxue, 8);
   assert.equal(audit.bySourceText['mengzi-lianghuiwang-xia'], 4);
-  assert.equal(audit.bySourceText['zhuangzi-xiaoyaoyou'], 4);
+  assert.equal(audit.bySourceText.xiaoyaoyou, 4);
 });
