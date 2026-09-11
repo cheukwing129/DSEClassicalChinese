@@ -9,6 +9,7 @@ const pack02Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'quest
 const pack03Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-03.js'), 'utf8');
 const lessonPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-lesson.js'), 'utf8');
 const capacityPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-capacity-01.js'), 'utf8');
+const transferPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-transfer-01.js'), 'utf8');
 
 function loadContext() {
   const context = { window: {}, Map, Set, Array, Object, Number, String, Math };
@@ -17,6 +18,7 @@ function loadContext() {
   vm.runInContext(pack03Source, context);
   vm.runInContext(lessonPackSource, context);
   vm.runInContext(capacityPackSource, context);
+  vm.runInContext(transferPackSource, context);
   vm.runInContext(catalogSource, context);
   return context;
 }
@@ -25,11 +27,11 @@ function loadCatalog() {
   return loadContext().window.ManjingoContent;
 }
 
-test('reviewed local catalog contains 222 questions across the 59 teachable knowledge points', () => {
+test('reviewed local catalog contains 242 questions across the 59 teachable knowledge points', () => {
   const catalog = loadCatalog();
   const kpIds = catalog.getKnowledgePointIds({ teachableOnly: true });
   assert.equal(catalog.catalogVersion, 'reviewed-v1');
-  assert.equal(catalog.questions.length, 222);
+  assert.equal(catalog.questions.length, 242);
   assert.equal(kpIds.length, 59);
   assert.ok(kpIds.includes('sx_006'));
   assert.ok(kpIds.includes('kp_caogui_strategy'));
@@ -50,6 +52,28 @@ test('capacity pack keeps only validated explained questions', () => {
       assert.ok(Array.isArray(q.o));
       assert.ok(q.o.includes(q.a), `${q.id} answer must appear in options`);
     }
+  }
+});
+
+test('first transfer pack adds 20 source-aware unseen-context questions', () => {
+  const context = loadContext();
+  const pack = context.window.ManjingoQuestionPackTransfer01;
+  const allowedKps = new Set(['kp_virtual_zhi','kp_virtual_er','kp_virtual_yi','kp_virtual_yu','kp_virtual_qi','kp_virtual_ze']);
+  assert.equal(pack.kind, 'transfer-core');
+  assert.equal(pack.questions.length, 20);
+  assert.equal(new Set(pack.questions.map(q => q.id)).size, 20);
+  for (const q of pack.questions) {
+    assert.match(q.id, /^tr1q\d{3}$/);
+    assert.ok(allowedKps.has(q.kpId), `${q.id}: transfer pack must attach to a core language KP`);
+    assert.equal(q.textId, 'CROSS');
+    assert.ok(Array.isArray(q.skillIds) && q.skillIds.length > 0, `${q.id}: explicit skillIds required`);
+    assert.ok(String(q.sourceTextId || '').trim(), `${q.id}: real source required`);
+    assert.notEqual(q.sourceTextId, 'CROSS', `${q.id}: source must not hide behind CROSS`);
+    assert.ok(String(q.sourceSentenceId || '').startsWith('sentence:'), `${q.id}: stable sentence id required`);
+    assert.equal(q.sourceKind, 'classical-canon');
+    assert.ok(q.transferLevel >= 2, `${q.id}: must exercise unseen-context transfer`);
+    assert.ok(q.explanation.length >= 12, `${q.id}: explanation required`);
+    assert.ok(Array.isArray(q.o) && q.o.includes(q.a), `${q.id}: answer must be one option`);
   }
 });
 
