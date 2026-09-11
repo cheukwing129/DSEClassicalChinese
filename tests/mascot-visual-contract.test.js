@@ -12,7 +12,7 @@ const manifest=JSON.parse(read('public/mascot/manifest.json'));
 const stateIds=['neutral','happy','celebrate','encouraging','thinking','determined'];
 const sizes=[32,48,64,96,160];
 const productionPriority=['happy','encouraging','thinking','determined','celebrate'];
-const pendingPriority=['encouraging','thinking','determined','celebrate'];
+const pendingPriority=['thinking','determined','celebrate'];
 
 test('mascot manifest is the complete six-state v1 contract',()=>{
   assert.equal(manifest.version,1);
@@ -37,9 +37,9 @@ test('runtime and manifest stay in exact parity including artwork readiness',()=
   });
   assert.equal(runtime.isProductionArt('neutral'),true);
   assert.equal(runtime.isProductionArt('happy'),true);
-  assert.equal(runtime.isProductionArt('encouraging'),false);
+  assert.equal(runtime.isProductionArt('encouraging'),true);
   assert.equal(runtime.descriptor('happy').artStatus,'production');
-  assert.equal(runtime.descriptor('encouraging').artStatus,'candidate');
+  assert.equal(runtime.descriptor('encouraging').artStatus,'production');
   assert.deepEqual(runtime.productionQueue().map(state=>state.id),pendingPriority);
 });
 
@@ -56,9 +56,9 @@ test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and 
   const happy=manifest.states.find(state=>state.id==='happy');
   const encouraging=manifest.states.find(state=>state.id==='encouraging');
   assert.equal(happy.artStatus,'production');
-  assert.equal(encouraging.artStatus,'candidate');
+  assert.equal(encouraging.artStatus,'production');
   assert.match(read('public/mascot/moling-happy.svg'),/happy production artwork/);
-  assert.match(read('public/mascot/moling-encouraging.svg'),/encouraging 候選 artwork v4/);
+  assert.match(read('public/mascot/moling-encouraging.svg'),/encouraging production artwork v4/);
 });
 
 test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
@@ -69,7 +69,7 @@ test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
   assert.doesNotMatch(happy,/stroke="#d4a85b"/);
 });
 
-test('encouraging P2 candidate encodes supportive cues without blame cues',()=>{
+test('encouraging P2 production art encodes supportive cues without blame cues',()=>{
   const encouraging=read('public/mascot/moling-encouraging.svg');
   assert.match(encouraging,/微歪小笑容/);
   assert.match(encouraging,/陪伴與支持/);
