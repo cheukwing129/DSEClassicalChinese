@@ -138,7 +138,7 @@ test('misconception-targeted question stays ahead of difficulty preference',()=>
 test('reviewed runtime v4 gives all 63 knowledge points explicit three-tier coverage',()=>{
  const runtime=loadReviewedRuntime(),catalog=runtime.ManjingoContent;
  assert.equal(catalog.catalogVersion,'reviewed-v4');
- assert.equal(catalog.questions.length,316);
+ assert.equal(catalog.questions.length,362);
  const teachable=catalog.knowledgePoints.filter(kp=>kp.teachable!==false);
  assert.equal(teachable.length,63);
  const zhi=catalog.questions.find(q=>q.id==='ad1q002');
