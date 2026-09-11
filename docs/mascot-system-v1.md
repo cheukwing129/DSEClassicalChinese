@@ -93,12 +93,13 @@
 - 可加入完整姿勢與情境配件。
 - 適合 onboarding、里程碑、空狀態插圖。
 
-## 5. 正式資產結構
+## 5. 正式資產與 runtime 結構
 
 ```text
 public/
   mascot-moling.svg          # approved baseline artwork
-  mascot-sheet.html          # visual QA character sheet
+  mascot-runtime.js          # production state registry / asset resolver / semantic UI tagging
+  mascot-sheet.html          # runtime-backed visual QA character sheet
   mascot/
     manifest.json            # machine-readable v1 state contract
     moling-neutral.svg
@@ -110,7 +111,9 @@ public/
     moling-head.svg           # compact 32px crop
 ```
 
-暫時保留 `public/mascot-moling.svg` 作 baseline artwork。主要 UI 不再應直接依賴這個 legacy/default 路徑，而是透過正式 state asset 使用角色。
+`manifest.json` 是設計契約；`mascot-runtime.js` 是產品執行時使用的同步 registry。兩者由自動測試逐欄比對，避免 state id、用途、motion 或 asset path 漂移。
+
+暫時保留 `public/mascot-moling.svg` 作 baseline artwork。主要 UI 不再應直接依賴這個 legacy/default 路徑，而是透過正式 state asset 或 mascot runtime 使用角色。
 
 ## 6. UI 使用規則
 
@@ -132,6 +135,10 @@ public/
 - 每一題都做大型動畫
 - 錯誤訊息、系統故障、權限錯誤等非學習情境
 - 需要學生集中閱讀或作答時遮擋內容
+
+### 語意 class 原則
+
+Mascot 狀態不能靠「某個頁面所有 icon 一律套同一張圖」來決定。需要由 runtime 或明確 semantic class 標示，例如 `mascot-thinking`。這可避免日後新增其他 lesson icon 時被誤套成 `thinking`。
 
 ## 7. 動效原則
 
@@ -168,9 +175,12 @@ public/
 2. 建立 `neutral`、`happy`、`celebrate`、`encouraging`、`thinking`、`determined` 六個正式資產。
 3. 接入首頁、答題 feedback、session completion、概念學習及 streak UI。
 4. 建立 `manifest.json`，固定 state id、用途、資產路徑及尺寸契約。
-5. 建立 32px 專用 `moling-head.svg`，避免完整角色在最小尺寸失去辨識度。
-6. 建立 `/mascot-sheet.html`，可一次檢查六狀態 × 32 / 48 / 64 / 96 / 160px。
-7. 補回歸測試，確保 state assets、尺寸契約、reduced-motion 與主要 UI 引用不回退。
+5. 建立 `mascot-runtime.js`，集中處理 state normalization、asset resolution、32px compact asset 與 semantic lesson tagging。
+6. 答題 feedback 與 session completion 已改為優先透過 shared runtime 解決 state asset，而不是各自維護一套映射。
+7. `thinking` 不再透過廣泛 CSS selector 覆蓋所有 lesson icon，而由 `mascot-thinking` semantic class 控制。
+8. 建立 32px 專用 `moling-head.svg`，避免完整角色在最小尺寸失去辨識度。
+9. 建立 `/mascot-sheet.html`，直接以 production runtime 一次檢查六狀態 × 32 / 48 / 64 / 96 / 160px。
+10. 補回歸測試，保護 manifest/runtime parity、legacy direct-reference audit、尺寸契約、reduced-motion 與主要 UI 引用。
 
 仍待 production artwork 階段深化：
 
@@ -186,16 +196,18 @@ public/
 - reduced motion 可完整使用。
 - mascot asset 載入失敗時，學習流程仍正常。
 - 主要 UI 不直接依賴單一 legacy 檔名。
+- runtime 與 manifest 必須保持一致。
+- lesson mascot 必須由語意狀態指定，不使用過度廣泛 selector。
 
 ## 11. Visual QA 流程
 
 設計或程式修改 mascot 後，至少做以下檢查：
 
-1. 在 preview deployment 開啟 `/mascot-sheet.html`。
+1. 在 preview deployment 開啟 `/mascot-sheet.html`；此頁使用與 production UI 相同的 `mascot-runtime.js`。
 2. 逐一看六個 states 在 32 / 48 / 64 / 96 / 160px 的輪廓與透明邊緣。
 3. 以 360–430px viewport 檢查 feedback、lesson、streak 不會擠壓文字或 CTA。
 4. 開啟 reduced-motion 偏好，確認資訊仍完整。
-5. 執行完整測試，確認 manifest 與資產契約沒有漂移。
+5. 執行完整測試，確認 runtime／manifest、legacy reference audit 與資產契約沒有漂移。
 
 詳細人工檢查表見 `docs/mascot-visual-qa.md`。
 
