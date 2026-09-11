@@ -11,7 +11,7 @@ const STATE_LIST=Object.freeze([
   Object.freeze({id:'neutral',label:'一般',asset:'./mascot/moling-neutral.svg',intent:'首頁、一般歡迎、空狀態、品牌展示',motion:'static',artStatus:'baseline-approved',productionPriority:0}),
   Object.freeze({id:'happy',label:'開心',asset:'./mascot/moling-happy.svg',intent:'答對、完成小步驟',motion:'short-bounce',artStatus:'production',productionPriority:1}),
   Object.freeze({id:'celebrate',label:'慶祝',asset:'./mascot/moling-celebrate.svg',intent:'全對、完成一課、解鎖重要內容',motion:'single-celebration',artStatus:'provisional',productionPriority:5}),
-  Object.freeze({id:'encouraging',label:'鼓勵',asset:'./mascot/moling-encouraging.svg',intent:'答錯、補救學習、弱點診斷',motion:'gentle-lift',artStatus:'candidate',productionPriority:2}),
+  Object.freeze({id:'encouraging',label:'鼓勵',asset:'./mascot/moling-encouraging.svg',intent:'答錯、補救學習、弱點診斷',motion:'gentle-lift',artStatus:'production',productionPriority:2}),
   Object.freeze({id:'thinking',label:'思考',asset:'./mascot/moling-thinking.svg',intent:'提示、概念理解、重新教學',motion:'static-or-fade',artStatus:'placeholder-treatment',productionPriority:3}),
   Object.freeze({id:'determined',label:'堅定',asset:'./mascot/moling-determined.svg',intent:'連續學習、streak、每日目標',motion:'static-or-short-lift',artStatus:'placeholder-treatment',productionPriority:4})
 ]);
