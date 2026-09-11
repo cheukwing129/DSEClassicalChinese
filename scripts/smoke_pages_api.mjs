@@ -15,6 +15,13 @@ const apiKey = apiKeyMatch[1];
 function check(value, message) {
   if (!value) throw new Error(message);
 }
+function reportTiming(response, label, required = []) {
+  const value = response.headers.get('server-timing') || '';
+  check(value, `${label} did not return Server-Timing`);
+  for (const name of required) check(new RegExp(`(?:^|,\\s*)${name};dur=\\d+(?:\\.\\d+)?(?:,|$)`).test(value), `${label} timing is missing ${name}: ${value}`);
+  console.log(`⏱ ${label}: ${value}`);
+  return value;
+}
 async function readJson(response, label) {
   let data;
   try { data = await response.json(); }
@@ -126,6 +133,7 @@ const health = await readJson(healthResponse, 'health');
 check(healthResponse.ok && health.ok === true, `health failed (${healthResponse.status})`);
 check(health.configured === true, 'Pages Worker is deployed but Firebase server credentials are not configured');
 check(health.service === 'manjingo-learning', 'unexpected health service');
+reportTiming(healthResponse, 'health', ['total']);
 console.log(`✓ health: ${health.service} / ${health.firestoreProject}`);
 
 const signup = await firebaseIdentity('accounts:signUp', { returnSecureToken: true });
@@ -139,12 +147,14 @@ const plan = await readJson(planResponse, 'daily plan');
 check(planResponse.ok, `daily plan failed (${planResponse.status}): ${plan.error || 'unknown error'}`);
 check(Array.isArray(plan.items), 'daily plan did not return items[]');
 check(Number.isFinite(Number(plan.totalRecommended)), 'daily plan did not return totalRecommended');
+reportTiming(planResponse, 'daily-plan', ['auth','oauth','knowledge_list','concepts_list','kp_list','total']);
 console.log(`✓ authenticated Firestore daily plan: ${plan.items.length} item(s)`);
 
 const dueResponse = await api('/api/due-knowledge-points', idToken);
 const due = await readJson(dueResponse, 'due knowledge points');
 check(dueResponse.ok, `due knowledge points failed (${dueResponse.status}): ${due.error || 'unknown error'}`);
 check(Array.isArray(due.dueKpIds), 'due knowledge points did not return dueKpIds[]');
+reportTiming(dueResponse, 'due-knowledge-points', ['auth','oauth','knowledge_list','total']);
 console.log(`✓ authenticated Firestore due lookup: ${due.dueKpIds.length} due`);
 
 const answerId = `smokee2e${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
@@ -171,6 +181,7 @@ check(submitResponse.ok && submit.success === true, `valid answer submit failed 
 check(Number(submit.xpEarned) === 8, `expected 8 XP from first correct answer, got ${submit.xpEarned}`);
 check(Number(submit.mastery) > 0, 'valid answer did not increase mastery');
 check(Number(submit.totalXp) === 8, `expected total XP 8 for temporary user, got ${submit.totalXp}`);
+reportTiming(submitResponse, 'submit-answer', ['auth','oauth','question_read','tx_begin','tx_reads','commit','total']);
 console.log(`✓ real reviewed answer committed: +${submit.xpEarned} XP, mastery ${submit.mastery}%`);
 
 const [knowledge, game, concept, answerLog] = await Promise.all([
@@ -190,6 +201,7 @@ const invalidSubmitResponse = await api('/api/submit-answer', idToken, { method:
 const invalidSubmit = await readJson(invalidSubmitResponse, 'submit validation');
 check(invalidSubmitResponse.status === 400, `submit validation expected HTTP 400, got ${invalidSubmitResponse.status}`);
 check(/Invalid answer payload/i.test(String(invalidSubmit.error || '')), 'submit validation did not reject invalid payload');
+reportTiming(invalidSubmitResponse, 'submit-validation', ['auth','total']);
 console.log('✓ submit route still rejects invalid payload without an additional write');
 
 console.log('Pages learning API write smoke passed; cleanup will run in the workflow finalizer');
