@@ -1,0 +1,76 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const root = path.join(__dirname, '..');
+const curriculum = require(path.join(root, 'public', 'curriculum-v1.js'));
+
+function source(file) { return fs.readFileSync(path.join(root, file), 'utf8'); }
+function loadCatalog() {
+  const context = { window: {}, Map, Set, Array, Object, Number, String, Math };
+  vm.createContext(context);
+  for (const file of [
+    'public/question-pack-02.js',
+    'public/question-pack-03.js',
+    'public/question-pack-lesson.js',
+    'public/question-pack-capacity-01.js',
+    'public/content-catalog.js'
+  ]) vm.runInContext(source(file), context, { filename:file });
+  return context.window.ManjingoContent;
+}
+
+test('curriculum v1 defines a unique transfer-first skill tree', () => {
+  assert.equal(curriculum.VERSION, 'language-transfer-v1');
+  assert.equal(curriculum.domains.length, 6);
+  assert.equal(curriculum.skills.length, 52);
+  assert.equal(new Set(curriculum.skills.map(x => x.id)).size, curriculum.skills.length);
+  const domains = new Set(curriculum.domains.map(x => x.id));
+  assert.equal(curriculum.skills.every(x => domains.has(x.domain)), true);
+});
+
+test('all 59 current teachable knowledge points have an explicit migration decision', () => {
+  const catalog = loadCatalog();
+  const kpIds = catalog.getKnowledgePointIds({ teachableOnly:true }).map(String).sort();
+  const mapped = Object.keys(curriculum.migration).sort();
+  assert.equal(kpIds.length, 59);
+  assert.deepEqual(mapped, kpIds);
+});
+
+test('legacy migration targets only valid curriculum skills', () => {
+  const skillIds = new Set(curriculum.skills.map(x => x.id));
+  for (const [kpId, rule] of Object.entries(curriculum.migration)) {
+    assert.ok(['retain','refactor','merge','optional-set-text','advanced-reading'].includes(rule.action), `${kpId}: unknown migration action`);
+    assert.ok(Array.isArray(rule.targetSkillIds), `${kpId}: targetSkillIds must be an array`);
+    for (const id of rule.targetSkillIds) assert.ok(skillIds.has(id), `${kpId}: missing target skill ${id}`);
+  }
+});
+
+test('migration removes article recall from the normal core without discarding transferable material', () => {
+  const counts = Object.values(curriculum.migration).reduce((out, rule) => {
+    out[rule.action] = (out[rule.action] || 0) + 1;
+    return out;
+  }, {});
+  assert.deepEqual(counts, {
+    refactor:3,
+    'optional-set-text':26,
+    retain:15,
+    'advanced-reading':4,
+    merge:11
+  });
+  assert.equal(curriculum.migration.kp_yueyang_004.action, 'optional-set-text');
+  assert.equal(curriculum.migration.kp_theme_001.action, 'optional-set-text');
+  assert.equal(curriculum.migration.kp_taohua_discovery.salvageQuestions, true);
+  assert.equal(curriculum.migration.kp_loushi_allusion.salvageQuestions, true);
+});
+
+test('daily policy prioritizes language transfer and caps source repetition', () => {
+  const policy = curriculum.dailyPolicy;
+  assert.deepEqual(policy.languageSkillTarget, { min:7, max:8 });
+  assert.deepEqual(policy.transferTarget, { min:2, max:3 });
+  assert.deepEqual(policy.setTextRecallTarget, { min:0, max:0 });
+  assert.equal(policy.maxQuestionsPerSourceText, 2);
+  assert.equal(policy.maxQuestionsPerSourceSentence, 1);
+  assert.equal(policy.wrongAnswerFollowup, 'same-skill-different-context-first');
+});
