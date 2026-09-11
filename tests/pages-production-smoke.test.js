@@ -12,6 +12,7 @@ test('Pages smoke verifies deployed learner difficulty guidance instant feedback
   assert.match(source,/readTextAsset\('\/question-difficulty\.js'/);
   assert.match(source,/readTextAsset\('\/difficulty-observability\.js'/);
   assert.match(source,/readTextAsset\('\/feedback-ui\.js'/);
+  assert.match(source,/readTextAsset\('\/', 'homepage'\)/);
   assert.match(source,/calibration\.tierForMastery\(68/);
   assert.match(source,/=== 'transfer'/);
   assert.match(source,/calibration\.tierForMastery\(82/);
@@ -26,13 +27,18 @@ test('Pages smoke verifies deployed learner difficulty guidance instant feedback
   assert.match(source,/feedbackSource\.includes\("document\.addEventListener\('click',instantAnswer,true\)"\)/);
   assert.match(source,/feedbackSource\.includes\('function unlockNextSoon\(scope\)'\)/);
   assert.match(source,/feedbackSource\.includes\('next\.disabled=false'\)/);
+  assert.match(source,/homepageSource\.includes\('function answerIsCurrent\(box,answerId\)'\)/);
+  assert.match(source,/homepageSource\.includes\('if\(nextButton\)nextButton\.disabled=false;showLearningFeedback/);
+  assert.match(source,/!homepageSource\.includes\('nextButton\.disabled=true'\)/);
+  assert.match(source,/homepageSource\.includes\('if\(answerIsCurrent\(box,answerId\)\)showLearningFeedback/);
   assert.match(source,/indexOf\('difficulty-calibration\.js'\) < rotationSource\.indexOf\('question-difficulty\.js'\)/);
   assert.match(source,/indexOf\('question-difficulty\.js'\) < rotationSource\.indexOf\('difficulty-observability\.js'\)/);
   const calibrationCheck=source.indexOf("readTextAsset('/difficulty-calibration.js'");
   const observabilityCheck=source.indexOf("readTextAsset('/difficulty-observability.js'");
   const feedbackCheck=source.indexOf("readTextAsset('/feedback-ui.js'");
+  const homepageCheck=source.indexOf("readTextAsset('/', 'homepage')");
   const healthCheck=source.indexOf("api('/api/health'");
-  assert.ok(calibrationCheck>=0 && observabilityCheck>=0 && feedbackCheck>=0 && healthCheck>feedbackCheck,'production browser policies must be checked before backend smoke');
+  assert.ok(calibrationCheck>=0 && observabilityCheck>=0 && feedbackCheck>=0 && homepageCheck>=0 && healthCheck>homepageCheck,'production browser policies and homepage flow must be checked before backend smoke');
 });
 
 test('Pages smoke performs one real reviewed answer and verifies all learning writes',()=>{
