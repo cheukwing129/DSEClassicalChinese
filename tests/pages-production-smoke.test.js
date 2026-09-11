@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
-test('Pages smoke verifies deployed calibration observability and instant feedback before exercising the learning API',()=>{
+test('Pages smoke verifies deployed calibration observability instant feedback and nonblocking next before exercising the learning API',()=>{
   const source=read('scripts/smoke_pages_api.mjs');
   assert.match(source,/from 'node:vm'/);
   assert.match(source,/readTextAsset\('\/difficulty-calibration\.js'/);
@@ -20,6 +20,8 @@ test('Pages smoke verifies deployed calibration observability and instant feedba
   assert.match(source,/observability\.selectionLabel\('misconception-target'\)/);
   assert.match(source,/feedbackSource\.includes\('function instantAnswer\(event\)'\)/);
   assert.match(source,/feedbackSource\.includes\("document\.addEventListener\('click',instantAnswer,true\)"\)/);
+  assert.match(source,/feedbackSource\.includes\('function unlockNextSoon\(scope\)'\)/);
+  assert.match(source,/feedbackSource\.includes\('next\.disabled=false'\)/);
   assert.match(source,/indexOf\('difficulty-calibration\.js'\) < rotationSource\.indexOf\('question-difficulty\.js'\)/);
   assert.match(source,/indexOf\('question-difficulty\.js'\) < rotationSource\.indexOf\('difficulty-observability\.js'\)/);
   const calibrationCheck=source.indexOf("readTextAsset('/difficulty-calibration.js'");
