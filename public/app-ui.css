@@ -44,7 +44,7 @@ body .input{
 }
 body .action,#lessonApp .action{font-size:15px;font-weight:900;letter-spacing:.01em}
 body .option,#lessonApp .option{font-size:15px;line-height:1.45}
-body .action:active,#lessonApp .action{transform:translateY(1px)}
+body .action:active,#lessonApp .action:active{transform:translateY(1px)}
 body .small,#lessonApp .lesson-question-count{color:var(--ui-muted)}
 
 /* Homepage page-level rhythm */
