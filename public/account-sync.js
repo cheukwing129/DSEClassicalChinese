@@ -8,6 +8,9 @@ if(root.window&&root.window!==root)root.window.ManjingoAccountSync=api;
 'use strict';
 const LEARNING_KEY='manjingo_progress_cache';
 const ROTATION_KEY='manjingo_question_rotation_v1';
+const SENTENCE_HISTORY_KEY='__sourceSentences';
+const MAX_ROTATION_PER_KP=8;
+const MAX_SENTENCE_HISTORY=24;
 let modulePromise=null,syncPromise=null,timer=null,installed=false;
 function storage(){return root.localStorage||(root.window&&root.window.localStorage)||null}
 function parse(key,fallback){const s=storage();if(!s)return fallback;try{const value=JSON.parse(s.getItem(key)||'null');return value&&typeof value==='object'?value:fallback}catch(e){return fallback}}
@@ -28,7 +31,7 @@ function mergeLearningState(local,remote){const a=local&&typeof local==='object'
  conceptMastery:mergeObjectRecords(a.conceptMastery,b.conceptMastery),
  practiceHistory:mergePracticeHistory(a.practiceHistory,b.practiceHistory)
 }}
-function mergeRotation(local,remote){const a=local&&typeof local==='object'?local:{},b=remote&&typeof remote==='object'?remote:{},result={},keys=new Set([...Object.keys(a),...Object.keys(b)]);keys.forEach(key=>{const seen=new Set(),ids=[];[...(Array.isArray(a[key])?a[key]:[]),...(Array.isArray(b[key])?b[key]:[])].forEach(id=>{const value=String(id);if(!value||seen.has(value))return;seen.add(value);ids.push(value)});result[key]=ids.slice(0,8)});return result}
+function mergeRotation(local,remote){const a=local&&typeof local==='object'?local:{},b=remote&&typeof remote==='object'?remote:{},result={},keys=new Set([...Object.keys(a),...Object.keys(b)]);keys.forEach(key=>{const seen=new Set(),ids=[];[...(Array.isArray(a[key])?a[key]:[]),...(Array.isArray(b[key])?b[key]:[])].forEach(id=>{const value=String(id);if(!value||seen.has(value))return;seen.add(value);ids.push(value)});const limit=key===SENTENCE_HISTORY_KEY?MAX_SENTENCE_HISTORY:MAX_ROTATION_PER_KP;result[key]=ids.slice(0,limit)});return result}
 function firebase(){if(!modulePromise)modulePromise=import('./firebase-config.js');return modulePromise}
 function learning(){return root.ManjingoLocalLearning||(root.window&&root.window.ManjingoLocalLearning)||null}
 function emit(detail){const target=root.window||root,EventCtor=root.CustomEvent||(root.window&&root.window.CustomEvent);if(target&&typeof target.dispatchEvent==='function'&&typeof EventCtor==='function')target.dispatchEvent(new EventCtor('manjingo:account-sync-state',{detail}))}
@@ -38,7 +41,7 @@ async function syncNow(options){if(syncPromise)return syncPromise;syncPromise=(a
 function schedule(){if(timer)clearTimeout(timer);timer=setTimeout(()=>{timer=null;void syncNow({silent:true})},1800)}
 function clearLocal(){const s=storage();if(!s)return false;try{s.removeItem(LEARNING_KEY);s.removeItem(ROTATION_KEY);return true}catch(e){return false}}
 function install(){if(installed)return true;installed=true;const target=root.window||root;if(target&&typeof target.addEventListener==='function'){target.addEventListener('manjingo:learning-state-changed',event=>{if(event&&event.detail&&event.detail.source==='account-sync')return;schedule()});target.addEventListener('online',()=>schedule())}const doc=root.document||(root.window&&root.window.document);if(doc){const start=()=>{setTimeout(()=>void syncNow({silent:true}),0)};if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start);else start()}return true}
-const api={LEARNING_KEY,ROTATION_KEY,timeValue,recordTime,newerRecord,mergePracticeHistory,mergeLearningState,mergeRotation,mergeGame,syncNow,schedule,clearLocal,install};
+const api={LEARNING_KEY,ROTATION_KEY,SENTENCE_HISTORY_KEY,MAX_ROTATION_PER_KP,MAX_SENTENCE_HISTORY,timeValue,recordTime,newerRecord,mergePracticeHistory,mergeLearningState,mergeRotation,mergeGame,syncNow,schedule,clearLocal,install};
 if(typeof document!=='undefined'||root.document||(root.window&&root.window.document))install();
 return api;
 });
