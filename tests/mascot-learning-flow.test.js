@@ -6,11 +6,11 @@ const summary=require('../public/session-summary.js');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 const exists=p=>fs.existsSync(path.join(__dirname,'..',p));
 
-test('answer feedback maps Little Ink Spirit to happy and encouraging states',()=>{
+test('answer feedback maps Little Ink Spirit through the shared runtime',()=>{
   const source=read('public/feedback-ui.js');
+  assert.match(source,/mascot-runtime\.js/);
   assert.match(source,/function mascotFeedbackState\(isCorrect\)/);
-  assert.match(source,/happy:'\.\/mascot\/moling-happy\.svg'/);
-  assert.match(source,/encouraging:'\.\/mascot\/moling-encouraging\.svg'/);
+  assert.match(source,/runtime\.asset\(state\)/);
   assert.match(source,/mascot-state-'\+state/);
   assert.match(source,/抓到重點了！/);
   assert.match(source,/一起看清這一步。/);
@@ -50,11 +50,14 @@ test('all six v1 mascot state assets exist and preserve the selected baseline ar
   });
 });
 
-test('thinking and determined states are connected to concept learning and streak UI',()=>{
+test('thinking and determined states are connected to semantic learning UI',()=>{
   const css=read('public/app-ui.css');
+  const runtime=read('public/mascot-runtime.js');
   assert.match(css,/body\.app-nav-ready>\.title::after[^}]*moling-neutral\.svg/);
   assert.match(css,/\.player-status \.streak::before[^}]*moling-determined\.svg/);
-  assert.match(css,/#lessonApp \.lesson-step>\.lesson-icon[^}]*moling-thinking\.svg/);
+  assert.match(css,/#lessonApp \.lesson-step>\.lesson-icon\.mascot-thinking[^}]*moling-thinking\.svg/);
+  assert.match(runtime,/semanticThinkingIcon/);
+  assert.match(runtime,/mascot-thinking/);
   assert.match(read('public/mascot/moling-thinking.svg'),/thinking 狀態/);
   assert.match(read('public/mascot/moling-determined.svg'),/determined 狀態/);
 });
