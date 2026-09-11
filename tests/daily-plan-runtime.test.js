@@ -29,6 +29,17 @@ test('answered questions are never reinserted and the session target stays cappe
  assert.equal(new Set(Array.from(merged.questions,x=>x.id)).size,4);
 });
 
+test('zero remaining slots never append an extra question',()=>{
+ const runtime=load(),queue=[q('q1','review'),q('q2','weak')],completed=new Set(['q1']);
+ const reservation=runtime.sessionReservation(queue,1,completed,2);
+ assert.equal(reservation.currentPending,true);
+ assert.equal(reservation.remainingSlots,0);
+ const merged=runtime.mergeReservation(reservation,[q('q3','new'),q('q4','review')]);
+ assert.deepEqual(Array.from(merged.questions,x=>x.id),['q1','q2']);
+ assert.deepEqual(Array.from(merged.remaining,x=>x.id),['q2']);
+ assert.deepEqual(Array.from(merged.tail,x=>x.id),[]);
+});
+
 test('remaining-plan summary reports live review weak and new counts',()=>{
  const runtime=load(),items=[q('r','review'),q('w1','weak'),q('w2','weak'),q('n','new')],counts=runtime.counts(items);
  assert.deepEqual(JSON.parse(JSON.stringify(counts)),{review:1,weak:2,newKnowledge:1,total:4});
