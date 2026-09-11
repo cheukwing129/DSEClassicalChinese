@@ -47,6 +47,65 @@ const QUESTION_OVERRIDES={
  cap1q028:{mode:'core',skillIds:['lex.polysemy']}
 };
 
+// Legacy CROSS means "cross-text skill", not "no source". Resolve the real
+// source when it is known so a source-diversity planner cannot hide repeated
+// set-text exposure inside the CROSS bucket.
+const SOURCE_TEXT_OVERRIDES={
+ q004:'chenshe-shijia',
+ q005:'lianpo-linxiangru',
+ p3q001:'chenshe-shijia',
+ p3q003:'caogui',
+ p3q005:'lunyu',
+ p3q006:'yuwosuoyu',
+ p3q007:'hezhouji',
+ p3q009:'yueyanglou',
+ p3q010:'tongqu',
+ p3q011:'yueyanglou',
+ p3q013:'xunzi-quanxue',
+ p3q014:'xunzi-quanxue',
+ p3q015:'shengyouhuan',
+ p3q018:'maqianlishuo',
+ p3q019:'maqianlishuo',
+ p3q021:'lianpo-linxiangru',
+ p3q022:'chenshe-shijia',
+ p3q025:'lianpo-linxiangru',
+ p3q026:'liuguolun',
+ p3q027:'lingguanzhuanxu',
+ p3q029:'yueyanglou',
+ p3q030:'loushiming',
+ p3q032:'loushiming',
+ p3q034:'caogui',
+ p3q038:'caogui',
+ p3q041:'yueyanglou',
+
+ lpq005:'ailianshuo',
+ lpq006:'caogui',
+ lpq007:'zuiwengtingji',
+ lpq008:'lunyu',
+ lpq009:'caogui',
+ lpq010:'lang',
+ lpq011:'xiaoshitan',
+ lpq012:'chushibiao',
+ lpq013:'caogui',
+ lpq014:'liji-tangong',
+ lpq015:'yugong-yishan',
+ lpq016:'yugong-yishan',
+ lpq017:'maqianlishuo',
+ lpq020:'lunyu',
+ lpq021:'yueyanglou',
+ lpq066:'shengyouhuan',
+ lpq036:'lianpo-linxiangru',
+ lpq037:'quyuan-liezhuan',
+ lpq039:'lingguanzhuanxu',
+ lpq040:'shishuo',
+ lpq042:'caogui',
+ lpq043:'taohuayuan',
+ lpq045:'loushiming',
+ lpq064:'longzhongdui',
+ lpq065:'shizhongshanji',
+ lpq047:'hongmenyan'
+};
+
 // Distinct question IDs that visibly reuse the same source sentence are grouped
 // so later scheduling can cool down the sentence, not merely the question ID.
 const SOURCE_SENTENCE_GROUPS={
@@ -78,6 +137,10 @@ const SOURCE_SENTENCE_GROUPS={
  p3q030:'sentence:loushiming:helouzhiyou'
 };
 
+const SET_TEXT_IDS=new Set([
+ 'yueyanglou','chushibiao','yuwosuoyu','shengyouhuan','caogui','zouji',
+ 'taohuayuan','loushiming','ailianshuo','maqianlishuo','xiaoshitan'
+]);
 const CORE_ACTIONS=new Set(['retain','refactor','merge']);
 
 function migrationFor(kpId){
@@ -110,9 +173,15 @@ function inferSourceSentenceId(question){
   return normalized.length>=4?'sentence:'+normalized:null;
 }
 
+function resolvedSourceTextId(question){
+  const id=String(question&&question.id||'');
+  return SOURCE_TEXT_OVERRIDES[id]||String(question&&question.textId||'')||null;
+}
+
 function inferSourceKind(question){
-  const textId=String(question&&question.textId||'');
-  return !textId||textId==='CROSS'?'cross':'set-text';
+  const sourceTextId=resolvedSourceTextId(question);
+  if(!sourceTextId||sourceTextId==='CROSS')return'mixed';
+  return SET_TEXT_IDS.has(sourceTextId)?'set-text':'classical-canon';
 }
 
 function defaultTransferLevel(question,mode){
@@ -141,7 +210,8 @@ function classify(question){
     curriculumMode:mode,
     skillIds,
     normalCore:mode==='core',
-    sourceTextId:String(question&&question.textId||'')||null,
+    sourceTextId:resolvedSourceTextId(question),
+    legacyTextId:String(question&&question.textId||'')||null,
     sourceSentenceId:inferSourceSentenceId(question),
     sourceKind:inferSourceKind(question),
     transferLevel:override&&Number.isInteger(override.transferLevel)?override.transferLevel:defaultTransferLevel(question,mode)
@@ -166,10 +236,13 @@ function audit(questions){
 return{
   VERSION,
   QUESTION_OVERRIDES,
+  SOURCE_TEXT_OVERRIDES,
   SOURCE_SENTENCE_GROUPS,
+  SET_TEXT_IDS,
   normalizeSentence,
   quotedSegments,
   inferSourceSentenceId,
+  resolvedSourceTextId,
   classify,
   annotate,
   annotateAll,
