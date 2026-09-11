@@ -1,13 +1,16 @@
 (function(){
 'use strict';
 function clean(v){return String(v||'').replace(/\s+/g,' ').trim()}
+function answerKey(v){return String(v||'').replace(/[，。、；：！？\s]/g,'')}
 function unique(items){return Array.from(new Set((items||[]).map(clean).filter(Boolean)))}
-function questionFor(feedback){
- const content=window.ManjingoContent;if(!content||!Array.isArray(content.questions))return null;
- const scope=feedback.closest&&((feedback.closest('#quiz'))||(feedback.closest('.lesson-content'))||(feedback.parentElement));
- const node=scope&&scope.querySelector&&scope.querySelector('.question,.lesson-question');
- const text=clean(node&&node.textContent);if(!text)return null;
+function questionForScope(scope){
+ const content=window.ManjingoContent;if(!content||!Array.isArray(content.questions)||!scope||!scope.querySelector)return null;
+ const node=scope.querySelector('.question,.lesson-question'),text=clean(node&&node.textContent);if(!text)return null;
  return content.questions.find(q=>clean(q&&q.q)===text)||null;
+}
+function questionFor(feedback){
+ const scope=feedback.closest&&((feedback.closest('#quiz'))||(feedback.closest('.lesson-content'))||(feedback.parentElement));
+ return questionForScope(scope);
 }
 function selectedAnswer(feedback){
  const scope=feedback.closest&&((feedback.closest('#quiz'))||(feedback.closest('.lesson-content'))||(feedback.parentElement));
@@ -51,8 +54,9 @@ function explanation(feedback,question,raw,isCorrect){
 }
 function build(tag,className,text){const node=document.createElement(tag);if(className)node.className=className;if(text!=null)node.textContent=text;return node}
 function enhance(feedback){
- if(!feedback||!feedback.classList||!feedback.classList.contains('feedback')||feedback.dataset.feedbackUi==='1')return false;
+ if(!feedback||!feedback.classList||!feedback.classList.contains('feedback'))return false;
  const raw=clean(feedback.textContent);if(!raw)return false;
+ if(feedback.dataset.feedbackUi==='1'&&feedback.dataset.feedbackRendered===raw)return false;
  const isCorrect=feedback.classList.contains('correct'),question=questionFor(feedback),answer=question?clean(question.a):parseCorrectAnswer(raw),why=explanation(feedback,question,raw,isCorrect),notes=supportingLines(feedback,question,raw),metrics=metricLines(raw);
  feedback.dataset.feedbackUi='1';feedback.classList.add('feedback-ui');feedback.setAttribute('role','status');feedback.setAttribute('aria-live','polite');feedback.innerHTML='';
  const result=build('div','feedback-result'),icon=build('span','feedback-result-icon',isCorrect?'✓':'×'),copy=build('div','feedback-result-copy'),title=build('strong','feedback-result-title',isCorrect?'答對了':'這題答錯了');
@@ -60,10 +64,24 @@ function enhance(feedback){
  if(why||notes.length){const teaching=build('div','feedback-teaching');if(why){teaching.appendChild(build('strong','feedback-section-title','為甚麼？'));teaching.appendChild(build('p','feedback-explanation',why))}notes.forEach(line=>teaching.appendChild(build('p','feedback-note',line)));feedback.appendChild(teaching)}
  if(metrics.length){const details=build('details','feedback-progress'),summary=build('summary','', '查看學習進度');details.appendChild(summary);const rows=build('div','feedback-progress-rows');metrics.forEach(line=>rows.appendChild(build('span','',line)));details.appendChild(rows);feedback.appendChild(details)}
  const nextText=isCorrect?'下一步：繼續下一題':raw.includes('優先安排複習')?'下一步：這個知識點會優先安排複習':'下一步：系統會提高這個知識點的複習優先度';feedback.appendChild(build('div','feedback-next',nextText));
+ feedback.dataset.feedbackRendered=clean(feedback.textContent);
+ return true;
+}
+function instantAnswer(event){
+ const target=event&&event.target&&event.target.closest?event.target.closest('.option,#check'):null;if(!target)return false;
+ const scope=target.closest&&target.closest('#quiz');if(!scope||scope.dataset.answered)return false;
+ const feedback=scope.querySelector('#feedback'),question=questionForScope(scope);if(!feedback||!question)return false;
+ const input=scope.querySelector('.input'),value=target.classList&&target.classList.contains('option')?clean(target.textContent):clean(input&&input.value),correct=answerKey(value)===answerKey(question.a);
+ if(target.classList&&target.classList.contains('option'))scope.querySelectorAll('.option').forEach(button=>{if(button===target)button.classList.add(correct?'correct':'wrong');if(!correct&&answerKey(button.textContent)===answerKey(question.a))button.classList.add('correct')});
+ delete feedback.dataset.feedbackUi;delete feedback.dataset.feedbackRendered;feedback.className='feedback '+(correct?'correct':'wrong');feedback.textContent=correct?'答對了！':'正確答案：'+clean(question.a);
  return true;
 }
 function scan(root){if(!root)return;if(root.matches&&root.matches('.feedback'))enhance(root);if(root.querySelectorAll)root.querySelectorAll('.feedback').forEach(enhance)}
-function install(){scan(document);if(typeof MutationObserver!=='function'||!document.body)return;const observer=new MutationObserver(records=>records.forEach(record=>{if(record.target&&record.target.classList&&record.target.classList.contains('feedback'))enhance(record.target);record.addedNodes&&record.addedNodes.forEach(scan)}));observer.observe(document.body,{childList:true,subtree:true});window.ManjingoFeedbackUI.observer=observer}
-window.ManjingoFeedbackUI={enhance,scan,install,questionFor,explanationFromText,parseCorrectAnswer,metricLines,supportingLines,clean,observer:null};
+function install(){
+ document.addEventListener('click',instantAnswer,true);
+ scan(document);if(typeof MutationObserver!=='function'||!document.body)return;
+ const observer=new MutationObserver(records=>records.forEach(record=>{if(record.target&&record.target.classList&&record.target.classList.contains('feedback'))enhance(record.target);record.addedNodes&&record.addedNodes.forEach(scan)}));observer.observe(document.body,{childList:true,subtree:true});window.ManjingoFeedbackUI.observer=observer
+}
+window.ManjingoFeedbackUI={enhance,scan,install,instantAnswer,questionFor,questionForScope,answerKey,explanationFromText,parseCorrectAnswer,metricLines,supportingLines,clean,observer:null};
 if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install()}
 })();
