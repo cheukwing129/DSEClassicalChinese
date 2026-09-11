@@ -20,13 +20,17 @@ Artwork 必須與這句話的情緒完全一致。
 
 ## 2. 目前狀態
 
-現有 `public/mascot/moling-encouraging.svg` 仍是 `placeholder-treatment`：
+P2 已有獨立 vector **candidate v2**：
 
-- 直接引用 approved `mascot-moling.svg` baseline；
-- 以外加墨青弧線及暖金星點作暫代支持訊號；
-- 尚未有真正獨立的眼神、姿勢或手勢。
+`public/mascot/moling-encouraging.svg`
 
-P2 的任務是把它轉成真正 independent artwork，而不是再增加 overlay。
+目前：
+
+- `encouraging.artStatus = candidate`；
+- 不再引用 approved `mascot-moling.svg` baseline；
+- 已使用獨立眼神、嘴形、輕微前傾與開放伸手姿勢；
+- 已建立 P2 專用 validator、size QA 與 wrong-answer context QA page；
+- 尚未升 production，仍需完成最後 A–E 人工 review。
 
 Artwork lifecycle：
 
@@ -49,8 +53,8 @@ Artwork lifecycle：
 
 - 眼睛仍看向學生／前方，視線穩定而有注意力；
 - 眉眼柔和，不下垂、不皺眉；
-- 嘴形可用小幅、平穩的支持式微笑，強度明顯低於 `happy`；
-- 可以帶一點「我知道你還在想，我陪你」的專注感。
+- 嘴形使用小幅、平穩的支持式微笑，強度明顯低於 `happy`；
+- 保持「我陪你再看一步」的專注感。
 
 避免：
 
@@ -62,12 +66,14 @@ Artwork lifecycle：
 
 ## 5. 姿勢方向
 
-推薦姿勢：
+P2 v2 採用：
 
 - 身體輕微向學生前傾，但重心仍穩；
-- 一手／一臂向前或微抬，像「我們再看這裏」；
-- 另一手靠近身體，避免雙手完全張開變成 celebrate；
+- 一手／一臂在胸口高度向前伸出，像「我們再看這裏」；
+- 另一手保持低位與靠近身體；
 - 下身站穩，不跳、不倒、不後退。
+
+v1 曾把手臂放得太靠近臉部，在 34 / 42px raster review 中容易像橫線／鬍鬚；v2 已把主要手勢下移到胸口高度，這個負面案例應保留作之後小尺寸設計的教訓。
 
 與其他 state 的邊界：
 
@@ -107,6 +113,8 @@ P2 必須用真實產品尺寸驗收，而不是只看大圖：
 
 32px 仍使用共用 `moling-head.svg`，不作 P2 pose 驗收。
 
+v2 已做 34 / 42 / 48 / 64 / 96 / 160px raster QA；34 / 42px 以眼神與小笑容為主要訊號，手勢作次要訊號。
+
 ## 8. Gate A–E
 
 ### Gate A — Same character
@@ -132,7 +140,7 @@ P2 必須用真實產品尺寸驗收，而不是只看大圖：
 
 ### Gate E — Wrong-answer context
 
-放入真實答錯 feedback 層級：
+使用 `/mascot-encouraging-p2-qa.html` 放入：
 
 - `這題答錯了`
 - 正確答案
@@ -142,17 +150,27 @@ P2 必須用真實產品尺寸驗收，而不是只看大圖：
 
 角色不可擠壓或取代教學資訊，也不可比錯題本身更有情緒重量。
 
-## 9. Candidate promotion流程
+## 9. Candidate / production gate
 
-當真正獨立 artwork 準備好：
+Candidate 階段執行：
 
-1. 替換 `public/mascot/moling-encouraging.svg`。
-2. 將 manifest/runtime 的 `encouraging.artStatus` 改為 `candidate`。
-3. 執行 `npm run mascot:check`。
-4. 在 `/mascot-sheet.html` 加入 encouraging 專用 A/B 與 wrong-answer context review。
-5. 完成 A–E review；若任何一關 fail，保持 candidate 並修改 artwork。
-6. 全部通過後才升為 `production`。
-7. 再跑 `npm run mascot:check` 與完整 `npm test`。
+```bash
+npm run mascot:encouraging:p2
+npm run mascot:check
+npm test
+```
+
+P2 專用 validator 會確認：
+
+- fixed asset path / P2 priority；
+- 215×320 viewBox、accessible title/desc、無 embedded text；
+- candidate / production 均不得再依賴 legacy baseline；
+- candidate / production 不得與 neutral 完全相同；
+- artwork 有足夠獨立 vector 結構；
+- SVG 不含 punitive / shaming visual markup；
+- description 明確保留 supportive intent。
+
+只有 A–E 全部通過後才可把 `encouraging.artStatus` 由 `candidate` 改成 `production`，然後重跑三條 automated gates。
 
 ## 10. Definition of Done
 
@@ -164,6 +182,6 @@ P2 只有在以下全部成立後才完成：
 - 34 / 42 / 48 / 64 / 96 / 160px 全部通過；
 - wrong-answer feedback context 通過；
 - `encouraging.artStatus = production`；
-- mascot validator 與完整 regression tests 全綠。
+- `npm run mascot:encouraging:p2`、`npm run mascot:check` 與完整 `npm test` 全綠。
 
 Tracks #6 and #3. P1 precedent: #4 / PR #5.
