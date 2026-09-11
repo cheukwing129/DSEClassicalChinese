@@ -82,7 +82,15 @@
 - runtime asset path 不變
 - feedback UI integration 不變
 
-Artwork 初放入 branch 時，先不要把 `artStatus` 改成 `production`。
+Artwork lifecycle：
+
+`placeholder-treatment → candidate → production`
+
+- `placeholder-treatment`：仍直接引用 approved baseline，只是暫代效果。
+- `candidate`：已是獨立 artwork，不再引用 baseline，但仍等待人工 Visual QA。
+- `production`：A–E Visual QA 已通過並完成 promotion。
+
+目前 P1 已進入 `candidate` 階段，因此工程 validator 只會確認它是獨立 artwork；是否真正像同一個小墨靈、是否夠 happy，仍由人工 review 決定。
 
 ## 8. Candidate gate
 
@@ -93,9 +101,9 @@ npm run mascot:happy:p1
 npm run mascot:check
 ```
 
-`mascot:happy:p1` 會檢查 P1 專屬結構契約：固定 asset path、P1 priority、215×320 viewBox、accessibility title/desc、禁止 embedded text，以及 promotion 後不得再依賴 `mascot-moling.svg`。
+`mascot:happy:p1` 會檢查 P1 專屬結構契約：固定 asset path、P1 priority、215×320 viewBox、accessibility title/desc、禁止 embedded text，以及 candidate／production 均不得再依賴 `mascot-moling.svg`。
 
-在 `placeholder-treatment` 階段，validator 允許目前 baseline-derived artwork 存在；升為 `production` 後，若仍直接引用 baseline 或仍以 overlay treatment 描述自己，CI 會失敗。
+`candidate` 只代表「已有獨立 artwork、可以進人工 review」；它不是 production 的別名。
 
 ## 9. Review gate
 
@@ -109,7 +117,7 @@ npm run mascot:check
 
 通過人工 review 後：
 
-1. 將 manifest/runtime 的 `happy.artStatus` 改為 `production`。
+1. 將 manifest/runtime 的 `happy.artStatus` 由 `candidate` 改為 `production`。
 2. 執行 `npm run mascot:happy:p1`。
 3. 執行 `npm run mascot:check`。
 4. 執行 `npm test`。
