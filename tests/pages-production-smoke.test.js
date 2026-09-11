@@ -53,6 +53,19 @@ test('production smoke verifies stale background responses cannot roll learning 
   assert.match(source,/newer\.mastery===55/);
 });
 
+test('production smoke verifies deployed answer outbox persistence retry and account isolation',()=>{
+  const source=read('scripts/smoke_answer_outbox.mjs');
+  assert.match(source,/read\('\/answer-outbox\.js'/);
+  assert.match(source,/read\('\/firebase-config\.js'/);
+  assert.match(source,/box\.enqueue|outbox\.enqueue/);
+  assert.match(source,/outbox\.markFailure/);
+  assert.match(source,/outbox\.bindUnowned/);
+  assert.match(source,/includeUnowned:false/);
+  assert.match(source,/window\.addEventListener\('online'/);
+  assert.match(source,/learning\.syncRemoteResult/);
+  assert.match(source,/production outbox crossed account boundary/);
+});
+
 test('Pages smoke performs one real reviewed answer and verifies all learning writes',()=>{
   const source=read('scripts/smoke_pages_api.mjs');
   assert.match(source,/accounts:signUp/);
@@ -106,5 +119,5 @@ test('production smoke workflow gates execution and always runs credentialed cle
 
 test('package exposes the production smoke command',()=>{
   const pkg=JSON.parse(read('package.json'));
-  assert.equal(pkg.scripts['smoke:pages'],'node scripts/smoke_sync_guard.mjs && node scripts/smoke_pages_api.mjs');
+  assert.equal(pkg.scripts['smoke:pages'],'node scripts/smoke_sync_guard.mjs && node scripts/smoke_answer_outbox.mjs && node scripts/smoke_pages_api.mjs');
 });
