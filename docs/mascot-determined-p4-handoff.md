@@ -38,7 +38,7 @@ Lifecycle：
 
 `placeholder-treatment → candidate → production`
 
-目前保持 `determined.artStatus = candidate`，完成 A–E 前不可升 production。
+Independent v2 已通過 Gate A–E 與 production verification；`determined.artStatus` 已升為 `production`。
 
 ## 3. A–E Gate
 
@@ -79,12 +79,14 @@ Lifecycle：
 - 不用紅色、倒數、火焰或恐嚇式文案建立動機；
 - reduced-motion 下仍完整成立。
 
-## 4. Candidate verification
+## 4. Production verification
 
 ```bash
 npm run mascot:determined:p4
 npm run mascot:check
 npm test
 ```
+
+Tests workflow #412 confirmed the candidate gates; the final production commit must pass the same commands before merge.
 
 Tracks #10 and #3. P3 precedent: #8 / PR #9.
