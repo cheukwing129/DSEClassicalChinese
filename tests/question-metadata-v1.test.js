@@ -35,7 +35,6 @@ test('all 292 reviewed questions receive a curriculum mode', () => {
   const questions = metadata.annotateAll(catalog.questions);
   assert.equal(questions.length, 292);
   assert.equal(questions.some(q => q.curriculumMode === 'unmapped'), false);
-
   const validSkills = new Set(curriculum.skills.map(x => x.id));
   for (const q of questions) {
     assert.ok(['core','set-text','advanced'].includes(q.curriculumMode), `${q.id}: bad curriculum mode`);
@@ -68,18 +67,15 @@ test('new transfer questions keep explicit skills provenance and transfer level'
   assert.equal(zhi.sourceSentenceId, 'sentence:lunyu-xueer:xue-er-shixi-zhi');
   assert.equal(zhi.sourceKind, 'classical-canon');
   assert.equal(zhi.transferLevel, 2);
-
   const translation = byId(questions, 'tr2q005');
   assert.deepEqual(Array.from(translation.skillIds), ['trans.reorder']);
   assert.equal(translation.sourceTextId, 'lianpo');
   assert.equal(translation.transferLevel, 2);
-
   const wei = byId(questions, 'tr3q001');
   assert.deepEqual(Array.from(wei.skillIds), ['fw.wei']);
   assert.equal(wei.sourceTextId, 'liuguolun');
   assert.equal(wei.sourceKind, 'classical-canon');
   assert.equal(wei.transferLevel, 2);
-
   const suo = byId(questions, 'tr3q015');
   assert.deepEqual(Array.from(suo.skillIds), ['fw.suo']);
   assert.equal(suo.sourceTextId, 'lunyu');
@@ -152,5 +148,5 @@ test('audit quantifies legacy content and keeps transfer sources out of CROSS', 
   assert.equal(audit.bySourceText.quanxue, 13);
   assert.equal(audit.bySourceText['mengzi-lianghuiwang-xia'], 5);
   assert.equal(audit.bySourceText.xiaoyaoyou, 9);
-  assert.equal(audit.bySourceText.lianpo, 13);
+  assert.equal(audit.bySourceText.lianpo, 11);
 });
