@@ -40,6 +40,8 @@ test('runtime and manifest stay in exact parity including artwork readiness',()=
   assert.equal(runtime.isProductionArt('encouraging'),true);
   assert.equal(runtime.descriptor('happy').artStatus,'production');
   assert.equal(runtime.descriptor('encouraging').artStatus,'production');
+  assert.equal(runtime.isProductionArt('thinking'),false);
+  assert.equal(runtime.descriptor('thinking').artStatus,'candidate');
   assert.deepEqual(runtime.productionQueue().map(state=>state.id),pendingPriority);
 });
 
@@ -55,10 +57,13 @@ test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and 
   });
   const happy=manifest.states.find(state=>state.id==='happy');
   const encouraging=manifest.states.find(state=>state.id==='encouraging');
+  const thinking=manifest.states.find(state=>state.id==='thinking');
   assert.equal(happy.artStatus,'production');
   assert.equal(encouraging.artStatus,'production');
+  assert.equal(thinking.artStatus,'candidate');
   assert.match(read('public/mascot/moling-happy.svg'),/happy production artwork/);
   assert.match(read('public/mascot/moling-encouraging.svg'),/encouraging production artwork v4/);
+  assert.match(read('public/mascot/moling-thinking.svg'),/thinking 候選 artwork v1/);
 });
 
 test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
@@ -79,6 +84,17 @@ test('encouraging P2 production art encodes supportive cues without blame cues',
   assert.match(encouraging,/data:image\/webp;base64,/);
   assert.doesNotMatch(encouraging,/mascot-moling\.svg/);
   assert.doesNotMatch(encouraging,/(眼淚|紅叉|搖頭|皺眉|shame|punish)/i);
+});
+
+test('thinking P3 candidate encodes curious focus without confused cues',()=>{
+  const thinking=read('public/mascot/moling-thinking.svg');
+  assert.match(thinking,/thinking 候選 artwork v1/);
+  assert.match(thinking,/向上側望/);
+  assert.match(thinking,/靠近但不遮臉/);
+  assert.match(thinking,/順視線彎曲/);
+  assert.match(thinking,/好奇專注/);
+  assert.match(thinking,/data:image\/webp;base64,/);
+  assert.doesNotMatch(thinking,/mascot-moling\.svg/);
 });
 
 test('32px uses a dedicated compact head crop instead of shrinking the full body',()=>{
@@ -122,6 +138,19 @@ test('encouraging P2 QA page covers all-ink identity A/B and real wrong-answer s
   assert.match(neutral,/neutral 全墨角色基準 candidate/);
   assert.match(neutral,/data:image\/webp;base64,/);
   assert.doesNotMatch(neutral,/mascot-moling\.svg/);
+});
+
+test('thinking P3 QA covers all-ink identity A/B and hint layouts',()=>{
+  const qa=read('public/mascot-thinking-p3-qa.html');
+  assert.match(qa,/Thinking P3 Visual QA/);
+  assert.match(qa,/const sizes=\[34,42,48,64,96,160\]/);
+  assert.match(qa,/moling-neutral-all-ink-candidate\.svg/);
+  assert.match(qa,/runtime\.asset\('thinking'\)/);
+  assert.match(qa,/讓我陪你想一想。/);
+  assert.match(qa,/Desktop · 42×62px/);
+  assert.match(qa,/Narrow mobile · 34×50px/);
+  assert.match(qa,/不遮眼、不穿過嘴形/);
+  assert.match(qa,/prefers-reduced-motion:reduce/);
 });
 
 test('production placements use canonical state assets instead of the legacy baseline directly',()=>{
