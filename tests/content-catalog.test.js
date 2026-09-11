@@ -11,6 +11,7 @@ const lessonPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'q
 const capacityPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-capacity-01.js'), 'utf8');
 const transferPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-transfer-01.js'), 'utf8');
 const transferPack03Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-transfer-03.js'), 'utf8');
+const transferPack04Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-transfer-04.js'), 'utf8');
 
 function loadContext() {
   const context = { window: {}, Map, Set, Array, Object, Number, String, Math };
@@ -21,6 +22,7 @@ function loadContext() {
   vm.runInContext(capacityPackSource, context);
   vm.runInContext(transferPackSource, context);
   vm.runInContext(transferPack03Source, context);
+  vm.runInContext(transferPack04Source, context);
   vm.runInContext(catalogSource, context);
   return context;
 }
@@ -29,16 +31,17 @@ function loadCatalog() {
   return loadContext().window.ManjingoContent;
 }
 
-test('reviewed local catalog contains 292 questions across the 63 teachable knowledge points', () => {
+test('reviewed local catalog contains 316 questions across the 67 teachable knowledge points', () => {
   const catalog = loadCatalog();
   const kpIds = catalog.getKnowledgePointIds({ teachableOnly: true });
   assert.equal(catalog.catalogVersion, 'reviewed-v1');
-  assert.equal(catalog.questions.length, 292);
-  assert.equal(kpIds.length, 63);
+  assert.equal(catalog.questions.length, 316);
+  assert.equal(kpIds.length, 67);
   assert.ok(kpIds.includes('sx_006'));
   assert.ok(kpIds.includes('kp_caogui_strategy'));
   assert.ok(kpIds.includes('kp_p3_translation'));
   for (const id of ['kp_virtual_wei','kp_virtual_zhe','kp_virtual_suo','kp_virtual_ye']) assert.ok(kpIds.includes(id));
+  for (const id of ['kp_read_sentence_core','kp_read_context_clues','kp_read_logical_relation','kp_syn_negative_patterns']) assert.ok(kpIds.includes(id));
 });
 
 test('capacity pack keeps only validated explained questions', () => {
@@ -58,22 +61,27 @@ test('capacity pack keeps only validated explained questions', () => {
   }
 });
 
-test('transfer packs contain 70 source-aware unseen-context questions', () => {
+test('transfer packs contain 94 source-aware unseen-context questions', () => {
   const context = loadContext();
   const legacy = context.window.ManjingoQuestionPackTransfer01;
-  const stage1 = context.window.ManjingoQuestionPackTransfer03;
+  const functionWords = context.window.ManjingoQuestionPackTransfer03;
+  const reading = context.window.ManjingoQuestionPackTransfer04;
   assert.equal(legacy.kind, 'transfer-core');
   assert.equal(legacy.questions.length, 46);
-  assert.equal(stage1.kind, 'transfer-core');
-  assert.equal(stage1.questions.length, 24);
-  assert.equal(stage1.knowledgePoints.length, 4);
-  const questions=[...legacy.questions,...stage1.questions];
-  assert.equal(new Set(questions.map(q => q.id)).size, 70);
+  assert.equal(functionWords.kind, 'transfer-core');
+  assert.equal(functionWords.questions.length, 24);
+  assert.equal(functionWords.knowledgePoints.length, 4);
+  assert.equal(reading.kind, 'stage1-reading-foundations');
+  assert.equal(reading.questions.length, 24);
+  assert.equal(reading.knowledgePoints.length, 4);
+  const questions=[...legacy.questions,...functionWords.questions,...reading.questions];
+  assert.equal(new Set(questions.map(q => q.id)).size, 94);
   assert.equal(questions.filter(q => /^tr1q\d{3}$/.test(q.id)).length, 20);
   assert.equal(questions.filter(q => /^tr2q\d{3}$/.test(q.id)).length, 26);
   assert.equal(questions.filter(q => /^tr3q\d{3}$/.test(q.id)).length, 24);
+  assert.equal(questions.filter(q => /^tr4q\d{3}$/.test(q.id)).length, 24);
   for (const q of questions) {
-    assert.match(q.id, /^tr[123]q\d{3}$/);
+    assert.match(q.id, /^tr[1234]q\d{3}$/);
     assert.equal(q.textId, 'CROSS');
     assert.ok(Array.isArray(q.skillIds) && q.skillIds.length > 0, `${q.id}: explicit skillIds required`);
     assert.ok(String(q.sourceTextId || '').trim(), `${q.id}: real source required`);
@@ -97,6 +105,25 @@ test('stage 1 function-word pack gives four dedicated skills six questions acros
     assert.equal(questions.length,6,`${kpId} should have six questions`);
     assert.ok(new Set(questions.map(q=>q.sourceTextId)).size>=3,`${kpId} needs at least three sources`);
     assert.equal(questions.every(q=>q.skillIds.length===1&&q.skillIds[0]===skillId),true);
+    assert.equal(questions.some(q=>q.sourceTextId==='yueyanglou'),false);
+  }
+});
+
+test('stage 1 reading pack gives four dedicated skills six questions and three difficulty tiers', () => {
+  const pack=loadContext().window.ManjingoQuestionPackTransfer04;
+  const targets=new Map([
+    ['kp_read_sentence_core','read.sentence-core'],
+    ['kp_read_context_clues','read.context-clues'],
+    ['kp_read_logical_relation','read.logical-relation'],
+    ['kp_syn_negative_patterns','syn.negative-patterns']
+  ]);
+  assert.deepEqual(Array.from(pack.knowledgePoints,q=>q.kpId).sort(),Array.from(targets.keys()).sort());
+  for(const [kpId,skillId] of targets){
+    const questions=pack.questions.filter(q=>q.kpId===kpId);
+    assert.equal(questions.length,6,`${kpId} should have six questions`);
+    assert.ok(new Set(questions.map(q=>q.sourceTextId)).size>=3,`${kpId} needs at least three sources`);
+    assert.equal(questions.every(q=>q.skillIds.length===1&&q.skillIds[0]===skillId),true);
+    assert.deepEqual([...new Set(questions.map(q=>q.difficultyTier))].sort(),['application','foundation','transfer']);
     assert.equal(questions.some(q=>q.sourceTextId==='yueyanglou'),false);
   }
 });

@@ -11,7 +11,7 @@ const skillPlan=require('../public/skill-first-plan.js');
 function source(file){return fs.readFileSync(path.join(root,file),'utf8')}
 function loadCatalog(){
  const context={window:{},Map,Set,Array,Object,Number,String,Math,RegExp};vm.createContext(context);
- for(const file of ['public/question-pack-02.js','public/question-pack-03.js','public/question-pack-lesson.js','public/question-pack-capacity-01.js','public/question-pack-transfer-01.js','public/content-catalog.js'])vm.runInContext(source(file),context,{filename:file});
+ for(const file of ['public/question-pack-02.js','public/question-pack-03.js','public/question-pack-lesson.js','public/question-pack-capacity-01.js','public/question-pack-transfer-01.js','public/question-pack-transfer-03.js','public/question-pack-transfer-04.js','public/content-catalog.js'])vm.runInContext(source(file),context,{filename:file});
  return context.window.ManjingoContent;
 }
 function engine(records={}){
@@ -98,6 +98,24 @@ test('fresh skill order interleaves domains instead of walking legacy article or
  const catalog=loadCatalog(),pools=skillPlan.poolsFor(catalog.questions),ordered=skillPlan.orderedSkillIds(pools).slice(0,6);
  const domains=ordered.map(id=>require('../public/curriculum-v1.js').skill(id).domain);
  assert.ok(new Set(domains).size>=4,`expected broad domain mix, got ${domains.join(',')}`);
+});
+
+test('stage 1 reading foundations enter the normal skill-first scheduling pool',()=>{
+ const catalog=loadCatalog(),pools=skillPlan.poolsFor(catalog.questions);
+ for(const skillId of ['read.sentence-core','read.context-clues','read.logical-relation','syn.negative-patterns']){
+  const pool=pools.get(skillId);
+  assert.ok(pool&&pool.length>=6,`${skillId} missing from skill-first pool`);
+  assert.equal(pool.every(q=>metadata.annotate(q).normalCore),true,`${skillId} pool must stay normal-core`);
+ }
+ const plan={targetCount:4,items:[
+  {kpId:'kp_read_sentence_core',category:'new',priority:3},
+  {kpId:'kp_read_context_clues',category:'new',priority:3},
+  {kpId:'kp_read_logical_relation',category:'new',priority:3},
+  {kpId:'kp_syn_negative_patterns',category:'new',priority:3}
+ ]};
+ const selected=skillPlan.selectQuestionsForPlan(plan,catalog.questions,4,{learning:engine(),rotation,diversity});
+ const skillIds=new Set(selected.map(q=>q.skillId));
+ for(const id of ['read.sentence-core','read.context-clues','read.logical-relation','syn.negative-patterns'])assert.ok(skillIds.has(id),`${id} not scheduled`);
 });
 
 test('question rotation browser loader installs skill-first layer before adaptive packs',()=>{

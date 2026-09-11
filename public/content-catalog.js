@@ -8,6 +8,7 @@ if(typeof document!=='undefined'&&document.readyState==='loading'){
  if(!window.ManjingoQuestionPackCapacity01)document.write('<script src="./question-pack-capacity-01.js"><\/script>');
  if(!window.ManjingoQuestionPackTransfer01)document.write('<script src="./question-pack-transfer-01.js"><\/script>');
  if(!window.ManjingoQuestionPackTransfer03)document.write('<script src="./question-pack-transfer-03.js"><\/script>');
+ if(!window.ManjingoQuestionPackTransfer04)document.write('<script src="./question-pack-transfer-04.js"><\/script>');
 }
 
 const baseKnowledgePoints=[
@@ -51,6 +52,7 @@ const lessonPack=window.ManjingoQuestionPackLesson||{questions:[]};
 const capacityPack01=window.ManjingoQuestionPackCapacity01||{questions:[]};
 const transferPack01=window.ManjingoQuestionPackTransfer01||{questions:[]};
 const transferPack03=window.ManjingoQuestionPackTransfer03||{knowledgePoints:[],questions:[]};
+const transferPack04=window.ManjingoQuestionPackTransfer04||{knowledgePoints:[],questions:[]};
 
 const KP_REVISIONS={
  kp_p3_zhi:{content:'之：跨語境辨析',difficulty:3},
@@ -87,8 +89,8 @@ const QUESTION_REVISIONS={
  }
 };
 
-const knowledgePoints=[...baseKnowledgePoints,...pack02.knowledgePoints,...pack03.knowledgePoints,...transferPack03.knowledgePoints].map(kp=>KP_REVISIONS[kp.kpId]?{...kp,...KP_REVISIONS[kp.kpId]}:{...kp});
-const rawQuestions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions,...capacityPack01.questions,...transferPack01.questions,...transferPack03.questions].map(q=>QUESTION_REVISIONS[q.id]?{...q,...QUESTION_REVISIONS[q.id]}:{...q});
+const knowledgePoints=[...baseKnowledgePoints,...pack02.knowledgePoints,...pack03.knowledgePoints,...transferPack03.knowledgePoints,...transferPack04.knowledgePoints].map(kp=>KP_REVISIONS[kp.kpId]?{...kp,...KP_REVISIONS[kp.kpId]}:{...kp});
+const rawQuestions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions,...capacityPack01.questions,...transferPack01.questions,...transferPack03.questions,...transferPack04.questions].map(q=>QUESTION_REVISIONS[q.id]?{...q,...QUESTION_REVISIONS[q.id]}:{...q});
 
 function misconceptionConcept(q){
  const kp=String(q&&q.kpId||''),answer=String(q&&q.a||''),text=String(q&&q.q||'');
@@ -117,7 +119,6 @@ function misconceptionConcept(q){
  return null;
 }
 const questions=rawQuestions.map(q=>{const concept=misconceptionConcept(q);return concept?{...q,misconceptionKey:concept.key,misconceptionLabel:concept.label}:{...q};});
-
 function getKnowledgePointIds(options){const teachableOnly=!options||options.teachableOnly!==false;return knowledgePoints.filter(kp=>!teachableOnly||kp.teachable).map(kp=>kp.kpId);}
 function selectQuestionsForPlan(plan,sourceQuestions,limit){
  const source=Array.isArray(sourceQuestions)?sourceQuestions:[],items=Array.isArray(plan&&plan.items)?plan.items:[],max=Math.max(0,Number(limit)||Number(plan&&plan.targetCount)||10),byKp=new Map(),rotation=window.ManjingoQuestionRotation,metadata=window.ManjingoQuestionMetadataV1,diversity=window.ManjingoQuestionDiversityV1;

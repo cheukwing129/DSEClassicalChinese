@@ -23,6 +23,7 @@ const COMPLETION_KPS=[
  'kp_p3_zhi','kp_p3_er','kp_p3_yi','kp_p3_yu','kp_p3_qi','kp_p3_judgment','kp_p3_passive','kp_p3_fronting','kp_p3_adverbial','kp_p3_ellipsis'
 ];
 const STAGE1_FUNCTION_KPS=['kp_virtual_wei','kp_virtual_zhe','kp_virtual_suo','kp_virtual_ye'];
+const STAGE1_READING_KPS=['kp_read_sentence_core','kp_read_context_clues','kp_read_logical_relation','kp_syn_negative_patterns'];
 
 function loadAdaptivePack(file,key){
  const context={window:{},Map,Set,Array,Object,Number,String,Math};
@@ -36,7 +37,7 @@ function loadReviewedRuntime(){
  vm.createContext(context);
  for(const file of [
   'public/question-pack-02.js','public/question-pack-03.js','public/question-pack-lesson.js',
-  'public/question-pack-capacity-01.js','public/question-pack-transfer-01.js','public/question-pack-transfer-03.js','public/content-catalog.js',
+  'public/question-pack-capacity-01.js','public/question-pack-transfer-01.js','public/question-pack-transfer-03.js','public/question-pack-transfer-04.js','public/content-catalog.js',
   'public/question-pack-adaptive-01.js','public/question-pack-adaptive-02.js','public/question-pack-adaptive-03.js','public/question-difficulty.js'
  ]) vm.runInContext(source(file),context,{filename:file});
  return context.window;
@@ -135,12 +136,12 @@ test('misconception-targeted question stays ahead of difficulty preference',()=>
  assert.equal(ranked[0].id,'targeted');
 });
 
-test('reviewed runtime v4 gives all 63 knowledge points explicit three-tier coverage',()=>{
+test('reviewed runtime v4 gives all 67 knowledge points explicit three-tier coverage',()=>{
  const runtime=loadReviewedRuntime(),catalog=runtime.ManjingoContent;
  assert.equal(catalog.catalogVersion,'reviewed-v4');
- assert.equal(catalog.questions.length,362);
+ assert.equal(catalog.questions.length,386);
  const teachable=catalog.knowledgePoints.filter(kp=>kp.teachable!==false);
- assert.equal(teachable.length,63);
+ assert.equal(teachable.length,67);
  const zhi=catalog.questions.find(q=>q.id==='ad1q002');
  const passive=catalog.questions.find(q=>q.id==='ad1q025');
  assert.equal(zhi.difficultyTier,'application');
@@ -152,7 +153,7 @@ test('reviewed runtime v4 gives all 63 knowledge points explicit three-tier cove
   assert.ok(tiers.has('application'),`${kp.kpId} missing explicit application`);
   assert.ok(tiers.has('transfer'),`${kp.kpId} missing explicit transfer`);
  }
- for(const kpId of STAGE1_FUNCTION_KPS){
+ for(const kpId of [...STAGE1_FUNCTION_KPS,...STAGE1_READING_KPS]){
   const tiers=new Set(catalog.questions.filter(q=>q.kpId===kpId).map(q=>q.difficultyTier).filter(Boolean));
   assert.deepEqual([...tiers].sort(),['application','foundation','transfer']);
  }
@@ -169,4 +170,5 @@ test('browser loader and Firestore importer include all adaptive tier packs and 
  assert.match(importer,/question-difficulty\.js/);
  assert.match(importer,/difficultyTier: question\.difficultyTier \|\| null/);
  assert.match(importer,/question-pack-transfer-03\.js/);
+ assert.match(importer,/question-pack-transfer-04\.js/);
 });
