@@ -19,6 +19,7 @@ function loadCatalog() {
     'public/question-pack-capacity-01.js',
     'public/question-pack-transfer-01.js',
     'public/question-pack-transfer-03.js',
+    'public/question-pack-transfer-04.js',
     'public/content-catalog.js'
   ]) vm.runInContext(source(file), context, { filename:file });
   return context.window.ManjingoContent;
@@ -30,10 +31,10 @@ function byId(questions, id) {
   return found;
 }
 
-test('all 292 reviewed questions receive a curriculum mode', () => {
+test('all 316 reviewed questions receive a curriculum mode', () => {
   const catalog = loadCatalog();
   const questions = metadata.annotateAll(catalog.questions);
-  assert.equal(questions.length, 292);
+  assert.equal(questions.length, 316);
   assert.equal(questions.some(q => q.curriculumMode === 'unmapped'), false);
   const validSkills = new Set(curriculum.skills.map(x => x.id));
   for (const q of questions) {
@@ -79,6 +80,16 @@ test('new transfer questions keep explicit skills provenance and transfer level'
   const suo = byId(questions, 'tr3q015');
   assert.deepEqual(Array.from(suo.skillIds), ['fw.suo']);
   assert.equal(suo.sourceTextId, 'lunyu');
+  const sentenceCore = byId(questions, 'tr4q001');
+  assert.deepEqual(Array.from(sentenceCore.skillIds), ['read.sentence-core']);
+  assert.equal(sentenceCore.sourceTextId, 'shishuo');
+  assert.equal(sentenceCore.difficultyTier, 'foundation');
+  assert.equal(sentenceCore.normalCore, true);
+  const negative = byId(questions, 'tr4q024');
+  assert.deepEqual(Array.from(negative.skillIds), ['syn.negative-patterns']);
+  assert.equal(negative.sourceTextId, 'lunyu');
+  assert.equal(negative.difficultyTier, 'transfer');
+  assert.equal(negative.normalCore, true);
 });
 
 test('advanced argumentation remains available but does not compete in the normal language core', () => {
@@ -99,6 +110,8 @@ test('sentence-level identity catches repeated wording across different question
   assert.equal(new Set(loushi).size, 1);
   const sharedTransfer=['tr2q001','tr3q004'].map(id=>byId(questions,id).sourceSentenceId);
   assert.equal(new Set(sharedTransfer).size,1,'same Lunyu sentence must share cooldown identity');
+  const sharedAcrossSkills=['tr1q002','tr4q013'].map(id=>byId(questions,id).sourceSentenceId);
+  assert.equal(new Set(sharedAcrossSkills).size,1,'same source sentence across skills must share cooldown identity');
   assert.equal(yueyang[0], 'sentence:yueyanglou:wei-siren-wushuiyugui');
   assert.equal(loushi[0], 'sentence:loushiming:helouzhiyou');
 });
@@ -122,8 +135,8 @@ test('normal core filter excludes set-text recall without deleting the original 
   const catalog = loadCatalog();
   const core = metadata.normalCoreQuestions(catalog.questions);
   const coreIds = new Set(core.map(q => q.id));
-  assert.equal(catalog.questions.length, 292);
-  assert.equal(core.length, 201);
+  assert.equal(catalog.questions.length, 316);
+  assert.equal(core.length, 225);
   assert.equal(coreIds.has('q008'), false);
   assert.equal(coreIds.has('lpq053'), false);
   assert.equal(coreIds.has('p2q042'), false);
@@ -133,20 +146,22 @@ test('normal core filter excludes set-text recall without deleting the original 
   assert.equal(coreIds.has('tr1q001'), true);
   assert.equal(coreIds.has('tr2q001'), true);
   assert.equal(coreIds.has('tr3q001'), true);
+  assert.equal(coreIds.has('tr4q001'), true);
+  assert.equal(coreIds.has('tr4q024'), true);
 });
 
 test('audit quantifies legacy content and keeps transfer sources out of CROSS', () => {
   const audit = metadata.audit(loadCatalog().questions);
-  assert.equal(audit.total, 292);
-  assert.equal(Object.values(audit.byMode).reduce((a,b) => a + b, 0), 292);
-  assert.equal(audit.byMode.core, 201);
+  assert.equal(audit.total, 316);
+  assert.equal(Object.values(audit.byMode).reduce((a,b) => a + b, 0), 316);
+  assert.equal(audit.byMode.core, 225);
   assert.equal(audit.byMode['set-text'], 78);
   assert.equal(audit.byMode.advanced, 13);
   assert.equal(audit.bySourceText.yueyanglou, 38);
   assert.equal(audit.bySourceText.CROSS, 45);
-  assert.equal(audit.bySourceText.lunyu, 17);
-  assert.equal(audit.bySourceText.quanxue, 13);
+  assert.equal(audit.bySourceText.lunyu, 22);
+  assert.equal(audit.bySourceText.quanxue, 17);
   assert.equal(audit.bySourceText['mengzi-lianghuiwang-xia'], 5);
   assert.equal(audit.bySourceText.xiaoyaoyou, 9);
-  assert.equal(audit.bySourceText.lianpo, 11);
+  assert.equal(audit.bySourceText.lianpo, 15);
 });
