@@ -4,7 +4,8 @@
   "description": "DSE 文言文自主學習平台（字詞、句式為主軸）",
   "scripts": {
     "dev": "wrangler pages dev public",
-    "test": "node --test functions/*.test.js tests/*.test.js",
+    "mascot:check": "node scripts/validate_mascot_art.cjs",
+    "test": "node scripts/validate_mascot_art.cjs && node --test functions/*.test.js tests/*.test.js",
     "smoke:pages": "node scripts/smoke_sync_guard.mjs && node scripts/smoke_answer_outbox.mjs && node scripts/smoke_pages_api.mjs",
     "deploy": "wrangler pages deploy public"
   },
