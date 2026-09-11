@@ -1,23 +1,24 @@
 # 小墨靈 `happy` P1 Review Rubric
 
-本文件把 `happy` artwork 的人工驗收拆成可重複、可記錄的 review gate。目的不是用分數取代設計判斷，而是避免「看起來差不多」就把 candidate 誤升為 production。
+本文件記錄 `happy` artwork 的 A–E Visual QA 與最後 production 決策。目的不是用分數取代設計判斷，而是讓角色一致性、情緒邊界、小尺寸可讀性與產品語境都有可追蹤的驗收依據。
 
-## Current candidate
+## Final production decision
 
-P1 已有獨立 vector candidate，`happy.artStatus = candidate`。這表示：
+P1 v2 已完成 A–E review，`happy.artStatus = production`。
 
-- artwork 已不再引用 `mascot-moling.svg` baseline；
-- 215×320 viewBox、accessible title/desc、無 embedded text 等結構契約已可自動驗證；
-- 本地已成功 rasterize 34 / 42 / 48 / 64 / 96 / 160px 作尺寸檢查；
-- **尚未**因為工程檢查通過而視為 production；仍需 A–E 人工 Visual QA。
+Production artwork 的固定特徵：
 
-`candidate` 是刻意加入的中間狀態：比 `placeholder-treatment` 更進一步，但不等於已核准。
+- 獨立 215×320 SVG，不再引用 `mascot-moling.svg` baseline；
+- 保留墨滴上窄下寬輪廓、大眼睛、墨青／深墨主色與暖金次要點綴；
+- 以清楚笑意、明亮眼神及克制抬手傳達答對後的自然喜悅；
+- 不使用星星、彩帶、勾號或動畫作主要 happy 訊號；
+- 情緒強度維持 `neutral < happy < celebrate`。
 
-## Candidate v2 review record
+## v1 → v2 refinement
 
 第一版 candidate 在小尺寸 review 找到兩個問題：
 
-- 角色腹部的暖金弧線在 48–64px 比真正笑容更搶眼，容易被讀成第二張嘴；
+- 腹部暖金弧線在 48–64px 比真正笑容更搶眼，容易被讀成第二張嘴；
 - 抬手訊號偏弱，縮小後幾乎只剩側邊小突起。
 
 v2 已作以下修正：
@@ -27,101 +28,85 @@ v2 已作以下修正：
 - 抬手改為在主身體之上繪製，讓手勢在 42–64px 更可見；
 - 保留低透明度暖金臉頰作次要細節，不靠它傳達 happy。
 
-本地 raster review 暫時判斷：
+## Gate A — 同一角色：PASS
 
-- **Gate B：pass（candidate-level）** — 不靠星點或動畫，笑容與眼神已能讀出 happy。
-- **Gate C：pass（candidate-level）** — 動勢克制，沒有大跳、彩帶或 celebrate 級張手。
-- **Gate D：pass（candidate-level）** — 48 / 64 / 96 / 160px 清楚；實際 feedback 的 34 / 42px 仍可辨識表情，但手勢是次要訊號。
-- **Gate A：仍需 neutral A/B 最終確認** — `/mascot-sheet.html` 已新增同尺寸 neutral / happy A/B 區，避免只看 candidate 自己。
-- **Gate E：provisional pass** — `feedback-ui.js` 實際使用 42×62px（desktop）與 34×50px（mobile）；v2 已針對這兩個尺寸 raster 檢查，但仍需在完整 feedback 版面做最終 live visual check。
+與 approved `neutral` 的 identity contract 對照：
 
-目前決定：**保留 candidate，不升 production。**
+- 維持相同墨滴／墨靈基本輪廓與上窄下寬比例；
+- 臉部仍集中在上半部，大眼睛仍是第一識別特徵；
+- 主體仍以 Ink Teal / deep ink palette 為主；
+- 沒有新增帽子、道具、動物特徵或其他會改變角色身份的大型配件；
+- happy 的差異來自表情與姿勢，而不是重新設計角色。
 
-## Gate A — 同一角色
+`/mascot-sheet.html` 保留 neutral / production happy 同尺寸 A/B panel，方便日後持續回歸檢查。
 
-必須全部成立：
+## Gate B — 靜態就是 happy：PASS
 
-- 與 `neutral` 並排時，一眼看出是同一個小墨靈。
-- 頭身比例、眼睛位置、墨滴主輪廓沒有漂移。
-- 墨青／深墨色仍是主要角色識別。
-- 沒有新增會改變角色身份的大型配件。
+遮掉文字標籤與動畫後：
 
-任何一項失敗：直接退回，不進下一 gate。
+- 笑容本身已明顯高於 neutral；
+- 眼睛維持朝前而有精神；
+- 雙手抬起提供次要的正向動勢；
+- 沒有依靠暖金顏色或外掛符號才能看懂狀態。
 
-## Gate B — 靜態就是 happy
+## Gate C — 情緒邊界：PASS
 
-遮掉文字標籤、星點、動畫後檢查：
-
-- 眼神比 `neutral` 更明亮／更有笑意。
-- 頭部與身體有輕微向上動勢。
-- 手勢能讀成「很好／抓到重點」，而不是 neutral 站姿。
-- 不依賴顏色改變才看得出開心。
-
-如果只靠外加星星、光點或位移 transform 才成立：不通過。
-
-## Gate C — 情緒邊界
-
-`happy` 必須落在：
+`happy` 維持：
 
 `neutral < happy < celebrate`
 
-不應出現：
+沒有大跳、彩帶、煙花、完全張臂勝利姿勢或閉眼狂喜，因此不會搶走 `celebrate` 的角色。
 
-- 大幅跳躍
-- 雙手完全張開的大型勝利姿勢
-- 大量彩帶／星星／煙花
-- 過度張嘴或閉眼狂喜
+## Gate D — 小尺寸可讀性：PASS
 
-如果與 `celebrate` 難以區分：不通過。
+已按 artwork 與實際產品尺寸檢查：
 
-## Gate D — 小尺寸可讀性
-
-在 `/mascot-sheet.html` 逐尺寸檢查：
-
-| 尺寸 | 必須看得見的訊號 |
+| 尺寸 | 結果 |
 |---|---|
-| 34px | mobile feedback 實際寬度；至少眼神／笑容仍讀得到 |
-| 42px | desktop feedback 實際寬度；表情要明確，手勢可作次要訊號 |
-| 48px | 不應退化成 neutral；至少眼神或手勢仍可讀 |
-| 64px | happy 狀態應明顯，不看標籤也能大致猜出 |
-| 96px | 角色比例自然，不搶答題內容 |
-| 160px | 邊緣、手勢、眼神與透明區域乾淨 |
+| 34px | mobile feedback 實際寬度；大眼睛與笑容仍可讀 |
+| 42px | desktop feedback 實際寬度；笑意清楚，手勢作次要訊號 |
+| 48px | 不會退化成 neutral |
+| 64px | 不看標籤亦能讀出正向 happy 狀態 |
+| 96px | 比例自然，不搶學習內容 |
+| 160px | 輪廓、眼睛、手勢與透明邊界完整 |
 
-32px 不作 P1 pose 驗收，沿用共用 `moling-head.svg`。
+32px 不作 pose 驗收，沿用共用 `moling-head.svg` compact crop。
 
-## Gate E — 產品語境
+## Gate E — 產品語境：PASS
 
-把角色放回答對 feedback 情境判斷：
+`feedback-ui.js` 的真實 mascot 尺寸為 42×62px desktop 與 34×50px mobile。`/mascot-sheet.html` 已加入 feedback context preview，重現：
 
-- 反應像「你抓到重點了」，不是慶功動畫。
-- 不遮擋答案解釋或下一步 CTA。
-- reduced-motion 下仍能靠靜態圖成立。
-- 不顯得過幼兒化、過度遊戲化或像其他品牌角色。
-- 特別檢查 `feedback-ui.js` 的 42×62px desktop 與 34×50px mobile 呈現。
+- 答對 icon；
+- 「答對了」結果 copy；
+- 小墨靈與「抓到重點了！」；
+- 答案解釋；
+- 下一步 CTA；
+- narrow mobile 時 mascot 移到主要 copy 下方的布局。
 
-## Promotion checklist
+驗收結果：角色提供清楚正向回應，但沒有遮擋答案解釋、CTA 或主結果；reduced-motion 下只看靜態 artwork 仍成立。
 
-只有 A–E 全部通過後才可：
+## Promotion record
 
-1. 將 `happy.artStatus` 由 `candidate` 改為 `production`。
-2. 同步更新 `public/mascot-runtime.js` 的 `happy.artStatus`。
-3. 執行 `npm run mascot:happy:p1`。
-4. 執行 `npm run mascot:check`。
-5. 執行 `npm test`。
-6. 將 PR #5 由 draft 轉為 ready for review。
-7. 更新 Issue #4 checklist。
+A–E 全部通過後已執行：
 
-## Review note template
+1. `happy.artStatus`: `candidate → production`。
+2. 同步更新 `public/mascot-runtime.js`。
+3. 將 SVG accessibility description 改為 production artwork。
+4. `/mascot-sheet.html` 增加 neutral / production A/B 與 feedback context preview。
+5. regression tests 改為保護 production 狀態及 pending queue 從 P2 `encouraging` 開始。
+6. `npm run mascot:happy:p1`、`npm run mascot:check` 及完整 `npm test` 作最後 CI gate。
+
+## Review note
 
 ```text
 Happy P1 review
-A same character: pass / fail
-B static happy: pass / fail
-C below celebrate: pass / fail
-D 34/42 product + 48/64/96/160px: pass / fail
-E product context: pass / fail
-Decision: keep candidate / revise / promote to production
-Notes:
+A same character: pass
+B static happy: pass
+C below celebrate: pass
+D 34/42 product + 48/64/96/160px: pass
+E product context: pass
+Decision: promote to production
+Notes: v2 removed the misleading gold torso arc, strengthened the actual smile, and improved raised-hand readability without crossing into celebrate.
 ```
 
 Tracks #4, #3 and PR #5.
