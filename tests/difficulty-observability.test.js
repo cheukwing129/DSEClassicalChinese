@@ -50,14 +50,16 @@ test('misconception targeting is visible even when selected tier differs from ta
 
 test('student summary turns internal decisions into concise learning guidance',()=>{
  const env=browserContext({knowledge:{}});
- const summary=env.observability.studentSummary({mastery:68,baseTier:'application',targetTier:'transfer',selectedTier:'transfer',reason:'application-ready',selectionReason:'target-tier',profile:{recentAttempts:4,recentAccuracy:100,recentCorrectStreak:4}});
+ const summary=env.observability.studentSummary({mastery:68,baseTier:'application',targetTier:'transfer',selectedTier:'transfer',reason:'application-ready',reasonLabel:'legacy engineering copy',selectionReason:'target-tier',selectionLabel:'legacy selection copy',profile:{recentAttempts:4,recentAccuracy:100,recentCorrectStreak:4}});
  assert.equal(summary.tier,'跨篇遷移');
  assert.match(summary.reason,/語境應用近期表現穩定/);
+ assert.doesNotMatch(summary.reason,/legacy/);
  assert.match(summary.evidence,/掌握度 68%/);
  assert.match(summary.evidence,/近期同層 4 題 100%/);
  assert.match(summary.adjustment,/語境應用調整至跨篇遷移/);
- const targeted=env.observability.studentSummary({mastery:82,baseTier:'transfer',targetTier:'transfer',selectedTier:'foundation',reason:'mastery',selectionReason:'misconception-target',profile:{recentAttempts:0,recentAccuracy:null,recentCorrectStreak:0}});
+ const targeted=env.observability.studentSummary({mastery:82,baseTier:'transfer',targetTier:'transfer',selectedTier:'foundation',reason:'mastery',reasonLabel:'legacy engineering copy',selectionReason:'misconception-target',selectionLabel:'legacy selection copy',profile:{recentAttempts:0,recentAccuracy:null,recentCorrectStreak:0}});
  assert.match(targeted.reason,/容易混淆/);
+ assert.doesNotMatch(targeted.reason,/legacy/);
  assert.match(targeted.adjustment,/本題實際使用基礎辨識/);
 });
 
