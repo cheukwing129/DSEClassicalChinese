@@ -104,12 +104,33 @@ Production artwork 的第一目標是「同一角色、不同情緒」，不是�
 
 完成一張後：
 
-1. 把 manifest 對應 `artStatus` 改為 `production`。
-2. 在 `/mascot-sheet.html` 做四個尺寸的 visual QA。
-3. 跑完整測試。
-4. 再進下一個 state，避免一次大改後無法知道是哪張破壞一致性。
+1. 先替換對應 SVG，但暫時保持原 `artStatus`。
+2. 執行 `npm run mascot:check`，確認畫布、資產路徑及狀態契約正常。
+3. 在 `/mascot-sheet.html` 做 48 / 64 / 96 / 160px visual QA。
+4. QA 通過後，才把 manifest 對應 `artStatus` 改為 `production`。
+5. 再執行 `npm run mascot:check`；此時 validator 會拒絕仍直接引用 `mascot-moling.svg` baseline 的假 production artwork。
+6. 執行完整 `npm test`。
+7. 再進下一個 state，避免一次大改後無法知道是哪張破壞一致性。
 
-## 7. Definition of Done
+`npm test` 已包含 mascot artwork preflight，所以 CI 亦會執行同一套規則。
+
+## 7. 自動驗收防線
+
+`scripts/validate_mascot_art.cjs` 會檢查：
+
+- 六個 canonical states 與固定尺寸契約仍存在。
+- `artStatus` 與 `productionPriority` 合法且不重複。
+- 每個 SVG 存在，並保持 `viewBox="0 0 215 320"`。
+- mascot SVG 不嵌入文字。
+- 標為 `placeholder-treatment` 的狀態仍明確屬 baseline-derived treatment。
+- 一旦標為 `production`，對應 SVG 不得再直接引用 legacy `mascot-moling.svg`。
+- `neutral` 必須維持 baseline-approved / priority 0。
+- production queue 必須依 priority 穩定排序。
+- 32px compact asset 仍使用 `215 x 190` head crop 契約。
+
+這層檢查不能取代人工視覺 QA，但可避免「只改 metadata 就假裝 artwork 已完成」以及資產格式漂移。
+
+## 8. Definition of Done
 
 一個 state 只有在以下條件全部成立後才可標為 `production`：
 
@@ -119,6 +140,7 @@ Production artwork 的第一目標是「同一角色、不同情緒」，不是�
 - 與 neutral 保持角色一致性。
 - 不依賴顏色單獨傳達狀態。
 - 不引入責備式或高壓式學習情緒。
-- runtime、manifest 與 regression tests 全部通過。
+- `npm run mascot:check` 通過。
+- runtime、manifest 與完整 regression tests 全部通過。
 
-Related: #1, PR #2
+Related: #1, #3, PR #2
