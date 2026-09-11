@@ -10,7 +10,7 @@
 </style>
 </head>
 <body><main>
-<span class="pill">P2 · candidate v4</span>
+<span class="pill">P2 · production v4</span>
 <h1>Encouraging P2 Visual QA</h1>
 <p>專門驗收答錯後的小墨靈。先看是否仍像同一角色，再看是否自然傳達「一起看清這一步」，並特別排除失望、責備、羞恥或無助感。</p>
 <section class="panel"><h2>Gate A / C / D · all-ink neutral vs encouraging</h2><p>34 / 42px 是產品實際 feedback 寬度；48 / 64 / 96 / 160px 是 artwork QA 尺寸。兩側使用同一套全墨角色 DNA：炭灰至深墨藍漸變、豆豆眼、淡腮紅、金色雲紋、流動墨冠與獨立墨滴。左側 neutral 候選保持置中、雙手放低；右側 encouraging v4 以前傾、開掌及隨動作偏轉的墨冠增加支持意圖。此對照只作 Gate A 驗收，尚未替換正式 neutral。</p><div class="size-grid" id="sizeGrid"></div></section>
@@ -22,7 +22,7 @@ const runtime=window.ManjingoMascotRuntime;
 if(!runtime)throw new Error('mascot runtime unavailable');
 const sizes=[34,42,48,64,96,160];
 const grid=document.getElementById('sizeGrid');
-grid.innerHTML=sizes.map(size=>{const h=Math.round(size*320/215);return '<div class="size"><strong>'+size+'px</strong><div class="pair"><div class="figure"><img src="'+'./mascot/moling-neutral-all-ink-candidate.svg?v=1'+'" width="'+size+'" height="'+h+'" alt="all-ink neutral candidate '+size+'px"><span>all-ink neutral candidate</span></div><div class="figure encouraging"><img src="'+runtime.asset('encouraging')+'" width="'+size+'" height="'+h+'" alt="encouraging candidate '+size+'px"><span>encouraging candidate v4</span></div></div></div>'}).join('');
+grid.innerHTML=sizes.map(size=>{const h=Math.round(size*320/215);return '<div class="size"><strong>'+size+'px</strong><div class="pair"><div class="figure"><img src="'+'./mascot/moling-neutral-all-ink-candidate.svg?v=1'+'" width="'+size+'" height="'+h+'" alt="all-ink neutral candidate '+size+'px"><span>all-ink neutral candidate</span></div><div class="figure encouraging"><img src="'+runtime.asset('encouraging')+'" width="'+size+'" height="'+h+'" alt="encouraging production '+size+'px"><span>encouraging production v4</span></div></div></div>'}).join('');
 document.getElementById('desktopMascot').src=runtime.asset('encouraging');
 document.getElementById('mobileMascot').src=runtime.asset('encouraging');
 })();
