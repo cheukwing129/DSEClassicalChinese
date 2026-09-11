@@ -12,6 +12,15 @@ let firebaseJwksCache = null;
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 }
+function traceNow(){return Date.now();}
+function createTrace(){return{startedAt:traceNow(),marks:[]};}
+async function timed(trace,name,work){const started=traceNow();try{return await work();}finally{if(trace)trace.marks.push([name,Math.max(0,traceNow()-started)]);}}
+function withServerTiming(response,trace){
+  if(!trace)return response;
+  const headers=new Headers(response.headers),marks=[...trace.marks,['total',Math.max(0,traceNow()-trace.startedAt)]];
+  headers.set('server-timing',marks.map(([name,duration])=>`${name};dur=${Number(duration).toFixed(1)}`).join(', '));
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
 function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
 function base64Url(bytes) {
   let binary = '';
@@ -186,14 +195,14 @@ function validateAnswer(raw) {
   };
 }
 
-async function submitAnswer(request, env, uid) {
+async function submitAnswer(request, env, uid, trace) {
   let raw;
   try { raw = await request.json(); } catch (_) { throw Object.assign(new Error('JSON body required'), { status: 400 }); }
   const answer = validateAnswer(raw);
-  const token = await getServiceAccessToken(env);
+  const token = await timed(trace,'oauth',()=>getServiceAccessToken(env));
   let baseXp = 8, conceptKey = answer.conceptKey, conceptLabel = answer.conceptLabel;
   if (answer.questionId) {
-    const question = await getDocument(env, token, `questions/${answer.questionId}`);
+    const question = await timed(trace,'question_read',()=>getDocument(env, token, `questions/${answer.questionId}`));
     if (question) {
       const questionKpId = question.data.kpId ? String(question.data.kpId) : null;
       if (questionKpId && questionKpId !== answer.kpId) throw Object.assign(new Error('questionId does not belong to kpId'), { status: 400 });
@@ -203,18 +212,18 @@ async function submitAnswer(request, env, uid) {
       if (!conceptLabel && question.data.misconceptionLabel) conceptLabel = String(question.data.misconceptionLabel);
     }
   }
-  const tx = await beginTransaction(env, token);
+  const tx = await timed(trace,'tx_begin',()=>beginTransaction(env, token));
   try {
     const kpPath = `users/${uid}/knowledge/${answer.kpId}`;
     const gamePath = `users/${uid}/gamification/state`;
     const logPath = `users/${uid}/answerLogs/${answer.answerId}`;
     const conceptPath = conceptKey ? `users/${uid}/concepts/${conceptKey}` : null;
-    const [kpDoc, gameDoc, logDoc, conceptDoc] = await Promise.all([
+    const [kpDoc, gameDoc, logDoc, conceptDoc] = await timed(trace,'tx_reads',()=>Promise.all([
       getDocument(env, token, kpPath, tx), getDocument(env, token, gamePath, tx), getDocument(env, token, logPath, tx), conceptPath ? getDocument(env, token, conceptPath, tx) : Promise.resolve(null)
-    ]);
+    ]));
     const gameExisting = gameDoc ? gameDoc.data : {};
     if (logDoc) {
-      await rollback(env, token, tx);
+      await timed(trace,'tx_rollback',()=>rollback(env, token, tx));
       const existing = logDoc.data;
       return json({ success: true, quality: existing.quality, xpEarned: Number(existing.xpEarned || 0), mastery: Number(existing.mastery || 0), status: existing.status || null, nextReviewAt: existing.nextReviewAt || null, attempts: Number(existing.attempts || 0), correctCount: Number(existing.correctCount || 0), wrongCount: Number(existing.wrongCount || 0), hintCount: Number(existing.hintCount || 0), lastCorrect: existing.lastCorrect ?? null, lastAnsweredAt: existing.lastAnsweredAt || existing.answeredAt || null, totalXp: Number(existing.totalXp ?? gameExisting.totalXp ?? 0), todayXp: Number(existing.todayXp ?? gameExisting.todayXp ?? 0), streak: Number(existing.streak ?? gameExisting.streak ?? 0), streakFreezes: Number(existing.streakFreezes ?? gameExisting.streakFreezes ?? 0), streakIncreased: Boolean(existing.streakIncreased), level: Number(existing.level ?? gameExisting.level ?? 1), conceptMastery: existing.conceptMastery || null, duplicate: true });
     }
@@ -259,19 +268,21 @@ async function submitAnswer(request, env, uid) {
     const writes = [updateWrite(env, kpPath, kpUpdate), updateWrite(env, gamePath, gameUpdate)];
     if (conceptPath && conceptUpdate) writes.push(updateWrite(env, conceptPath, { ...conceptUpdate, lastAnsweredAt: conceptUpdate.lastAnsweredAt, updatedAt: now }));
     writes.push(updateWrite(env, logPath, log));
-    await commit(env, token, tx, writes);
+    await timed(trace,'commit',()=>commit(env, token, tx, writes));
     return json({ success: true, quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt.toISOString(), interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, attempts: update.attempts, correctCount: update.correctCount, wrongCount: update.wrongCount, hintCount: update.hintCount, lastCorrect: update.lastCorrect, lastAnsweredAt: update.lastAnsweredAt.toISOString(), totalXp, todayXp, streak, streakFreezes, streakIncreased, level, conceptMastery: conceptResult, duplicate: false });
   } catch (error) {
-    await rollback(env, token, tx);
+    await timed(trace,'tx_rollback',()=>rollback(env, token, tx));
     throw error;
   }
 }
 
 function isDue(data, now) { const value = data && data.nextReviewAt; return !value || new Date(value).getTime() <= now.getTime(); }
-async function dailyPlan(env, uid) {
-  const token = await getServiceAccessToken(env);
+async function dailyPlan(env, uid, trace) {
+  const token = await timed(trace,'oauth',()=>getServiceAccessToken(env));
   const [knowledge, concepts, kpUniverseDocs] = await Promise.all([
-    listDocuments(env, token, `users/${uid}/knowledge`), listDocuments(env, token, `users/${uid}/concepts`), listDocuments(env, token, 'knowledgePoints')
+    timed(trace,'knowledge_list',()=>listDocuments(env, token, `users/${uid}/knowledge`)),
+    timed(trace,'concepts_list',()=>listDocuments(env, token, `users/${uid}/concepts`)),
+    timed(trace,'kp_list',()=>listDocuments(env, token, 'knowledgePoints'))
   ]);
   const now = new Date(), targetCount = 10;
   const kpUniverse = new Set(kpUniverseDocs.map(x => x.id));
@@ -294,21 +305,21 @@ async function dailyPlan(env, uid) {
   [...due, ...weakOnly, ...fresh].forEach(x => push(x.id, dueIds.has(x.id) ? 'review' : weakOnly.some(w => w.id === x.id) ? 'weak' : 'new', dueIds.has(x.id) ? 100 : weakOnly.some(w => w.id === x.id) ? 80 : 60));
   return json({ targetCount: selected.length, items: selected, review: selected.filter(x => x.category === 'review').map(x => x.kpId), weak: selected.filter(x => x.category === 'weak').map(x => x.kpId), newKnowledgePoints: selected.filter(x => x.category === 'new').map(x => x.kpId), conceptReview: selected.filter(x => x.conceptReview).map(x => ({ kpId: x.kpId, conceptKey: x.conceptKey, conceptMastery: x.conceptMastery })), totalRecommended: selected.length });
 }
-async function dueKnowledge(env, uid) {
-  const token = await getServiceAccessToken(env);
-  const knowledge = await listDocuments(env, token, `users/${uid}/knowledge`);
+async function dueKnowledge(env, uid, trace) {
+  const token = await timed(trace,'oauth',()=>getServiceAccessToken(env));
+  const knowledge = await timed(trace,'knowledge_list',()=>listDocuments(env, token, `users/${uid}/knowledge`));
   const now = new Date();
   const due = knowledge.filter(x => isDue(x.data, now)).sort((a, b) => new Date(a.data.nextReviewAt || 0) - new Date(b.data.nextReviewAt || 0)).slice(0, 50).map(x => x.id);
   return json({ dueKpIds: due, count: due.length });
 }
 
-async function api(request, env) {
+async function api(request, env, trace) {
   const url = new URL(request.url);
   if (url.pathname === '/api/health') return json({ ok: true, service: 'manjingo-learning', firestoreProject: projectId(env), configured: Boolean(env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY), learningPolicy: 'shared-v1' });
-  const uid = await verifyFirebaseIdToken(request, env);
-  if (url.pathname === '/api/submit-answer' && request.method === 'POST') return submitAnswer(request, env, uid);
-  if (url.pathname === '/api/daily-plan' && (request.method === 'GET' || request.method === 'POST')) return dailyPlan(env, uid);
-  if (url.pathname === '/api/due-knowledge-points' && (request.method === 'GET' || request.method === 'POST')) return dueKnowledge(env, uid);
+  const uid = await timed(trace,'auth',()=>verifyFirebaseIdToken(request, env));
+  if (url.pathname === '/api/submit-answer' && request.method === 'POST') return submitAnswer(request, env, uid, trace);
+  if (url.pathname === '/api/daily-plan' && (request.method === 'GET' || request.method === 'POST')) return dailyPlan(env, uid, trace);
+  if (url.pathname === '/api/due-knowledge-points' && (request.method === 'GET' || request.method === 'POST')) return dueKnowledge(env, uid, trace);
   return json({ error: 'Not found' }, 404);
 }
 
@@ -316,7 +327,8 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
-    try { return await api(request, env); }
-    catch (error) { console.error('learning api error', error); return json({ error: error && error.message ? error.message : 'Internal server error' }, Number(error && error.status) || 500); }
+    const trace=createTrace();
+    try { return withServerTiming(await api(request, env, trace),trace); }
+    catch (error) { console.error('learning api error', error); return withServerTiming(json({ error: error && error.message ? error.message : 'Internal server error' }, Number(error && error.status) || 500),trace); }
   }
 };
