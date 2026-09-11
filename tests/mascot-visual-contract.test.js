@@ -96,6 +96,11 @@ test('thinking P3 production art encodes curious focus without confused cues',()
   assert.match(thinking,/好奇專注/);
   assert.match(thinking,/data:image\/webp;base64,/);
   assert.doesNotMatch(thinking,/mascot-moling\.svg/);
+  const p3Gate=read('scripts/check_mascot_thinking_p3.cjs');
+  assert.match(p3Gate,/Buffer\.from\(embeddedWebp\[1\],'base64'\)/);
+  assert.match(p3Gate,/0x10/);
+  assert.match(p3Gate,/ALPH/);
+  assert.match(p3Gate,/real alpha channel/);
 });
 
 test('32px uses a dedicated compact head crop instead of shrinking the full body',()=>{
