@@ -66,7 +66,7 @@ test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and 
   assert.match(read('public/mascot/moling-happy.svg'),/happy production artwork/);
   assert.match(read('public/mascot/moling-encouraging.svg'),/encouraging production artwork v4/);
   assert.match(read('public/mascot/moling-thinking.svg'),/thinking production artwork v2/);
-  assert.match(read('public/mascot/moling-celebrate.svg'),/celebrate 狀態 P5 candidate artwork v2/);
+  assert.match(read('public/mascot/moling-celebrate.svg'),/celebrate 狀態 P5 candidate artwork v3/);
 });
 
 test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
