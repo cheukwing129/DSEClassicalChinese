@@ -256,9 +256,19 @@ function enrichConcept(answer) {
   } catch (_) { return answer; }
 }
 
+function recordDifficultyOutcome(answer, result) {
+  if (!result || !result.success || result.duplicate || typeof window === 'undefined') return null;
+  const calibration = window.ManjingoDifficultyCalibration;
+  if (!calibration || typeof calibration.recordAnswer !== 'function') return null;
+  try { return calibration.recordAnswer(answer); }
+  catch (error) { console.warn('difficulty calibration record unavailable:', error); return null; }
+}
+
 export async function submitAnswer(answer) {
   const payload = enrichConcept(answer);
-  return authorizedApi('/api/submit-answer', { method: 'POST', body: JSON.stringify(payload) });
+  const result = await authorizedApi('/api/submit-answer', { method: 'POST', body: JSON.stringify(payload) });
+  recordDifficultyOutcome(payload, result);
+  return result;
 }
 
 export async function getDueKnowledgePoints() {
