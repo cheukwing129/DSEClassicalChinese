@@ -83,13 +83,31 @@ test('sentence-level identity catches repeated wording across different question
   assert.equal(loushi[0], 'sentence:loushiming:helouzhiyou');
 });
 
+test('legacy CROSS is separated from the real source text when provenance is known', () => {
+  const questions = metadata.annotateAll(loadCatalog().questions);
+
+  const yueyang = byId(questions, 'p3q009');
+  assert.equal(yueyang.legacyTextId, 'CROSS');
+  assert.equal(yueyang.sourceTextId, 'yueyanglou');
+  assert.equal(yueyang.sourceKind, 'set-text');
+
+  const zuiweng = byId(questions, 'lpq007');
+  assert.equal(zuiweng.legacyTextId, 'CROSS');
+  assert.equal(zuiweng.sourceTextId, 'zuiwengtingji');
+  assert.equal(zuiweng.sourceKind, 'classical-canon');
+
+  const generic = byId(questions, 'p3q008');
+  assert.equal(generic.sourceTextId, 'CROSS');
+  assert.equal(generic.sourceKind, 'mixed');
+});
+
 test('normal core filter excludes set-text recall without deleting the original catalog', () => {
   const catalog = loadCatalog();
   const core = metadata.normalCoreQuestions(catalog.questions);
   const coreIds = new Set(core.map(q => q.id));
 
   assert.equal(catalog.questions.length, 222);
-  assert.ok(core.length > 0 && core.length < catalog.questions.length);
+  assert.equal(core.length, 131);
   assert.equal(coreIds.has('q008'), false);
   assert.equal(coreIds.has('lpq053'), false);
   assert.equal(coreIds.has('p2q042'), false);
@@ -98,12 +116,15 @@ test('normal core filter excludes set-text recall without deleting the original 
   assert.equal(coreIds.has('p3q029'), true);
 });
 
-test('audit exposes the content imbalance for later planner work', () => {
+test('audit quantifies the legacy content that must be replaced or expanded', () => {
   const audit = metadata.audit(loadCatalog().questions);
   assert.equal(audit.total, 222);
   assert.equal(Object.values(audit.byMode).reduce((a,b) => a + b, 0), 222);
-  assert.equal(audit.bySourceText.yueyanglou, 33);
-  assert.equal(audit.bySourceText.CROSS, 97);
-  assert.ok(audit.byMode['set-text'] > 0);
-  assert.ok(audit.byMode.core > 0);
+  assert.equal(audit.byMode.core, 131);
+  assert.equal(audit.byMode['set-text'], 78);
+  assert.equal(audit.byMode.advanced, 13);
+
+  // Resolving provenance exposes set-text sentences previously hidden inside CROSS.
+  assert.equal(audit.bySourceText.yueyanglou, 38);
+  assert.equal(audit.bySourceText.CROSS, 45);
 });
