@@ -44,6 +44,18 @@ test('homepage answer feedback is revealed synchronously before cloud persistenc
   assert.match(home,/await cloudSubmit\(q,correct,answerId,value\)/);
 });
 
+test('next question unlocks without waiting for cloud persistence',async()=>{
+  const ui=load(),next={disabled:true};
+  const scope={dataset:{answered:'1'},querySelector:selector=>selector==='#next'?next:null};
+  ui.unlockNextSoon(scope);
+  assert.equal(next.disabled,true,'unlock is deferred until the answer handler has set its temporary disabled state');
+  await Promise.resolve();
+  assert.equal(next.disabled,false,'next question should be available before any cloud request resolves');
+  const source=read('public/feedback-ui.js');
+  assert.match(source,/unlockNextSoon\(scope\)/);
+  assert.match(source,/next\.disabled=false/);
+});
+
 test('instant feedback can be enhanced again when cloud progress replaces it',()=>{
   const source=read('public/feedback-ui.js');
   assert.match(source,/feedback\.dataset\.feedbackRendered===raw/);
