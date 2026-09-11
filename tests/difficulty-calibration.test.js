@@ -80,13 +80,20 @@ test('browser telemetry records the reviewed question tier into learner state',(
  assert.equal(state.knowledge.kp1.tierStats.foundation.correctCount,1);
 });
 
-test('runtime loads telemetry before difficulty selection and cloud writes record only committed answers',()=>{
+test('runtime loads telemetry before difficulty selection and records cloud telemetry only after confirmed delivery',()=>{
  const rotation=source('public/question-rotation.js'),firebase=source('public/firebase-config.js');
  const calibrationPos=rotation.indexOf('difficulty-calibration.js'),difficultyPos=rotation.indexOf('question-difficulty.js');
  assert.ok(calibrationPos>=0&&difficultyPos>calibrationPos,'calibration must load before difficulty selector');
  assert.match(firebase,/function recordDifficultyOutcome\(answer, result\)/);
  assert.match(firebase,/result\.duplicate/);
  assert.match(firebase,/calibration\.recordAnswer\(answer\)/);
- assert.match(firebase,/const result = await authorizedApi\('\/api\/submit-answer'/);
- assert.match(firebase,/recordDifficultyOutcome\(payload, result\)/);
+ const submitStart=firebase.indexOf('export async function submitAnswer');
+ const queued=firebase.indexOf('box.enqueue(payload,currentUserId)',submitStart);
+ const delivered=firebase.indexOf('const result = await sendAnswerOnce(payload)',submitStart);
+ const recorded=firebase.indexOf('recordDifficultyOutcome(payload, result)',submitStart);
+ assert.ok(queued>submitStart&&delivered>queued&&recorded>delivered,'cloud telemetry must follow durable queueing and confirmed delivery');
+ const flushStart=firebase.indexOf('export async function flushAnswerOutbox');
+ const flushEnd=firebase.indexOf('function installAnswerOutboxRetry',flushStart);
+ assert.ok(flushStart>=0&&flushEnd>flushStart);
+ assert.doesNotMatch(firebase.slice(flushStart,flushEnd),/recordDifficultyOutcome/,'background replay must not double-count calibration after local fallback');
 });
