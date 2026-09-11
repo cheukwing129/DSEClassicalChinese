@@ -6,6 +6,7 @@
  *   public/question-pack-03.js
  *   public/question-pack-lesson.js
  *   public/question-pack-capacity-01.js
+ *   public/question-pack-transfer-01.js
  *   public/content-catalog.js
  *   public/question-pack-adaptive-01.js
  *   public/question-pack-adaptive-02.js
@@ -82,6 +83,7 @@ function loadReviewedCatalog() {
     'question-pack-03.js',
     'question-pack-lesson.js',
     'question-pack-capacity-01.js',
+    'question-pack-transfer-01.js',
     'content-catalog.js',
     'question-pack-adaptive-01.js',
     'question-pack-adaptive-02.js',
@@ -137,6 +139,11 @@ function catalogTargets(catalog) {
       misconceptionKey: question.misconceptionKey || null,
       misconceptionLabel: question.misconceptionLabel || null,
       difficultyTier: question.difficultyTier || null,
+      skillIds: Array.isArray(question.skillIds) ? Array.from(question.skillIds, String) : [],
+      sourceTextId: question.sourceTextId || null,
+      sourceSentenceId: question.sourceSentenceId || null,
+      sourceKind: question.sourceKind || null,
+      transferLevel: Number.isInteger(question.transferLevel) ? question.transferLevel : null,
       baseXp: Number(question.baseXp || question.xp || 8),
       catalogVersion: version
     }
