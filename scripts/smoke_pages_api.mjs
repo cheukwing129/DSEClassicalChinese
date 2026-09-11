@@ -109,7 +109,9 @@ console.log('✓ deployed adaptive calibration and decision observability assets
 check(feedbackSource.includes('function instantAnswer(event)'), 'deployed feedback UI is missing instant answer handling');
 check(feedbackSource.includes("document.addEventListener('click',instantAnswer,true)"), 'deployed feedback UI does not reveal answers before bubble-phase cloud submission');
 check(feedbackSource.includes("feedback.textContent=correct?'答對了！':'正確答案：'"), 'deployed feedback UI does not render the answer immediately');
-console.log('✓ deployed instant answer feedback before cloud persistence');
+check(feedbackSource.includes('function unlockNextSoon(scope)'), 'deployed feedback UI is missing nonblocking next-question handling');
+check(feedbackSource.includes('next.disabled=false'), 'deployed feedback UI still blocks the next question on cloud persistence');
+console.log('✓ deployed instant answer feedback and nonblocking next question');
 
 const healthResponse = await api('/api/health');
 const health = await readJson(healthResponse, 'health');
