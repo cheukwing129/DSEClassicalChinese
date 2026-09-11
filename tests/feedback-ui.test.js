@@ -33,6 +33,25 @@ test('feedback enhancement is shared, accessible and reacts to answer DOM change
   assert.match(source,/new MutationObserver/);
 });
 
+test('homepage answer feedback is revealed synchronously before cloud persistence finishes',()=>{
+  const source=read('public/feedback-ui.js');
+  assert.match(source,/function instantAnswer\(event\)/);
+  assert.match(source,/target\.closest&&target\.closest\('#quiz'\)/);
+  assert.match(source,/document\.addEventListener\('click',instantAnswer,true\)/);
+  assert.match(source,/feedback\.textContent=correct\?'答對了！':'正確答案：'/);
+  assert.match(source,/answerKey\(button\.textContent\)===answerKey\(question\.a\)/);
+  const home=read('public/index.html');
+  assert.match(home,/await cloudSubmit\(q,correct,answerId,value\)/);
+});
+
+test('instant feedback can be enhanced again when cloud progress replaces it',()=>{
+  const source=read('public/feedback-ui.js');
+  assert.match(source,/feedback\.dataset\.feedbackRendered===raw/);
+  assert.match(source,/feedback\.dataset\.feedbackRendered=clean\(feedback\.textContent\)/);
+  assert.match(source,/delete feedback\.dataset\.feedbackUi/);
+  assert.match(source,/delete feedback\.dataset\.feedbackRendered/);
+});
+
 test('catalog loads layered feedback UI on both homepage and lesson flows',()=>{
   const catalog=read('public/content-catalog.js');
   assert.match(catalog,/feedback-ui\.js/);
