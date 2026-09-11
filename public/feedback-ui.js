@@ -1,5 +1,6 @@
 (function(){
 'use strict';
+if(typeof document!=='undefined'&&document.readyState==='loading'&&!window.ManjingoMascotRuntime){document.write('<script src="./mascot-runtime.js"><\/script>')}
 function clean(v){return String(v||'').replace(/\s+/g,' ').trim()}
 function answerKey(v){return String(v||'').replace(/[，。、；：！？\s]/g,'')}
 function unique(items){return Array.from(new Set((items||[]).map(clean).filter(Boolean)))}
@@ -57,9 +58,9 @@ function explanation(feedback,question,raw,isCorrect){
  return'';
 }
 function build(tag,className,text){const node=document.createElement(tag);if(className)node.className=className;if(text!=null)node.textContent=text;return node}
-const MASCOT_FEEDBACK_ASSETS=Object.freeze({happy:'./mascot/moling-happy.svg',encouraging:'./mascot/moling-encouraging.svg'});
+function mascotRuntime(){return window.ManjingoMascotRuntime||null}
 function mascotFeedbackState(isCorrect){return isCorrect?'happy':'encouraging'}
-function mascotFeedbackAsset(state){return MASCOT_FEEDBACK_ASSETS[state]||MASCOT_FEEDBACK_ASSETS.encouraging}
+function mascotFeedbackAsset(state){const runtime=mascotRuntime();if(runtime&&typeof runtime.asset==='function')return runtime.asset(state);return state==='happy'?'./mascot/moling-happy.svg':'./mascot/moling-encouraging.svg'}
 function mascotFeedback(isCorrect){
  const state=mascotFeedbackState(isCorrect),wrap=build('div','feedback-mascot mascot-state-'+state),img=document.createElement('img'),message=build('span','',isCorrect?'抓到重點了！':'一起看清這一步。');
  img.src=mascotFeedbackAsset(state);img.alt='';img.setAttribute('aria-hidden','true');wrap.setAttribute('aria-label',isCorrect?'小墨靈：抓到重點了！':'小墨靈：一起看清這一步。');wrap.appendChild(img);wrap.appendChild(message);return wrap
@@ -99,6 +100,6 @@ function install(){
  scan(document);if(typeof MutationObserver!=='function'||!document.body)return;
  const observer=new MutationObserver(records=>records.forEach(record=>{if(record.target&&record.target.classList&&record.target.classList.contains('feedback'))enhance(record.target);record.addedNodes&&record.addedNodes.forEach(scan)}));observer.observe(document.body,{childList:true,subtree:true});window.ManjingoFeedbackUI.observer=observer
 }
-window.ManjingoFeedbackUI={enhance,scan,install,instantAnswer,unlockNextSoon,questionFor,questionForScope,answerKey,explanationFromText,parseCorrectAnswer,metricLines,supportingLines,clean,installMascotStyle,mascotFeedback,mascotFeedbackState,mascotFeedbackAsset,MASCOT_FEEDBACK_ASSETS,observer:null};
+window.ManjingoFeedbackUI={enhance,scan,install,instantAnswer,unlockNextSoon,questionFor,questionForScope,answerKey,explanationFromText,parseCorrectAnswer,metricLines,supportingLines,clean,installMascotStyle,mascotFeedback,mascotFeedbackState,mascotFeedbackAsset,mascotRuntime,observer:null};
 if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install()}
 })();
