@@ -29,7 +29,7 @@ P2 已有按產品負責人確認角色參考重製的立體 **candidate v4**：
 - `encouraging.artStatus = candidate`；
 - 舊扁平 v2 已被產品負責人否決，不可升 production；
 - v4 使用透明 raster-backed 3D artwork；取消米白／肉色面罩，以連續炭灰至深墨藍漸變、豆豆眼、腮紅、金色雲紋、墨冠與獨立墨滴建立身份；
-- 現有 cream-face reference 只作方向比較；正式 Gate A 需另建全墨 neutral anchor；
+- 已建立 `public/mascot/moling-neutral-all-ink-candidate.svg` 作 Gate A 全墨 identity anchor；它只供 QA，未替換正式 neutral；
 - v4 使用清楚豆豆眼、微歪小笑容、笨拙圓潤開掌與穩定站姿；
 - 已建立 P2 專用 validator、size QA 與 wrong-answer context QA page；
 - 尚未升 production，仍需完成最後 A–E 人工 review。
@@ -117,14 +117,16 @@ P2 必須用真實產品尺寸驗收，而不是只看大圖：
 
 32px 仍使用共用 `moling-head.svg`，不作 P2 pose 驗收。
 
-v4 已做 34 / 42px 本地 raster QA；仍須在部署頁完成 34 / 42 / 48 / 64 / 96 / 160px QA；34 / 42px 以眼神與小笑容為主要訊號，手勢作次要訊號。
+v4 與全墨 neutral anchor 已做 42px 本地 raster A/B：兩者可讀成同一角色，neutral 以置中墨冠與低位雙手保持平靜，encouraging 以前傾、開掌及偏轉墨冠增加支持意圖。仍須在部署頁完成 34 / 42 / 48 / 64 / 96 / 160px QA；34 / 42px 以眼神與小笑容為主要訊號，手勢與墨冠方向作次要訊號。
 
 ## 8. Gate A–E
 
 ### Gate A — Same character
 
 - 與 neutral / production happy 並排仍一眼是同一小墨靈；
-- 輪廓、眼睛、色彩與頭身比例沒有身份漂移。
+- 輪廓、眼睛、色彩與頭身比例沒有身份漂移；
+- QA 使用全墨 neutral candidate，比較結果不可依賴已否決的米白面部方向；
+- neutral 墨冠平穩置中，encouraging 墨冠隨前傾與開掌略為偏轉，兩者都仍像液態身體而非固定帽子。
 
 ### Gate B — Static encouraging
 
