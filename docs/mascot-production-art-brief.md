@@ -93,26 +93,40 @@ Production artwork 的第一目標是「同一角色、不同情緒」，不是�
 - 與 neutral 並排時，頭身比例、眼睛位置、主色與輪廓仍像同一角色。
 - 與其他 states 並排時，不靠文字標籤亦能猜到大致情緒。
 
-## 6. 替換流程
+## 6. Artwork lifecycle 與替換流程
 
-新 production artwork 不改 state id 與產品程式碼，只替換對應檔案內容：
+新 artwork 不改 state id 與產品程式碼，只替換對應檔案內容：
 
 - `public/mascot/moling-happy.svg`
 - `public/mascot/moling-encouraging.svg`
 - `public/mascot/moling-thinking.svg`
 - `public/mascot/moling-determined.svg`
 
-完成一張後：
+Artwork readiness 採用以下 lifecycle：
 
-1. 先替換對應 SVG，但暫時保持原 `artStatus`。
-2. 執行 `npm run mascot:check`，確認畫布、資產路徑及狀態契約正常。
-3. 在 `/mascot-sheet.html` 做 48 / 64 / 96 / 160px visual QA。
-4. QA 通過後，才把 manifest 對應 `artStatus` 改為 `production`。
-5. 再執行 `npm run mascot:check`；此時 validator 會拒絕仍直接引用 `mascot-moling.svg` baseline 的假 production artwork。
-6. 執行完整 `npm test`。
-7. 再進下一個 state，避免一次大改後無法知道是哪張破壞一致性。
+`placeholder-treatment → candidate → production`
 
-`npm test` 已包含 mascot artwork preflight，所以 CI 亦會執行同一套規則。
+- `placeholder-treatment`：仍直接引用 approved baseline，只是讓產品先有穩定 state contract。
+- `candidate`：已是獨立 artwork，不再引用 baseline；結構檢查可以通過，但仍等待人工 Visual QA。
+- `production`：人工 QA 已通過，角色一致性、情緒語意與尺寸可讀性均獲確認。
+- `provisional`：可用但刻意排在較後的深化項目，例如目前的 `celebrate`。
+- `baseline-approved`：只用於目前的 `neutral` 角色錨點。
+
+完成一張的標準流程：
+
+1. 替換對應 SVG，保持原 state id 與 asset path。
+2. 當 artwork 已真正獨立於 baseline 時，將 manifest/runtime 的 `artStatus` 改為 `candidate`。
+3. 執行 `npm run mascot:check`（如有 state-specific gate 亦一併執行），確認畫布、資產路徑及 metadata 契約正常。
+4. 在 `/mascot-sheet.html` 做 48 / 64 / 96 / 160px visual QA，並與 `neutral` 及相鄰情緒狀態並排判斷。
+5. 如果角色 DNA、情緒或小尺寸可讀性不合格，保持 `candidate` 並繼續修改 artwork。
+6. 只有人工 QA 通過後，才把 manifest/runtime 對應 `artStatus` 改為 `production`。
+7. 再執行 `npm run mascot:check`；此時 validator 會拒絕仍直接引用 `mascot-moling.svg` baseline 的假 production artwork。
+8. 執行完整 `npm test`。
+9. 再進下一個 state，避免一次大改後無法知道是哪張破壞一致性。
+
+`candidate` 不是「接近 production 就自動通過」的狀態；它的作用正是讓獨立新 artwork 可以進入人工 review，而不需要過早宣稱定稿。
+
+`npm test` 已包含 mascot artwork preflight，所以 CI 亦會執行同一套結構規則。
 
 ## 7. 自動驗收防線
 
@@ -123,7 +137,8 @@ Production artwork 的第一目標是「同一角色、不同情緒」，不是�
 - 每個 SVG 存在，並保持 `viewBox="0 0 215 320"`。
 - mascot SVG 不嵌入文字。
 - 標為 `placeholder-treatment` 的狀態仍明確屬 baseline-derived treatment。
-- 一旦標為 `production`，對應 SVG 不得再直接引用 legacy `mascot-moling.svg`。
+- 標為 `candidate` 的狀態已不再直接引用 legacy baseline。
+- 一旦標為 `production`，對應 SVG 同樣不得再直接引用 legacy `mascot-moling.svg`。
 - `neutral` 必須維持 baseline-approved / priority 0。
 - production queue 必須依 priority 穩定排序。
 - 32px compact asset 仍使用 `215 x 190` head crop 契約。
@@ -143,4 +158,4 @@ Production artwork 的第一目標是「同一角色、不同情緒」，不是�
 - `npm run mascot:check` 通過。
 - runtime、manifest 與完整 regression tests 全部通過。
 
-Related: #1, #3, PR #2
+Related: #1, #3, #4, PR #5
