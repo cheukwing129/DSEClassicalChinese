@@ -57,8 +57,9 @@ test('all six v1 mascot state assets exist while candidate and production artwor
   assert.match(happy,/happy production artwork/);
   const encouraging=read('public/mascot/moling-encouraging.svg');
   assert.doesNotMatch(encouraging,/\.\.\/mascot-moling\.svg/);
-  assert.match(encouraging,/<(?:path|ellipse|circle)\b/);
-  assert.match(encouraging,/encouraging 候選 artwork/);
+  assert.match(encouraging,/<image\b/);
+  assert.match(encouraging,/data:image\/webp;base64,/);
+  assert.match(encouraging,/encouraging 候選 artwork v3/);
 });
 
 test('thinking and determined states are connected to semantic learning UI',()=>{
@@ -76,7 +77,7 @@ test('thinking and determined states are connected to semantic learning UI',()=>
 test('encouraging state avoids punitive reaction language and motion',()=>{
   const encouraging=read('public/mascot/moling-encouraging.svg');
   const feedback=read('public/feedback-ui.js');
-  assert.match(encouraging,/encouraging 候選 artwork/);
+  assert.match(encouraging,/encouraging 候選 artwork v3/);
   assert.match(encouraging,/陪伴與支持/);
   assert.match(encouraging,/不傳達責備或失望/);
   assert.doesNotMatch(encouraging,/(眼淚|紅叉|搖頭|皺眉)/);
