@@ -31,14 +31,21 @@ const referencesBaseline=/mascot-moling\.svg/.test(happySvg);
 const overlayLanguage=/沿用正式角色 artwork|點綴|baseline\s*\+\s*overlay/i.test(happySvg);
 
 if(happy.artStatus==='placeholder-treatment'){
-  if(!referencesBaseline)fail('placeholder-treatment should still identify itself as the baseline-derived candidate until visual review');
-  ok('candidate is correctly still marked placeholder-treatment');
-  ok('production promotion remains blocked until a genuine replacement is installed');
+  if(!referencesBaseline)fail('placeholder-treatment should still reference the approved baseline until a real candidate is installed');
+  ok('placeholder treatment is still explicitly baseline-derived');
+}else if(happy.artStatus==='candidate'){
+  if(referencesBaseline)fail('candidate happy must already be independent from mascot-moling.svg');
+  if(overlayLanguage)fail('candidate description must not describe a baseline/overlay treatment');
+  if(happySvg===neutralSvg)fail('candidate happy cannot be identical to neutral');
+  if(happySvg.length<900)fail('candidate happy SVG is suspiciously small for a distinct pose');
+  if(!/(ellipse|circle|path)/i.test(happySvg))fail('candidate happy should contain independent vector artwork');
+  ok('candidate artwork is independent and ready for visual review');
+  ok('production promotion remains blocked until A–E visual QA passes');
 }else if(happy.artStatus==='production'){
   if(referencesBaseline)fail('production happy must not reference mascot-moling.svg');
   if(overlayLanguage)fail('production happy description must not describe a baseline/overlay treatment');
   if(happySvg===neutralSvg)fail('production happy cannot be identical to neutral');
-  if(happySvg.length<500)fail('production happy SVG is suspiciously small for a distinct artwork replacement');
+  if(happySvg.length<900)fail('production happy SVG is suspiciously small for a distinct artwork replacement');
   ok('production happy is independent from the legacy baseline');
   ok('production happy remains structurally distinct from neutral');
 }else{
