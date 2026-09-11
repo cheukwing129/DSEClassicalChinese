@@ -10,6 +10,7 @@ const pack03Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'quest
 const lessonPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-lesson.js'), 'utf8');
 const capacityPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-capacity-01.js'), 'utf8');
 const transferPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-transfer-01.js'), 'utf8');
+const transferPack03Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-transfer-03.js'), 'utf8');
 
 function loadContext() {
   const context = { window: {}, Map, Set, Array, Object, Number, String, Math };
@@ -19,6 +20,7 @@ function loadContext() {
   vm.runInContext(lessonPackSource, context);
   vm.runInContext(capacityPackSource, context);
   vm.runInContext(transferPackSource, context);
+  vm.runInContext(transferPack03Source, context);
   vm.runInContext(catalogSource, context);
   return context;
 }
@@ -27,15 +29,16 @@ function loadCatalog() {
   return loadContext().window.ManjingoContent;
 }
 
-test('reviewed local catalog contains 268 questions across the 59 teachable knowledge points', () => {
+test('reviewed local catalog contains 292 questions across the 63 teachable knowledge points', () => {
   const catalog = loadCatalog();
   const kpIds = catalog.getKnowledgePointIds({ teachableOnly: true });
   assert.equal(catalog.catalogVersion, 'reviewed-v1');
-  assert.equal(catalog.questions.length, 268);
-  assert.equal(kpIds.length, 59);
+  assert.equal(catalog.questions.length, 292);
+  assert.equal(kpIds.length, 63);
   assert.ok(kpIds.includes('sx_006'));
   assert.ok(kpIds.includes('kp_caogui_strategy'));
   assert.ok(kpIds.includes('kp_p3_translation'));
+  for (const id of ['kp_virtual_wei','kp_virtual_zhe','kp_virtual_suo','kp_virtual_ye']) assert.ok(kpIds.includes(id));
 });
 
 test('capacity pack keeps only validated explained questions', () => {
@@ -55,18 +58,22 @@ test('capacity pack keeps only validated explained questions', () => {
   }
 });
 
-test('transfer packs contain 46 source-aware unseen-context questions', () => {
+test('transfer packs contain 70 source-aware unseen-context questions', () => {
   const context = loadContext();
-  const pack = context.window.ManjingoQuestionPackTransfer01;
-  const allowedKps = new Set(['kp_virtual_zhi','kp_virtual_er','kp_virtual_yi','kp_virtual_yu','kp_virtual_qi','kp_virtual_ze','kp_p3_translation','cy_006','kp_p3_ellipsis']);
-  assert.equal(pack.kind, 'transfer-core');
-  assert.equal(pack.questions.length, 46);
-  assert.equal(pack.questions.filter(q => /^tr1q\d{3}$/.test(q.id)).length, 20);
-  assert.equal(pack.questions.filter(q => /^tr2q\d{3}$/.test(q.id)).length, 26);
-  assert.equal(new Set(pack.questions.map(q => q.id)).size, 46);
-  for (const q of pack.questions) {
-    assert.match(q.id, /^tr[12]q\d{3}$/);
-    assert.ok(allowedKps.has(q.kpId), `${q.id}: transfer pack must attach to a compatible core KP`);
+  const legacy = context.window.ManjingoQuestionPackTransfer01;
+  const stage1 = context.window.ManjingoQuestionPackTransfer03;
+  assert.equal(legacy.kind, 'transfer-core');
+  assert.equal(legacy.questions.length, 46);
+  assert.equal(stage1.kind, 'transfer-core');
+  assert.equal(stage1.questions.length, 24);
+  assert.equal(stage1.knowledgePoints.length, 4);
+  const questions=[...legacy.questions,...stage1.questions];
+  assert.equal(new Set(questions.map(q => q.id)).size, 70);
+  assert.equal(questions.filter(q => /^tr1q\d{3}$/.test(q.id)).length, 20);
+  assert.equal(questions.filter(q => /^tr2q\d{3}$/.test(q.id)).length, 26);
+  assert.equal(questions.filter(q => /^tr3q\d{3}$/.test(q.id)).length, 24);
+  for (const q of questions) {
+    assert.match(q.id, /^tr[123]q\d{3}$/);
     assert.equal(q.textId, 'CROSS');
     assert.ok(Array.isArray(q.skillIds) && q.skillIds.length > 0, `${q.id}: explicit skillIds required`);
     assert.ok(String(q.sourceTextId || '').trim(), `${q.id}: real source required`);
@@ -76,6 +83,21 @@ test('transfer packs contain 46 source-aware unseen-context questions', () => {
     assert.ok(q.transferLevel >= 2, `${q.id}: must exercise unseen-context transfer`);
     assert.ok(q.explanation.length >= 12, `${q.id}: explanation required`);
     assert.ok(Array.isArray(q.o) && q.o.includes(q.a), `${q.id}: answer must be one option`);
+  }
+});
+
+test('stage 1 function-word pack gives four dedicated skills six questions across diverse sources', () => {
+  const pack=loadContext().window.ManjingoQuestionPackTransfer03;
+  const targets=new Map([
+    ['kp_virtual_wei','fw.wei'],['kp_virtual_zhe','fw.zhe'],['kp_virtual_suo','fw.suo'],['kp_virtual_ye','fw.ye']
+  ]);
+  assert.deepEqual(Array.from(pack.knowledgePoints,q=>q.kpId).sort(),Array.from(targets.keys()).sort());
+  for(const [kpId,skillId] of targets){
+    const questions=pack.questions.filter(q=>q.kpId===kpId);
+    assert.equal(questions.length,6,`${kpId} should have six questions`);
+    assert.ok(new Set(questions.map(q=>q.sourceTextId)).size>=3,`${kpId} needs at least three sources`);
+    assert.equal(questions.every(q=>q.skillIds.length===1&&q.skillIds[0]===skillId),true);
+    assert.equal(questions.some(q=>q.sourceTextId==='yueyanglou'),false);
   }
 });
 
