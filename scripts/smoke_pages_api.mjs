@@ -76,11 +76,12 @@ async function firestoreDocument(projectId, documentPath, token) {
 
 console.log(`Smoke testing ${baseUrl}`);
 
-const [calibrationSource, rotationSource, difficultySource, observabilitySource] = await Promise.all([
+const [calibrationSource, rotationSource, difficultySource, observabilitySource, feedbackSource] = await Promise.all([
   readTextAsset('/difficulty-calibration.js', 'difficulty calibration asset'),
   readTextAsset('/question-rotation.js', 'question rotation asset'),
   readTextAsset('/question-difficulty.js', 'question difficulty asset'),
-  readTextAsset('/difficulty-observability.js', 'difficulty observability asset')
+  readTextAsset('/difficulty-observability.js', 'difficulty observability asset'),
+  readTextAsset('/feedback-ui.js', 'feedback UI asset')
 ]);
 const calibrationContext = { console };
 vm.createContext(calibrationContext);
@@ -105,6 +106,10 @@ check(/錯誤概念/.test(observability.selectionLabel('misconception-target')),
 check(rotationSource.includes('difficulty-observability.js'), 'deployed question rotation does not load observability');
 check(rotationSource.indexOf('question-difficulty.js') < rotationSource.indexOf('difficulty-observability.js'), 'deployed observability must wrap difficulty selection after calibration');
 console.log('✓ deployed adaptive calibration and decision observability assets');
+check(feedbackSource.includes('function instantAnswer(event)'), 'deployed feedback UI is missing instant answer handling');
+check(feedbackSource.includes("document.addEventListener('click',instantAnswer,true)"), 'deployed feedback UI does not reveal answers before bubble-phase cloud submission');
+check(feedbackSource.includes("feedback.textContent=correct?'答對了！':'正確答案：'"), 'deployed feedback UI does not render the answer immediately');
+console.log('✓ deployed instant answer feedback before cloud persistence');
 
 const healthResponse = await api('/api/health');
 const health = await readJson(healthResponse, 'health');
