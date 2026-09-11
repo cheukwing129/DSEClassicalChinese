@@ -22,7 +22,7 @@ const runtime=window.ManjingoMascotRuntime;
 if(!runtime)throw new Error('mascot runtime unavailable');
 const sizes=[34,42,48,64,96,160];
 const grid=document.getElementById('sizeGrid');
-grid.innerHTML=sizes.map(size=>{const h=Math.round(size*320/215);return '<div class="size"><strong>'+size+'px</strong><div class="pair"><div class="figure"><img src="'+'./mascot/moling-reference-approved.svg'+'" width="'+size+'" height="'+h+'" alt="neutral '+size+'px"><span>approved 3D reference</span></div><div class="figure encouraging"><img src="'+runtime.asset('encouraging')+'" width="'+size+'" height="'+h+'" alt="encouraging candidate '+size+'px"><span>encouraging candidate v3</span></div></div></div>'}).join('');
+grid.innerHTML=sizes.map(size=>{const h=Math.round(size*320/215);return '<div class="size"><strong>'+size+'px</strong><div class="pair"><div class="figure"><img src="'+'./mascot/moling-reference-approved.svg?v=3'+'" width="'+size+'" height="'+h+'" alt="approved 3D reference '+size+'px"><span>approved 3D reference</span></div><div class="figure encouraging"><img src="'+runtime.asset('encouraging')+'" width="'+size+'" height="'+h+'" alt="encouraging candidate '+size+'px"><span>encouraging candidate v3</span></div></div></div>'}).join('');
 document.getElementById('desktopMascot').src=runtime.asset('encouraging');
 document.getElementById('mobileMascot').src=runtime.asset('encouraging');
 })();
