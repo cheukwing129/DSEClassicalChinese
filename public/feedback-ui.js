@@ -3,6 +3,10 @@
 function clean(v){return String(v||'').replace(/\s+/g,' ').trim()}
 function answerKey(v){return String(v||'').replace(/[，。、；：！？\s]/g,'')}
 function unique(items){return Array.from(new Set((items||[]).map(clean).filter(Boolean)))}
+function installMascotStyle(){
+ if(typeof document==='undefined'||document.getElementById('mascotFeedbackStyle'))return false;
+ const style=document.createElement('style');style.id='mascotFeedbackStyle';style.textContent='.feedback-result{grid-template-columns:36px minmax(0,1fr) auto!important}.feedback-mascot{display:flex;align-items:center;gap:7px;margin-left:4px;max-width:138px}.feedback-mascot img{display:block;width:42px;height:62px;object-fit:contain;flex:0 0 auto;transform-origin:50% 88%}.feedback-mascot span{font-size:10px;line-height:1.3;font-weight:900;color:var(--ui-muted,#8e948b)}.feedback-ui.correct .feedback-mascot img{animation:moling-correct .48s cubic-bezier(.2,.8,.3,1)}.feedback-ui.wrong .feedback-mascot img{animation:moling-think .55s ease-in-out}.session-summary-icon.mascot-celebrate{width:auto;height:auto;border-radius:0;background:transparent;display:flex;flex-direction:column;gap:4px}.session-summary-icon.mascot-celebrate img{width:76px;height:104px;object-fit:contain;animation:moling-celebrate .72s cubic-bezier(.2,.8,.3,1)}.session-summary-icon.mascot-celebrate span{color:var(--ui-green-dark,#398500);font-size:11px;font-weight:900}@keyframes moling-correct{0%{transform:translateY(5px) scale(.94)}55%{transform:translateY(-6px) scale(1.04)}100%{transform:translateY(0) scale(1)}}@keyframes moling-think{0%,100%{transform:rotate(0)}35%{transform:rotate(-5deg)}70%{transform:rotate(4deg)}}@keyframes moling-celebrate{0%{transform:translateY(8px) scale(.92)}45%{transform:translateY(-10px) rotate(-3deg) scale(1.04)}72%{transform:translateY(-3px) rotate(3deg)}100%{transform:translateY(0) rotate(0) scale(1)}}@media(max-width:430px){.feedback-mascot{max-width:92px;gap:4px}.feedback-mascot img{width:34px;height:50px}.feedback-mascot span{font-size:9px}.session-summary-icon.mascot-celebrate img{width:68px;height:94px}}@media(max-width:370px){.feedback-result{grid-template-columns:32px minmax(0,1fr)!important}.feedback-mascot{grid-column:2;justify-self:start;margin:2px 0 0}.feedback-mascot span{max-width:none}}@media(prefers-reduced-motion:reduce){.feedback-mascot img,.session-summary-icon.mascot-celebrate img{animation:none!important}}';document.head.appendChild(style);return true
+}
 function questionForScope(scope){
  const content=window.ManjingoContent;if(!content||!Array.isArray(content.questions)||!scope||!scope.querySelector)return null;
  const node=scope.querySelector('.question,.lesson-question'),text=clean(node&&node.textContent);if(!text)return null;
@@ -53,14 +57,19 @@ function explanation(feedback,question,raw,isCorrect){
  return'';
 }
 function build(tag,className,text){const node=document.createElement(tag);if(className)node.className=className;if(text!=null)node.textContent=text;return node}
+function mascotFeedback(isCorrect){
+ const wrap=build('div','feedback-mascot'),img=document.createElement('img'),message=build('span','',isCorrect?'抓到重點了！':'一起看清這一步。');
+ img.src='./mascot-moling.svg';img.alt='';img.setAttribute('aria-hidden','true');wrap.setAttribute('aria-label',isCorrect?'小墨靈：抓到重點了！':'小墨靈：一起看清這一步。');wrap.appendChild(img);wrap.appendChild(message);return wrap
+}
 function enhance(feedback){
  if(!feedback||!feedback.classList||!feedback.classList.contains('feedback'))return false;
  const raw=clean(feedback.textContent);if(!raw)return false;
  if(feedback.dataset.feedbackUi==='1'&&feedback.dataset.feedbackRendered===raw)return false;
  const isCorrect=feedback.classList.contains('correct'),question=questionFor(feedback),answer=question?clean(question.a):parseCorrectAnswer(raw),why=explanation(feedback,question,raw,isCorrect),notes=supportingLines(feedback,question,raw),metrics=metricLines(raw);
  feedback.dataset.feedbackUi='1';feedback.classList.add('feedback-ui');feedback.setAttribute('role','status');feedback.setAttribute('aria-live','polite');feedback.innerHTML='';
+ installMascotStyle();
  const result=build('div','feedback-result'),icon=build('span','feedback-result-icon',isCorrect?'✓':'×'),copy=build('div','feedback-result-copy'),title=build('strong','feedback-result-title',isCorrect?'答對了':'這題答錯了');
- copy.appendChild(title);if(!isCorrect&&answer)copy.appendChild(build('span','feedback-answer','正確答案：'+answer));result.appendChild(icon);result.appendChild(copy);feedback.appendChild(result);
+ copy.appendChild(title);if(!isCorrect&&answer)copy.appendChild(build('span','feedback-answer','正確答案：'+answer));result.appendChild(icon);result.appendChild(copy);result.appendChild(mascotFeedback(isCorrect));feedback.appendChild(result);
  if(why||notes.length){const teaching=build('div','feedback-teaching');if(why){teaching.appendChild(build('strong','feedback-section-title','為甚麼？'));teaching.appendChild(build('p','feedback-explanation',why))}notes.forEach(line=>teaching.appendChild(build('p','feedback-note',line)));feedback.appendChild(teaching)}
  if(metrics.length){const details=build('details','feedback-progress'),summary=build('summary','', '查看學習進度');details.appendChild(summary);const rows=build('div','feedback-progress-rows');metrics.forEach(line=>rows.appendChild(build('span','',line)));details.appendChild(rows);feedback.appendChild(details)}
  const nextText=isCorrect?'下一步：繼續下一題':raw.includes('優先安排複習')?'下一步：這個知識點會優先安排複習':'下一步：系統會提高這個知識點的複習優先度';feedback.appendChild(build('div','feedback-next',nextText));
@@ -83,10 +92,10 @@ function instantAnswer(event){
 }
 function scan(root){if(!root)return;if(root.matches&&root.matches('.feedback'))enhance(root);if(root.querySelectorAll)root.querySelectorAll('.feedback').forEach(enhance)}
 function install(){
- document.addEventListener('click',instantAnswer,true);
+ installMascotStyle();document.addEventListener('click',instantAnswer,true);
  scan(document);if(typeof MutationObserver!=='function'||!document.body)return;
  const observer=new MutationObserver(records=>records.forEach(record=>{if(record.target&&record.target.classList&&record.target.classList.contains('feedback'))enhance(record.target);record.addedNodes&&record.addedNodes.forEach(scan)}));observer.observe(document.body,{childList:true,subtree:true});window.ManjingoFeedbackUI.observer=observer
 }
-window.ManjingoFeedbackUI={enhance,scan,install,instantAnswer,unlockNextSoon,questionFor,questionForScope,answerKey,explanationFromText,parseCorrectAnswer,metricLines,supportingLines,clean,observer:null};
+window.ManjingoFeedbackUI={enhance,scan,install,instantAnswer,unlockNextSoon,questionFor,questionForScope,answerKey,explanationFromText,parseCorrectAnswer,metricLines,supportingLines,clean,installMascotStyle,mascotFeedback,observer:null};
 if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install()}
 })();
