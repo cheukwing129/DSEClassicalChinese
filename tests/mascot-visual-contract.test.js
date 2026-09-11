@@ -57,6 +57,16 @@ test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and 
   assert.match(happySvg,/happy 候選 artwork/);
 });
 
+test('happy candidate v2 keeps the real smile primary at feedback sizes',()=>{
+  const happy=read('public/mascot/moling-happy.svg');
+  assert.match(happy,/清楚笑意/);
+  assert.match(happy,/M78 167c8 11 18 16 30 16s22-5 30-16/);
+  assert.match(happy,/stroke-width="6"/);
+  assert.doesNotMatch(happy,/stroke="#d4a85b"/);
+  assert.match(happy,/M65 151c-10-3-17-9-22-18/);
+  assert.match(happy,/M151 151c10-3 17-9 22-18/);
+});
+
 test('32px uses a dedicated compact head crop instead of shrinking the full body',()=>{
   const compact='public/'+manifest.compactAsset.replace(/^\.\//,'');
   assert.equal(exists(compact),true);
@@ -66,7 +76,7 @@ test('32px uses a dedicated compact head crop instead of shrinking the full body
   assert.match(svg,/32px/);
 });
 
-test('visual QA character sheet exposes production readiness and priority',()=>{
+test('visual QA character sheet exposes production readiness priority and happy A/B review',()=>{
   const sheet=read('public/mascot-sheet.html');
   assert.match(sheet,/script src="\.\/mascot-runtime\.js"/);
   assert.match(sheet,/runtime\.recommendedSizes/);
@@ -77,6 +87,11 @@ test('visual QA character sheet exposes production readiness and priority',()=>{
   assert.match(sheet,/placeholder-treatment/);
   assert.match(sheet,/candidate/);
   assert.match(sheet,/productionPriority/);
+  assert.match(sheet,/id="happyABGrid"/);
+  assert.match(sheet,/neutral \/ candidate A\/B/);
+  assert.match(sheet,/const reviewSizes=\[34,42,48,64,96,160\]/);
+  assert.match(sheet,/runtime\.asset\('neutral'\)/);
+  assert.match(sheet,/runtime\.asset\('happy'\)/);
   sizes.forEach(size=>assert.match(sheet,new RegExp(String(size))));
   assert.match(sheet,/prefers-reduced-motion:reduce/);
 });
