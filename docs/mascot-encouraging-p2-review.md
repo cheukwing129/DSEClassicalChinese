@@ -27,11 +27,11 @@ v2 已修正：
 
 ## Current A–E position
 
-- **Gate A — pending deployed A/B**：新方向已由產品負責人選定；正式 pass 仍需建立全墨 neutral anchor 作 identity A/B。
-- **Gate B — candidate-level pass**：靜態 v3 以眼神、閉合小笑容、輕微前傾與開掌傳達陪伴。
+- **Gate A — candidate-level pass，待部署確認**：已建立 QA-only 全墨 neutral anchor；42px 本地 A/B 可讀成同一角色，neutral 置中穩定，encouraging 以前傾、開掌及偏轉墨冠增加支持意圖。
+- **Gate B — candidate-level pass**：靜態 v4 以眼神、微歪小笑容、輕微前傾與開掌傳達陪伴。
 - **Gate C — candidate-level pass**：沒有合理可讀成失望、責備、羞恥、悲傷或懲罰的訊號。
-- **Gate D — pending deployed size QA**：34 / 42px 本地 raster 檢查可辨認；仍需部署後逐一確認 34 / 42 / 48 / 64 / 96 / 160px。
-- **Gate E — pending live layout**：必須在 branch preview 的真實 wrong-answer layout 驗收。
+- **Gate D — candidate-level pass，待部署確認**：34 / 42px 本地 raster 檢查可辨認；仍需部署後逐一確認 34 / 42 / 48 / 64 / 96 / 160px。
+- **Gate E — candidate-level live-layout pass，待產品負責人確認**：desktop 42×62 與 narrow-mobile 34×50 QA layout 保持解釋及 CTA 的資訊層級，角色沒有取代教學內容。
 
 目前決定：**保留 candidate，不升 production。**
 
@@ -41,7 +41,9 @@ v2 已修正：
 
 - 與 neutral / production happy 並排仍一眼是同一小墨靈；
 - 眼睛、頭身比例、墨滴輪廓與 palette 不漂移；
-- 沒有新增大型配件或改變角色身份的元素。
+- 沒有新增大型配件或改變角色身份的元素；
+- QA-only anchor 使用 `public/mascot/moling-neutral-all-ink-candidate.svg`，不把候選 artwork 偷渡成正式 neutral；
+- neutral 墨冠置中、encouraging 墨冠偏轉，但兩者都保留液態連續性。
 
 ## Gate B — Static encouraging
 
@@ -79,6 +81,8 @@ v2 已修正：
 - 下一步 CTA
 
 角色必須是陪伴層，不可搶走教學內容的情緒焦點。
+
+目前 live-layout 檢查未見遮擋、溢出或資訊層級反轉；最後人工確認要特別看 34px mobile 是否因眼睛與手勢擠在一起而顯得緊張，以及錯題紅／橙色訊號是否把腮紅誤讀成尷尬或羞恥。
 
 ## Promotion checklist
 
