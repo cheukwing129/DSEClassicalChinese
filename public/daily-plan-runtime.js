@@ -10,7 +10,7 @@ function sessionReservation(queue,index,completedQuestionIds,targetCount){
 }
 function mergeReservation(reservation,candidates){
  const r=reservation||{},seen=toSet(r.excludedIds),tail=[],limit=Math.max(0,Number(r.remainingSlots)||0);
- for(const question of Array.isArray(candidates)?candidates:[]){const id=questionId(question);if(!id||seen.has(id))continue;seen.add(id);tail.push(question);if(tail.length>=limit)break}
+ for(const question of Array.isArray(candidates)?candidates:[]){if(tail.length>=limit)break;const id=questionId(question);if(!id||seen.has(id))continue;seen.add(id);tail.push(question)}
  const remaining=r.currentPending&&r.current?[r.current,...tail]:tail.slice();
  return{questions:[...(Array.isArray(r.prefix)?r.prefix:[]),...tail],remaining,tail};
 }
