@@ -76,12 +76,13 @@ async function firestoreDocument(projectId, documentPath, token) {
 
 console.log(`Smoke testing ${baseUrl}`);
 
-const [calibrationSource, rotationSource, difficultySource, observabilitySource, feedbackSource] = await Promise.all([
+const [calibrationSource, rotationSource, difficultySource, observabilitySource, feedbackSource, homepageSource] = await Promise.all([
   readTextAsset('/difficulty-calibration.js', 'difficulty calibration asset'),
   readTextAsset('/question-rotation.js', 'question rotation asset'),
   readTextAsset('/question-difficulty.js', 'question difficulty asset'),
   readTextAsset('/difficulty-observability.js', 'difficulty observability asset'),
-  readTextAsset('/feedback-ui.js', 'feedback UI asset')
+  readTextAsset('/feedback-ui.js', 'feedback UI asset'),
+  readTextAsset('/', 'homepage')
 ]);
 const calibrationContext = { console };
 vm.createContext(calibrationContext);
@@ -114,7 +115,11 @@ check(feedbackSource.includes("document.addEventListener('click',instantAnswer,t
 check(feedbackSource.includes("feedback.textContent=correct?'答對了！':'正確答案：'"), 'deployed feedback UI does not render the answer immediately');
 check(feedbackSource.includes('function unlockNextSoon(scope)'), 'deployed feedback UI is missing nonblocking next-question handling');
 check(feedbackSource.includes('next.disabled=false'), 'deployed feedback UI still blocks the next question on cloud persistence');
-console.log('✓ deployed instant answer feedback and nonblocking next question');
+check(homepageSource.includes('function answerIsCurrent(box,answerId)'), 'deployed today task is missing stale-answer race protection');
+check(homepageSource.includes('if(nextButton)nextButton.disabled=false;showLearningFeedback(box,q,correct,null);try{const result=await cloudSubmit'), 'deployed today task still waits for cloud persistence before enabling next');
+check(!homepageSource.includes('nextButton.disabled=true'), 'deployed today task re-locks next while cloud persistence is pending');
+check(homepageSource.includes('if(answerIsCurrent(box,answerId))showLearningFeedback(box,q,correct,'), 'deployed today task can repaint a later question from a stale cloud response');
+console.log('✓ deployed instant answer feedback and nonblocking next question in weakness and today flows');
 
 const healthResponse = await api('/api/health');
 const health = await readJson(healthResponse, 'health');
