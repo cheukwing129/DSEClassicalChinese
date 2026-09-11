@@ -41,6 +41,18 @@ test('Pages smoke verifies deployed learner difficulty guidance instant feedback
   assert.ok(calibrationCheck>=0 && observabilityCheck>=0 && feedbackCheck>=0 && homepageCheck>=0 && healthCheck>homepageCheck,'production browser policies and homepage flow must be checked before backend smoke');
 });
 
+test('production smoke verifies stale background responses cannot roll learning state backwards',()=>{
+  const source=read('scripts/smoke_sync_guard.mjs');
+  assert.match(source,/read\('\/remote-sync-guard\.js'/);
+  assert.match(source,/read\('\/question-rotation\.js'/);
+  assert.match(source,/remote-sync-guard\.js/);
+  assert.match(source,/attempts:2,mastery:30/);
+  assert.match(source,/stale\.mastery===undefined/);
+  assert.match(source,/stale\.totalXp===24/);
+  assert.match(source,/attempts:4,mastery:55/);
+  assert.match(source,/newer\.mastery===55/);
+});
+
 test('Pages smoke performs one real reviewed answer and verifies all learning writes',()=>{
   const source=read('scripts/smoke_pages_api.mjs');
   assert.match(source,/accounts:signUp/);
@@ -94,5 +106,5 @@ test('production smoke workflow gates execution and always runs credentialed cle
 
 test('package exposes the production smoke command',()=>{
   const pkg=JSON.parse(read('package.json'));
-  assert.equal(pkg.scripts['smoke:pages'],'node scripts/smoke_pages_api.mjs');
+  assert.equal(pkg.scripts['smoke:pages'],'node scripts/smoke_sync_guard.mjs && node scripts/smoke_pages_api.mjs');
 });
