@@ -38,7 +38,7 @@
       "asset": "./mascot/moling-encouraging.svg",
       "intent": "答錯、補救學習、弱點診斷",
       "motion": "gentle-lift",
-      "artStatus": "placeholder-treatment",
+      "artStatus": "candidate",
       "productionPriority": 2
     },
     {
