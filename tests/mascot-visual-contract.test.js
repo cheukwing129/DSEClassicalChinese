@@ -12,7 +12,7 @@ const manifest=JSON.parse(read('public/mascot/manifest.json'));
 const stateIds=['neutral','happy','celebrate','encouraging','thinking','determined'];
 const sizes=[32,48,64,96,160];
 const productionPriority=['happy','encouraging','thinking','determined','celebrate'];
-const pendingPriority=['thinking','determined','celebrate'];
+const pendingPriority=['determined','celebrate'];
 
 test('mascot manifest is the complete six-state v1 contract',()=>{
   assert.equal(manifest.version,1);
@@ -40,8 +40,8 @@ test('runtime and manifest stay in exact parity including artwork readiness',()=
   assert.equal(runtime.isProductionArt('encouraging'),true);
   assert.equal(runtime.descriptor('happy').artStatus,'production');
   assert.equal(runtime.descriptor('encouraging').artStatus,'production');
-  assert.equal(runtime.isProductionArt('thinking'),false);
-  assert.equal(runtime.descriptor('thinking').artStatus,'candidate');
+  assert.equal(runtime.isProductionArt('thinking'),true);
+  assert.equal(runtime.descriptor('thinking').artStatus,'production');
   assert.deepEqual(runtime.productionQueue().map(state=>state.id),pendingPriority);
 });
 
@@ -60,10 +60,10 @@ test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and 
   const thinking=manifest.states.find(state=>state.id==='thinking');
   assert.equal(happy.artStatus,'production');
   assert.equal(encouraging.artStatus,'production');
-  assert.equal(thinking.artStatus,'candidate');
+  assert.equal(thinking.artStatus,'production');
   assert.match(read('public/mascot/moling-happy.svg'),/happy production artwork/);
   assert.match(read('public/mascot/moling-encouraging.svg'),/encouraging production artwork v4/);
-  assert.match(read('public/mascot/moling-thinking.svg'),/thinking 候選 artwork v2/);
+  assert.match(read('public/mascot/moling-thinking.svg'),/thinking production artwork v2/);
 });
 
 test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
@@ -86,9 +86,9 @@ test('encouraging P2 production art encodes supportive cues without blame cues',
   assert.doesNotMatch(encouraging,/(眼淚|紅叉|搖頭|皺眉|shame|punish)/i);
 });
 
-test('thinking P3 candidate encodes curious focus without confused cues',()=>{
+test('thinking P3 production art encodes curious focus without confused cues',()=>{
   const thinking=read('public/mascot/moling-thinking.svg');
-  assert.match(thinking,/thinking 候選 artwork v2/);
+  assert.match(thinking,/thinking production artwork v2/);
   assert.match(thinking,/共同向上側望/);
   assert.match(thinking,/低飽和腮紅/);
   assert.match(thinking,/與臉保留負空間/);
