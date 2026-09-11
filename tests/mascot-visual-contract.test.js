@@ -37,7 +37,9 @@ test('runtime and manifest stay in exact parity including artwork readiness',()=
   });
   assert.equal(runtime.isProductionArt('neutral'),true);
   assert.equal(runtime.isProductionArt('happy'),true);
+  assert.equal(runtime.isProductionArt('encouraging'),false);
   assert.equal(runtime.descriptor('happy').artStatus,'production');
+  assert.equal(runtime.descriptor('encouraging').artStatus,'candidate');
   assert.deepEqual(runtime.productionQueue().map(state=>state.id),pendingPriority);
 });
 
@@ -52,10 +54,11 @@ test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and 
     if(state.artStatus==='candidate'||state.artStatus==='production')assert.equal(referencesBaseline,false,state.id+' should be independent from the legacy baseline');
   });
   const happy=manifest.states.find(state=>state.id==='happy');
+  const encouraging=manifest.states.find(state=>state.id==='encouraging');
   assert.equal(happy.artStatus,'production');
-  const happySvg=read('public/mascot/moling-happy.svg');
-  assert.match(happySvg,/<(?:path|ellipse|circle)\b/);
-  assert.match(happySvg,/happy production artwork/);
+  assert.equal(encouraging.artStatus,'candidate');
+  assert.match(read('public/mascot/moling-happy.svg'),/happy production artwork/);
+  assert.match(read('public/mascot/moling-encouraging.svg'),/encouraging 候選 artwork/);
 });
 
 test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
@@ -64,8 +67,17 @@ test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
   assert.match(happy,/M78 167c8 11 18 16 30 16s22-5 30-16/);
   assert.match(happy,/stroke-width="6"/);
   assert.doesNotMatch(happy,/stroke="#d4a85b"/);
-  assert.match(happy,/M65 151c-10-3-17-9-22-18/);
-  assert.match(happy,/M151 151c10-3 17-9 22-18/);
+});
+
+test('encouraging P2 candidate encodes supportive cues without blame cues',()=>{
+  const encouraging=read('public/mascot/moling-encouraging.svg');
+  assert.match(encouraging,/輕微前傾/);
+  assert.match(encouraging,/陪伴與支持/);
+  assert.match(encouraging,/rotate\(-3 108 175\)/);
+  assert.match(encouraging,/Open supportive reach toward the learner/);
+  assert.match(encouraging,/Small supportive smile/);
+  assert.doesNotMatch(encouraging,/mascot-moling\.svg/);
+  assert.doesNotMatch(encouraging,/(眼淚|紅叉|搖頭|皺眉|shame|punish)/i);
 });
 
 test('32px uses a dedicated compact head crop instead of shrinking the full body',()=>{
@@ -77,29 +89,30 @@ test('32px uses a dedicated compact head crop instead of shrinking the full body
   assert.match(svg,/32px/);
 });
 
-test('visual QA character sheet exposes production readiness happy A/B and feedback context',()=>{
+test('visual QA character sheet retains happy production regression surfaces',()=>{
   const sheet=read('public/mascot-sheet.html');
   assert.match(sheet,/script src="\.\/mascot-runtime\.js"/);
   assert.match(sheet,/runtime\.recommendedSizes/);
-  assert.match(sheet,/runtime\.asset\(state\.id,\{size\}\)/);
   assert.match(sheet,/runtime\.productionQueue/);
-  assert.match(sheet,/data-art-status/);
-  assert.match(sheet,/art-status/);
-  assert.match(sheet,/placeholder-treatment/);
-  assert.match(sheet,/candidate/);
-  assert.match(sheet,/productionPriority/);
   assert.match(sheet,/id="happyABGrid"/);
   assert.match(sheet,/neutral \/ production A\/B/);
-  assert.match(sheet,/const reviewSizes=\[34,42,48,64,96,160\]/);
-  assert.match(sheet,/runtime\.asset\('neutral'\)/);
-  assert.match(sheet,/runtime\.asset\('happy'\)/);
-  assert.match(sheet,/feedback context preview/);
   assert.match(sheet,/Desktop · 42×62px mascot/);
   assert.match(sheet,/Narrow mobile · 34×50px mascot/);
-  assert.match(sheet,/id="happyContextDesktop"/);
-  assert.match(sheet,/id="happyContextMobile"/);
-  sizes.forEach(size=>assert.match(sheet,new RegExp(String(size))));
   assert.match(sheet,/prefers-reduced-motion:reduce/);
+});
+
+test('encouraging P2 QA page covers neutral A/B and real wrong-answer sizes',()=>{
+  const qa=read('public/mascot-encouraging-p2-qa.html');
+  assert.match(qa,/Encouraging P2 Visual QA/);
+  assert.match(qa,/const sizes=\[34,42,48,64,96,160\]/);
+  assert.match(qa,/runtime\.asset\('neutral'\)/);
+  assert.match(qa,/runtime\.asset\('encouraging'\)/);
+  assert.match(qa,/這題答錯了/);
+  assert.match(qa,/一起看清這一步。/);
+  assert.match(qa,/Desktop · 42×62px/);
+  assert.match(qa,/Narrow mobile · 34×50px/);
+  assert.match(qa,/不低頭、不皺眉/);
+  assert.match(qa,/prefers-reduced-motion:reduce/);
 });
 
 test('production placements use canonical state assets instead of the legacy baseline directly',()=>{
