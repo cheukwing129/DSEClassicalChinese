@@ -76,10 +76,11 @@ async function firestoreDocument(projectId, documentPath, token) {
 
 console.log(`Smoke testing ${baseUrl}`);
 
-const [calibrationSource, rotationSource, difficultySource] = await Promise.all([
+const [calibrationSource, rotationSource, difficultySource, observabilitySource] = await Promise.all([
   readTextAsset('/difficulty-calibration.js', 'difficulty calibration asset'),
   readTextAsset('/question-rotation.js', 'question rotation asset'),
-  readTextAsset('/question-difficulty.js', 'question difficulty asset')
+  readTextAsset('/question-difficulty.js', 'question difficulty asset'),
+  readTextAsset('/difficulty-observability.js', 'difficulty observability asset')
 ]);
 const calibrationContext = { console };
 vm.createContext(calibrationContext);
@@ -95,7 +96,15 @@ check(calibration.tierForMastery(82, { tierStats: weakTransfer }) === 'applicati
 check(rotationSource.includes('difficulty-calibration.js'), 'deployed question rotation does not load calibration');
 check(rotationSource.indexOf('difficulty-calibration.js') < rotationSource.indexOf('question-difficulty.js'), 'deployed calibration loads after difficulty selection');
 check(difficultySource.includes("ManjingoDifficultyCalibration"), 'deployed question difficulty does not consume calibration');
-console.log('✓ deployed adaptive calibration assets and conservative promotion/demotion rules');
+vm.runInContext(difficultySource, calibrationContext, { filename: 'production/question-difficulty.js' });
+vm.runInContext(observabilitySource, calibrationContext, { filename: 'production/difficulty-observability.js' });
+const observability = calibrationContext.ManjingoDifficultyObservability;
+check(observability && typeof observability.decisionFor === 'function' && typeof observability.persistDecision === 'function', 'deployed difficulty observability API is missing');
+check(/提早試跨篇遷移/.test(observability.reasonLabel('application-ready')), 'deployed observability does not explain promotion decisions');
+check(/錯誤概念/.test(observability.selectionLabel('misconception-target')), 'deployed observability does not explain misconception targeting');
+check(rotationSource.includes('difficulty-observability.js'), 'deployed question rotation does not load observability');
+check(rotationSource.indexOf('question-difficulty.js') < rotationSource.indexOf('difficulty-observability.js'), 'deployed observability must wrap difficulty selection after calibration');
+console.log('✓ deployed adaptive calibration and decision observability assets');
 
 const healthResponse = await api('/api/health');
 const health = await readJson(healthResponse, 'health');
