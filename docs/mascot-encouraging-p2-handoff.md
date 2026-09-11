@@ -20,19 +20,19 @@ Artwork 必須與這句話的情緒完全一致。
 
 ## 2. 目前狀態
 
-P2 已有按產品負責人確認角色參考重製的立體 **candidate v4**：
+P2 已有按產品負責人確認角色參考重製的立體 **production v4**：
 
 `public/mascot/moling-encouraging.svg`
 
 目前：
 
-- `encouraging.artStatus = candidate`；
+- `encouraging.artStatus = production`；
 - 舊扁平 v2 已被產品負責人否決，不可升 production；
 - v4 使用透明 raster-backed 3D artwork；取消米白／肉色面罩，以連續炭灰至深墨藍漸變、豆豆眼、腮紅、金色雲紋、墨冠與獨立墨滴建立身份；
 - 已建立 `public/mascot/moling-neutral-all-ink-candidate.svg` 作 Gate A 全墨 identity anchor；它只供 QA，未替換正式 neutral；
 - v4 使用清楚豆豆眼、微歪小笑容、笨拙圓潤開掌與穩定站姿；
 - 已建立 P2 專用 validator、size QA 與 wrong-answer context QA page；
-- 尚未升 production，仍需完成最後 A–E 人工 review。
+- Gate A–E 已完成，產品負責人已確認繼續 promotion；正式 neutral 仍保持不變，QA-only 全墨 neutral anchor 留作後續角色系統發展參考。
 
 Artwork lifecycle：
 
@@ -156,9 +156,9 @@ v4 與全墨 neutral anchor 已做 42px 本地 raster A/B：兩者可讀成同�
 
 角色不可擠壓或取代教學資訊，也不可比錯題本身更有情緒重量。
 
-## 9. Candidate / production gate
+## 9. Production verification
 
-Candidate 階段執行：
+Production promotion 執行：
 
 ```bash
 npm run mascot:encouraging:p2
@@ -176,7 +176,7 @@ P2 專用 validator 會確認：
 - SVG 不含 punitive / shaming visual markup；
 - description 明確保留 supportive intent。
 
-只有 A–E 全部通過後才可把 `encouraging.artStatus` 由 `candidate` 改成 `production`，然後重跑三條 automated gates。
+A–E 通過後已把 `encouraging.artStatus` 由 `candidate` 改成 `production`；三條 automated gates 必須保持全綠。
 
 ## 10. Definition of Done
 
