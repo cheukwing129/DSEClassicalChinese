@@ -142,6 +142,7 @@ const SET_TEXT_IDS=new Set([
  'taohuayuan','loushiming','ailianshuo','maqianlishuo','xiaoshitan'
 ]);
 const CORE_ACTIONS=new Set(['retain','refactor','merge']);
+const SOURCE_KINDS=new Set(['set-text','classical-canon','historical','constructed','mixed']);
 
 function migrationFor(kpId){
   if(!curriculum)return null;
@@ -164,6 +165,8 @@ function quotedSegments(text){
 }
 
 function inferSourceSentenceId(question){
+  const explicit=String(question&&question.sourceSentenceId||'');
+  if(explicit)return explicit;
   const id=String(question&&question.id||'');
   if(SOURCE_SENTENCE_GROUPS[id])return SOURCE_SENTENCE_GROUPS[id];
   const segments=quotedSegments(question&&question.q);
@@ -174,17 +177,23 @@ function inferSourceSentenceId(question){
 }
 
 function resolvedSourceTextId(question){
+  const explicit=String(question&&question.sourceTextId||'');
+  if(explicit)return explicit;
   const id=String(question&&question.id||'');
   return SOURCE_TEXT_OVERRIDES[id]||String(question&&question.textId||'')||null;
 }
 
 function inferSourceKind(question){
+  const explicit=String(question&&question.sourceKind||'');
+  if(SOURCE_KINDS.has(explicit))return explicit;
   const sourceTextId=resolvedSourceTextId(question);
   if(!sourceTextId||sourceTextId==='CROSS')return'mixed';
   return SET_TEXT_IDS.has(sourceTextId)?'set-text':'classical-canon';
 }
 
 function defaultTransferLevel(question,mode){
+  const explicit=Number(question&&question.transferLevel);
+  if(Number.isInteger(explicit)&&explicit>=0)return explicit;
   if(mode!=='core')return 0;
   return String(question&&question.textId||'')==='CROSS'?1:0;
 }
@@ -194,16 +203,20 @@ function classify(question){
   const kpId=String(question&&question.kpId||'');
   const override=QUESTION_OVERRIDES[id]||null;
   const migration=migrationFor(kpId);
+  const explicitSkills=Array.isArray(question&&question.skillIds)?question.skillIds.map(String).filter(Boolean):[];
   let mode='unmapped',skillIds=[];
 
   if(override){
     mode=override.mode;
     skillIds=override.skillIds.slice();
   }else if(migration){
-    skillIds=Array.isArray(migration.targetSkillIds)?migration.targetSkillIds.slice():[];
+    skillIds=explicitSkills.length?explicitSkills:(Array.isArray(migration.targetSkillIds)?migration.targetSkillIds.slice():[]);
     if(CORE_ACTIONS.has(migration.action))mode='core';
     else if(migration.action==='advanced-reading')mode='advanced';
     else if(migration.action==='optional-set-text')mode='set-text';
+  }else if(explicitSkills.length){
+    mode='core';
+    skillIds=explicitSkills;
   }
 
   return{
@@ -214,7 +227,7 @@ function classify(question){
     legacyTextId:String(question&&question.textId||'')||null,
     sourceSentenceId:inferSourceSentenceId(question),
     sourceKind:inferSourceKind(question),
-    transferLevel:override&&Number.isInteger(override.transferLevel)?override.transferLevel:defaultTransferLevel(question,mode)
+    transferLevel:defaultTransferLevel(question,mode)
   };
 }
 
@@ -239,6 +252,7 @@ return{
   SOURCE_TEXT_OVERRIDES,
   SOURCE_SENTENCE_GROUPS,
   SET_TEXT_IDS,
+  SOURCE_KINDS,
   normalizeSentence,
   quotedSegments,
   inferSourceSentenceId,
