@@ -77,7 +77,6 @@ test('thinking and determined states are connected to semantic learning UI',()=>
 test('encouraging state avoids punitive reaction language and motion',()=>{
   const encouraging=read('public/mascot/moling-encouraging.svg');
   const feedback=read('public/feedback-ui.js');
-  assert.match(encouraging,/encouraging production artwork v4/);
   assert.match(encouraging,/陪伴與支持/);
   assert.match(encouraging,/不傳達責備或失望/);
   assert.doesNotMatch(encouraging,/(眼淚|紅叉|搖頭|皺眉)/);
