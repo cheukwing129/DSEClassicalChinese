@@ -8,6 +8,7 @@ Manjingo 現在以 `public/` 下的 reviewed catalog 為唯一正式題庫來源
 - `question-pack-03.js`
 - `question-pack-lesson.js`（已整理為 foundation 題）
 - `question-pack-capacity-01.js`
+- `question-pack-transfer-01.js`（跨篇／陌生語境核心題）
 - `content-catalog.js`
 
 `data/questions_v2_template.csv`、`data/questions_generated_01.csv` 與更早的 template CSV 都屬於 **legacy / historical files**。它們包含早期測試題、舊 KP ID、舊題型格式，以及已知錯字／錯誤內容，**不可再作為 production Firestore 題庫來源**。
@@ -80,6 +81,14 @@ node scripts/import_to_firestore.js --verify
 - 不以湊題數為目的加入近乎重複的題目
 - 文言詞義、句式分類、原文引用及答案必須先校對
 - 新增內容後必須通過 `npm test`
+
+對 transfer-core 新題，另外必須提供：
+
+- `skillIds`：真正要訓練的語言能力，不以篇章名稱作 skill
+- `sourceTextId`：實際語料來源；不要以 `CROSS` 隱藏來源
+- `sourceSentenceId`：同一句／近同句的穩定識別鍵，供防重與 cooldown 使用
+- `sourceKind`：例如 `classical-canon`、`historical` 或 `constructed`
+- `transferLevel`：陌生語境題通常至少為 `2`
 
 ## 舊 CSV 的定位
 

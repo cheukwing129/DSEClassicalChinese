@@ -12,8 +12,6 @@ root.ManjingoQuestionMetadataV1=factory(curriculum);
 
 const VERSION='question-metadata-v1';
 
-// These questions live under article-specific legacy KPs, but the question itself
-// tests a transferable language skill and should survive the curriculum migration.
 const QUESTION_OVERRIDES={
  p2q001:{mode:'core',skillIds:['lex.context-inference']},
  p2q002:{mode:'core',skillIds:['trans.integrated']},
@@ -47,9 +45,6 @@ const QUESTION_OVERRIDES={
  cap1q028:{mode:'core',skillIds:['lex.polysemy']}
 };
 
-// Legacy CROSS means "cross-text skill", not "no source". Resolve the real
-// source when it is known so a source-diversity planner cannot hide repeated
-// set-text exposure inside the CROSS bucket.
 const SOURCE_TEXT_OVERRIDES={
  q004:'chenshe-shijia',
  q005:'lianpo-linxiangru',
@@ -61,8 +56,8 @@ const SOURCE_TEXT_OVERRIDES={
  p3q009:'yueyanglou',
  p3q010:'tongqu',
  p3q011:'yueyanglou',
- p3q013:'xunzi-quanxue',
- p3q014:'xunzi-quanxue',
+ p3q013:'quanxue',
+ p3q014:'quanxue',
  p3q015:'shengyouhuan',
  p3q018:'maqianlishuo',
  p3q019:'maqianlishuo',
@@ -77,7 +72,6 @@ const SOURCE_TEXT_OVERRIDES={
  p3q034:'caogui',
  p3q038:'caogui',
  p3q041:'yueyanglou',
-
  lpq005:'ailianshuo',
  lpq006:'caogui',
  lpq007:'zuiwengtingji',
@@ -106,20 +100,16 @@ const SOURCE_TEXT_OVERRIDES={
  lpq047:'hongmenyan'
 };
 
-// Distinct question IDs that visibly reuse the same source sentence are grouped
-// so later scheduling can cool down the sentence, not merely the question ID.
 const SOURCE_SENTENCE_GROUPS={
  q001:'sentence:yueyanglou:tengzijing-zhe-shou-baling',
  cap1q001:'sentence:yueyanglou:tengzijing-zhe-shou-baling',
  cap1q002:'sentence:yueyanglou:tengzijing-zhe-shou-baling',
  cap1q003:'sentence:yueyanglou:tengzijing-zhe-shou-baling',
-
  q008:'sentence:yueyanglou:xianyou-houle',
  cap1q004:'sentence:yueyanglou:xianyou-houle',
  cap1q005:'sentence:yueyanglou:xianyou-houle',
  cap1q006:'sentence:yueyanglou:xianyou-houle',
  lpq053:'sentence:yueyanglou:xianyou-houle',
-
  q006:'sentence:yueyanglou:wei-siren-wushuiyugui',
  q010:'sentence:yueyanglou:wei-siren-wushuiyugui',
  cap1q013:'sentence:yueyanglou:wei-siren-wushuiyugui',
@@ -127,10 +117,8 @@ const SOURCE_SENTENCE_GROUPS={
  cap1q015:'sentence:yueyanglou:wei-siren-wushuiyugui',
  p3q029:'sentence:yueyanglou:wei-siren-wushuiyugui',
  p3q041:'sentence:yueyanglou:wei-siren-wushuiyugui',
-
  p3q009:'sentence:yueyanglou:buyi-wuxi-jibei',
  lpq052:'sentence:yueyanglou:buyi-wuxi-jibei',
-
  p2q071:'sentence:loushiming:helouzhiyou',
  p2q072:'sentence:loushiming:helouzhiyou',
  lpq045:'sentence:loushiming:helouzhiyou',
@@ -142,6 +130,7 @@ const SET_TEXT_IDS=new Set([
  'taohuayuan','loushiming','ailianshuo','maqianlishuo','xiaoshitan'
 ]);
 const CORE_ACTIONS=new Set(['retain','refactor','merge']);
+const SOURCE_KINDS=new Set(['set-text','classical-canon','historical','constructed','mixed']);
 
 function migrationFor(kpId){
   if(!curriculum)return null;
@@ -150,9 +139,7 @@ function migrationFor(kpId){
 }
 
 function normalizeSentence(value){
-  return String(value||'')
-    .replace(/[\s\u3000，。！？；：、,.!?;:“”"'（）()《》〈〉【】\[\]—…]/g,'')
-    .toLowerCase();
+  return String(value||'').replace(/[\s\u3000，。！？；：、,.!?;:“”"'（）()《》〈〉【】\[\]—…]/g,'').toLowerCase();
 }
 
 function quotedSegments(text){
@@ -164,6 +151,8 @@ function quotedSegments(text){
 }
 
 function inferSourceSentenceId(question){
+  const explicit=String(question&&question.sourceSentenceId||'');
+  if(explicit)return explicit;
   const id=String(question&&question.id||'');
   if(SOURCE_SENTENCE_GROUPS[id])return SOURCE_SENTENCE_GROUPS[id];
   const segments=quotedSegments(question&&question.q);
@@ -174,17 +163,23 @@ function inferSourceSentenceId(question){
 }
 
 function resolvedSourceTextId(question){
+  const explicit=String(question&&question.sourceTextId||'');
+  if(explicit)return explicit;
   const id=String(question&&question.id||'');
   return SOURCE_TEXT_OVERRIDES[id]||String(question&&question.textId||'')||null;
 }
 
 function inferSourceKind(question){
+  const explicit=String(question&&question.sourceKind||'');
+  if(SOURCE_KINDS.has(explicit))return explicit;
   const sourceTextId=resolvedSourceTextId(question);
   if(!sourceTextId||sourceTextId==='CROSS')return'mixed';
   return SET_TEXT_IDS.has(sourceTextId)?'set-text':'classical-canon';
 }
 
 function defaultTransferLevel(question,mode){
+  const explicit=Number(question&&question.transferLevel);
+  if(Number.isInteger(explicit)&&explicit>=0)return explicit;
   if(mode!=='core')return 0;
   return String(question&&question.textId||'')==='CROSS'?1:0;
 }
@@ -194,18 +189,20 @@ function classify(question){
   const kpId=String(question&&question.kpId||'');
   const override=QUESTION_OVERRIDES[id]||null;
   const migration=migrationFor(kpId);
+  const explicitSkills=Array.isArray(question&&question.skillIds)?question.skillIds.map(String).filter(Boolean):[];
   let mode='unmapped',skillIds=[];
-
   if(override){
     mode=override.mode;
     skillIds=override.skillIds.slice();
   }else if(migration){
-    skillIds=Array.isArray(migration.targetSkillIds)?migration.targetSkillIds.slice():[];
+    skillIds=explicitSkills.length?explicitSkills:(Array.isArray(migration.targetSkillIds)?migration.targetSkillIds.slice():[]);
     if(CORE_ACTIONS.has(migration.action))mode='core';
     else if(migration.action==='advanced-reading')mode='advanced';
     else if(migration.action==='optional-set-text')mode='set-text';
+  }else if(explicitSkills.length){
+    mode='core';
+    skillIds=explicitSkills;
   }
-
   return{
     curriculumMode:mode,
     skillIds,
@@ -214,7 +211,7 @@ function classify(question){
     legacyTextId:String(question&&question.textId||'')||null,
     sourceSentenceId:inferSourceSentenceId(question),
     sourceKind:inferSourceKind(question),
-    transferLevel:override&&Number.isInteger(override.transferLevel)?override.transferLevel:defaultTransferLevel(question,mode)
+    transferLevel:defaultTransferLevel(question,mode)
   };
 }
 
@@ -239,6 +236,7 @@ return{
   SOURCE_TEXT_OVERRIDES,
   SOURCE_SENTENCE_GROUPS,
   SET_TEXT_IDS,
+  SOURCE_KINDS,
   normalizeSentence,
   quotedSegments,
   inferSourceSentenceId,

@@ -17,6 +17,7 @@ function loadCatalog() {
     'public/question-pack-03.js',
     'public/question-pack-lesson.js',
     'public/question-pack-capacity-01.js',
+    'public/question-pack-transfer-01.js',
     'public/content-catalog.js'
   ]) vm.runInContext(source(file), context, { filename:file });
   return context.window.ManjingoContent;
@@ -28,10 +29,10 @@ function byId(questions, id) {
   return found;
 }
 
-test('all 222 reviewed questions receive a curriculum mode', () => {
+test('all 242 reviewed questions receive a curriculum mode', () => {
   const catalog = loadCatalog();
   const questions = metadata.annotateAll(catalog.questions);
-  assert.equal(questions.length, 222);
+  assert.equal(questions.length, 242);
   assert.equal(questions.some(q => q.curriculumMode === 'unmapped'), false);
 
   const validSkills = new Set(curriculum.skills.map(x => x.id));
@@ -56,6 +57,23 @@ test('pure set-text recall leaves normal core while transferable questions are s
   assert.deepEqual(Array.from(byId(questions, 'p2q034').skillIds), ['lex.causative']);
   assert.deepEqual(Array.from(byId(questions, 'cap1q025').skillIds), ['fw.nai']);
   assert.equal(byId(questions, 'cap1q025').normalCore, true);
+});
+
+test('new transfer questions keep explicit skills provenance and transfer level', () => {
+  const questions = metadata.annotateAll(loadCatalog().questions);
+  const zhi = byId(questions, 'tr1q001');
+  assert.equal(zhi.curriculumMode, 'core');
+  assert.deepEqual(Array.from(zhi.skillIds), ['fw.zhi']);
+  assert.equal(zhi.legacyTextId, 'CROSS');
+  assert.equal(zhi.sourceTextId, 'lunyu');
+  assert.equal(zhi.sourceSentenceId, 'sentence:lunyu-xueer:xue-er-shixi-zhi');
+  assert.equal(zhi.sourceKind, 'classical-canon');
+  assert.equal(zhi.transferLevel, 2);
+
+  const yi = byId(questions, 'tr1q019');
+  assert.deepEqual(Array.from(yi.skillIds), ['fw.yi']);
+  assert.equal(yi.sourceTextId, 'xiaoyaoyou');
+  assert.equal(yi.transferLevel, 2);
 });
 
 test('advanced argumentation remains available but does not compete in the normal language core', () => {
@@ -106,25 +124,29 @@ test('normal core filter excludes set-text recall without deleting the original 
   const core = metadata.normalCoreQuestions(catalog.questions);
   const coreIds = new Set(core.map(q => q.id));
 
-  assert.equal(catalog.questions.length, 222);
-  assert.equal(core.length, 131);
+  assert.equal(catalog.questions.length, 242);
+  assert.equal(core.length, 151);
   assert.equal(coreIds.has('q008'), false);
   assert.equal(coreIds.has('lpq053'), false);
   assert.equal(coreIds.has('p2q042'), false);
   assert.equal(coreIds.has('p2q041'), true);
   assert.equal(coreIds.has('p2q071'), true);
   assert.equal(coreIds.has('p3q029'), true);
+  assert.equal(coreIds.has('tr1q001'), true);
 });
 
-test('audit quantifies the legacy content that must be replaced or expanded', () => {
+test('audit quantifies legacy content and keeps new canonical sources out of CROSS', () => {
   const audit = metadata.audit(loadCatalog().questions);
-  assert.equal(audit.total, 222);
-  assert.equal(Object.values(audit.byMode).reduce((a,b) => a + b, 0), 222);
-  assert.equal(audit.byMode.core, 131);
+  assert.equal(audit.total, 242);
+  assert.equal(Object.values(audit.byMode).reduce((a,b) => a + b, 0), 242);
+  assert.equal(audit.byMode.core, 151);
   assert.equal(audit.byMode['set-text'], 78);
   assert.equal(audit.byMode.advanced, 13);
 
-  // Resolving provenance exposes set-text sentences previously hidden inside CROSS.
   assert.equal(audit.bySourceText.yueyanglou, 38);
   assert.equal(audit.bySourceText.CROSS, 45);
+  assert.equal(audit.bySourceText.lunyu, 9);
+  assert.equal(audit.bySourceText.quanxue, 8);
+  assert.equal(audit.bySourceText['mengzi-lianghuiwang-xia'], 4);
+  assert.equal(audit.bySourceText.xiaoyaoyou, 4);
 });
