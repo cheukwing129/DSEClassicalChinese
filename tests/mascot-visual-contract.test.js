@@ -58,12 +58,15 @@ test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and 
   const happy=manifest.states.find(state=>state.id==='happy');
   const encouraging=manifest.states.find(state=>state.id==='encouraging');
   const thinking=manifest.states.find(state=>state.id==='thinking');
+  const celebrate=manifest.states.find(state=>state.id==='celebrate');
   assert.equal(happy.artStatus,'production');
   assert.equal(encouraging.artStatus,'production');
   assert.equal(thinking.artStatus,'production');
+  assert.equal(celebrate.artStatus,'candidate');
   assert.match(read('public/mascot/moling-happy.svg'),/happy production artwork/);
   assert.match(read('public/mascot/moling-encouraging.svg'),/encouraging production artwork v4/);
   assert.match(read('public/mascot/moling-thinking.svg'),/thinking production artwork v2/);
+  assert.match(read('public/mascot/moling-celebrate.svg'),/celebrate 狀態 P5 candidate artwork v1/);
 });
 
 test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
@@ -101,6 +104,19 @@ test('thinking P3 production art encodes curious focus without confused cues',()
   assert.match(p3Gate,/0x10/);
   assert.match(p3Gate,/ALPH/);
   assert.match(p3Gate,/real alpha channel/);
+});
+
+test('celebrate P5 QA covers happy comparison and completion layouts',()=>{
+  const qa=read('public/mascot-celebrate-p5-qa.html');
+  assert.match(qa,/Celebrate P5 Visual QA/);
+  assert.match(qa,/const sizes=\[34,42,48,64,96,160\]/);
+  assert.match(qa,/runtime\.asset\('happy'\)/);
+  assert.match(qa,/runtime\.asset\('celebrate'\)/);
+  assert.match(qa,/這一步值得好好慶祝！/);
+  assert.match(qa,/Desktop · 42×62px/);
+  assert.match(qa,/Narrow mobile · 34×50px/);
+  assert.match(qa,/不必每次滿分/);
+  assert.match(qa,/prefers-reduced-motion:reduce/);
 });
 
 test('32px uses a dedicated compact head crop instead of shrinking the full body',()=>{
