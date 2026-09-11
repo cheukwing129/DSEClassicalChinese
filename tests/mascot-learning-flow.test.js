@@ -42,8 +42,8 @@ test('completion markup uses state-specific mascot asset instead of the legacy f
   assert.match(good,/\.\/mascot\/moling-happy\.svg/);
 });
 
-test('all six v1 mascot state assets exist while production artwork can graduate from the baseline',()=>{
-  const baselineDerived=new Set(['neutral','celebrate','encouraging','thinking','determined']);
+test('all six v1 mascot state assets exist while candidate and production artwork can graduate from the baseline',()=>{
+  const baselineDerived=new Set(['neutral','celebrate','thinking','determined']);
   ['neutral','happy','celebrate','encouraging','thinking','determined'].forEach(state=>{
     const file=`public/mascot/moling-${state}.svg`;
     assert.equal(exists(file),true,file+' should exist');
@@ -55,6 +55,10 @@ test('all six v1 mascot state assets exist while production artwork can graduate
   assert.doesNotMatch(happy,/\.\.\/mascot-moling\.svg/);
   assert.match(happy,/<(?:path|ellipse|circle)\b/);
   assert.match(happy,/happy production artwork/);
+  const encouraging=read('public/mascot/moling-encouraging.svg');
+  assert.doesNotMatch(encouraging,/\.\.\/mascot-moling\.svg/);
+  assert.match(encouraging,/<(?:path|ellipse|circle)\b/);
+  assert.match(encouraging,/encouraging 候選 artwork/);
 });
 
 test('thinking and determined states are connected to semantic learning UI',()=>{
@@ -72,8 +76,10 @@ test('thinking and determined states are connected to semantic learning UI',()=>
 test('encouraging state avoids punitive reaction language and motion',()=>{
   const encouraging=read('public/mascot/moling-encouraging.svg');
   const feedback=read('public/feedback-ui.js');
-  assert.match(encouraging,/encouraging 狀態/);
-  assert.match(encouraging,/支持而非責備/);
+  assert.match(encouraging,/encouraging 候選 artwork/);
+  assert.match(encouraging,/陪伴與支持/);
+  assert.match(encouraging,/不傳達責備或失望/);
+  assert.doesNotMatch(encouraging,/(眼淚|紅叉|搖頭|皺眉)/);
   assert.doesNotMatch(feedback,/moling-think/);
   assert.doesNotMatch(feedback,/shake/i);
 });
