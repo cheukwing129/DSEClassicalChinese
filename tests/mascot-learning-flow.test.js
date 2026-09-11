@@ -64,7 +64,7 @@ test('all six v1 mascot state assets exist while candidate and production artwor
   assert.doesNotMatch(determined,/\.\.\/mascot-moling\.svg/);
   assert.match(determined,/<image\b/);
   assert.match(determined,/data:image\/webp;base64,/);
-  assert.match(determined,/determined 狀態 P4 candidate artwork v2/);
+  assert.match(determined,/determined 狀態 P4 production artwork v2/);
   const encouraging=read('public/mascot/moling-encouraging.svg');
   assert.doesNotMatch(encouraging,/\.\.\/mascot-moling\.svg/);
   assert.match(encouraging,/<image\b/);
