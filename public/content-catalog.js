@@ -6,6 +6,7 @@ if(typeof document!=='undefined'&&document.readyState==='loading'){
  if(!window.ManjingoQuestionPack03)document.write('<script src="./question-pack-03.js"><\/script>');
  if(!window.ManjingoQuestionPackLesson)document.write('<script src="./question-pack-lesson.js"><\/script>');
  if(!window.ManjingoQuestionPackCapacity01)document.write('<script src="./question-pack-capacity-01.js"><\/script>');
+ if(!window.ManjingoQuestionPackTransfer01)document.write('<script src="./question-pack-transfer-01.js"><\/script>');
 }
 
 const baseKnowledgePoints=[
@@ -47,6 +48,7 @@ const pack02=window.ManjingoQuestionPack02||{knowledgePoints:[],questions:[]};
 const pack03=window.ManjingoQuestionPack03||{knowledgePoints:[],questions:[]};
 const lessonPack=window.ManjingoQuestionPackLesson||{questions:[]};
 const capacityPack01=window.ManjingoQuestionPackCapacity01||{questions:[]};
+const transferPack01=window.ManjingoQuestionPackTransfer01||{questions:[]};
 
 const KP_REVISIONS={
  kp_p3_zhi:{content:'之：跨語境辨析',difficulty:3},
@@ -84,7 +86,7 @@ const QUESTION_REVISIONS={
 };
 
 const knowledgePoints=[...baseKnowledgePoints,...pack02.knowledgePoints,...pack03.knowledgePoints].map(kp=>KP_REVISIONS[kp.kpId]?{...kp,...KP_REVISIONS[kp.kpId]}:{...kp});
-const rawQuestions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions,...capacityPack01.questions].map(q=>QUESTION_REVISIONS[q.id]?{...q,...QUESTION_REVISIONS[q.id]}:{...q});
+const rawQuestions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions,...capacityPack01.questions,...transferPack01.questions].map(q=>QUESTION_REVISIONS[q.id]?{...q,...QUESTION_REVISIONS[q.id]}:{...q});
 
 function misconceptionConcept(q){
  const kp=String(q&&q.kpId||''),answer=String(q&&q.a||''),text=String(q&&q.q||'');
