@@ -8,6 +8,7 @@
  *   public/question-pack-capacity-01.js
  *   public/question-pack-transfer-01.js
  *   public/question-pack-transfer-03.js
+ *   public/question-pack-transfer-04.js
  *   public/content-catalog.js
  *   public/question-pack-adaptive-01.js
  *   public/question-pack-adaptive-02.js
@@ -86,6 +87,7 @@ function loadReviewedCatalog() {
     'question-pack-capacity-01.js',
     'question-pack-transfer-01.js',
     'question-pack-transfer-03.js',
+    'question-pack-transfer-04.js',
     'content-catalog.js',
     'question-pack-adaptive-01.js',
     'question-pack-adaptive-02.js',
