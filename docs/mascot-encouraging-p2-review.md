@@ -92,7 +92,7 @@ A–E 已全部通過；promotion 已執行：
 2. [x] 執行 `npm run mascot:encouraging:p2`。
 3. [x] 執行 `npm run mascot:check`。
 4. [x] 執行完整 `npm test`。
-5. [ ] CI 全綠後將 PR #7 由 draft 轉為 ready for review。
+5. [x] Tests #391 全綠；將 PR #7 由 draft 轉為 ready for review。
 6. 更新並完成 Issue #6。
 
 Tracks #6, #3 and PR #7.
