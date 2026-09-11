@@ -15,6 +15,7 @@ function loadCatalog() {
     'public/question-pack-lesson.js',
     'public/question-pack-capacity-01.js',
     'public/question-pack-transfer-01.js',
+    'public/question-pack-transfer-03.js',
     'public/content-catalog.js'
   ]) vm.runInContext(source(file), context, { filename:file });
   return context.window.ManjingoContent;
@@ -22,7 +23,7 @@ function loadCatalog() {
 
 test('every active question meets the reviewed structural quality floor', () => {
   const catalog = loadCatalog();
-  assert.equal(catalog.questions.length, 268);
+  assert.equal(catalog.questions.length, 292);
   for (const q of catalog.questions) {
     assert.ok(String(q.id || '').trim(), 'question id is required');
     assert.ok(String(q.kpId || '').trim(), `${q.id}: kpId is required`);
@@ -56,6 +57,7 @@ test('reviewed catalog is the only Firestore question import source', () => {
   assert.match(importer, /question-pack-lesson\.js/);
   assert.match(importer, /question-pack-capacity-01\.js/);
   assert.match(importer, /question-pack-transfer-01\.js/);
+  assert.match(importer, /question-pack-transfer-03\.js/);
   assert.match(importer, /content-catalog\.js/);
   assert.doesNotMatch(importer, /questions_v2_template\.csv/);
   assert.match(importer, /--prune/);
