@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
-test('Pages smoke verifies deployed calibration observability instant feedback and nonblocking next before exercising the learning API',()=>{
+test('Pages smoke verifies deployed learner difficulty guidance instant feedback and nonblocking next before exercising the learning API',()=>{
   const source=read('scripts/smoke_pages_api.mjs');
   assert.match(source,/from 'node:vm'/);
   assert.match(source,/readTextAsset\('\/difficulty-calibration\.js'/);
@@ -18,6 +18,10 @@ test('Pages smoke verifies deployed calibration observability instant feedback a
   assert.match(source,/=== 'application'/);
   assert.match(source,/observability\.reasonLabel\('application-ready'\)/);
   assert.match(source,/observability\.selectionLabel\('misconception-target'\)/);
+  assert.match(source,/observability\.studentSummary/);
+  assert.match(source,/learnerGuidance\.tier === '跨篇遷移'/);
+  assert.match(source,/近期同層 4 題 100%/);
+  assert.match(source,/為甚麼系統安排這個難度？/);
   assert.match(source,/feedbackSource\.includes\('function instantAnswer\(event\)'\)/);
   assert.match(source,/feedbackSource\.includes\("document\.addEventListener\('click',instantAnswer,true\)"\)/);
   assert.match(source,/feedbackSource\.includes\('function unlockNextSoon\(scope\)'\)/);
