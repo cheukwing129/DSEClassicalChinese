@@ -33,7 +33,8 @@ test('mascot runtime exposes production artwork readiness in priority order',()=
   assert.equal(runtime.isProductionArt('encouraging'),true);
   assert.equal(runtime.descriptor('happy').artStatus,'production');
   assert.equal(runtime.descriptor('encouraging').artStatus,'production');
-  assert.deepEqual(runtime.productionQueue().map(state=>state.id),['determined','celebrate']);
+  assert.equal(runtime.descriptor('determined').artStatus,'production');
+  assert.deepEqual(runtime.productionQueue().map(state=>state.id),['celebrate']);
 });
 
 test('semantic lesson icon tagging is explicit rather than styling every lesson icon',()=>{
