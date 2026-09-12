@@ -1,27 +1,29 @@
 (function(root,factory){
 'use strict';
-let curriculum=root&&root.ManjingoCurriculumV1,metadata=root&&root.ManjingoQuestionMetadataV1,diversity=root&&root.ManjingoQuestionDiversityV1;
+let curriculum=root&&root.ManjingoCurriculumV1,metadata=root&&root.ManjingoQuestionMetadataV1,diversity=root&&root.ManjingoQuestionDiversityV1,skillMastery=root&&root.ManjingoSkillMasteryV1;
 if(typeof module==='object'&&module.exports){
  curriculum=require('./curriculum-v1.js');
  metadata=require('./question-metadata-v1.js');
  diversity=require('./question-diversity-v1.js');
- module.exports=factory(root,curriculum,metadata,diversity);
+ skillMastery=require('./skill-mastery-v1.js');
+ module.exports=factory(root,curriculum,metadata,diversity,skillMastery);
  return;
 }
-const api=factory(root,curriculum,metadata,diversity);
+const api=factory(root,curriculum,metadata,diversity,skillMastery);
 root.ManjingoSkillFirstPlan=api;
 if(root.window&&root.window!==root)root.window.ManjingoSkillFirstPlan=api;
 api.install();
-})(typeof globalThis!=='undefined'?globalThis:this,function(root,curriculum,metadata,diversity){
+})(typeof globalThis!=='undefined'?globalThis:this,function(root,curriculum,metadata,diversity,skillMastery){
 'use strict';
 
-const VERSION='skill-first-plan-v1';
+const VERSION='skill-first-plan-v2';
 const CATEGORY_ORDER={review:0,weak:1,new:2,stable:3};
 
 function runtimeRoot(){return root&&root.window||root}
 function content(){const r=runtimeRoot();return r&&r.ManjingoContent||null}
 function rotation(){const r=runtimeRoot();return r&&r.ManjingoQuestionRotation||null}
 function learning(){const r=runtimeRoot();return r&&r.ManjingoLocalLearning||null}
+function skillMasteryApi(){const r=runtimeRoot();return r&&r.ManjingoSkillMasteryV1||skillMastery||null}
 function idOf(q){return String(q&&q.id||'')}
 function kpOf(q){return String(q&&q.kpId||'')}
 function unique(values){return Array.from(new Set((values||[]).map(String).filter(Boolean)))}
@@ -54,7 +56,9 @@ function orderedSkillIds(pools){
 }
 function attempted(record){return !!(record&&(Number(record.attempts)>0||Number(record.correctCount)>0||Number(record.wrongCount)>0||record.lastAnsweredAt))}
 function recordDue(record,engine){if(!attempted(record))return false;if(engine&&typeof engine.isDue==='function')return !!engine.isDue(record);const value=record&&record.nextReviewAt;return !value||new Date(value).getTime()<=Date.now()}
-function skillState(kpIds,engine){
+function skillState(kpIds,engine,skillId,api){
+ const masteryApi=api||skillMasteryApi();
+ if(masteryApi&&typeof masteryApi.getSkillMastery==='function'&&skillId){const skillRecord=masteryApi.getSkillMastery(skillId,{engine,kpIds});if(attempted(skillRecord)){if(recordDue(skillRecord,engine))return'review';if(Number(skillRecord.mastery||0)<60||skillRecord.lastCorrect===false)return'weak';return'stable'}}
  if(!engine||typeof engine.getKnowledge!=='function')return'new';
  const records=kpIds.map(id=>engine.getKnowledge(id)).filter(attempted);
  if(!records.length)return'new';
@@ -85,23 +89,23 @@ function normalizedCategory(itemCategory,state){
  if(state==='stable')return category==='review'||category==='weak'?category:null;
  return category==='review'||category==='weak'?category:'new';
 }
-function makeIntent(item,skillId,pools,engine){
- const kpIds=kpIdsForSkill(pools,skillId),state=skillState(kpIds,engine),category=normalizedCategory(item&&item.category,state);
+function makeIntent(item,skillId,pools,engine,masteryApi){
+ const kpIds=kpIdsForSkill(pools,skillId),state=skillState(kpIds,engine,skillId,masteryApi),category=normalizedCategory(item&&item.category,state);
  if(!category)return null;
  return{...(item||{}),skillId:String(skillId),kpIds,kpId:String(item&&item.kpId||kpIds[0]||''),category,priority:item&&item.priority!=null?item.priority:(category==='review'?1:category==='weak'?2:3),skillState:state};
 }
 function adaptPlan(plan,questions,limit,options){
- const source=Array.isArray(questions)?questions:[],max=Math.max(0,Number(limit)||Number(plan&&plan.targetCount)||10),pools=poolsFor(source),kpSkills=kpSkillsFor(pools),ordered=orderedSkillIds(pools),annotated=coreQuestions(source),questionsById=new Map(annotated.map(q=>[idOf(q),q])),engine=options&&options.learning||learning(),items=Array.isArray(plan&&plan.items)?plan.items:[],used=new Set(),intents=[];
+ const source=Array.isArray(questions)?questions:[],max=Math.max(0,Number(limit)||Number(plan&&plan.targetCount)||10),pools=poolsFor(source),kpSkills=kpSkillsFor(pools),ordered=orderedSkillIds(pools),annotated=coreQuestions(source),questionsById=new Map(annotated.map(q=>[idOf(q),q])),engine=options&&options.learning||learning(),masteryApi=options&&options.skillMastery||skillMasteryApi(),items=Array.isArray(plan&&plan.items)?plan.items:[],used=new Set(),intents=[];
  for(const item of items){
   if(intents.length>=max)break;
   const skillId=chooseSkillForItem(item,kpSkills,questionsById,used,ordered);if(!skillId)continue;
-  const intent=makeIntent(item,skillId,pools,engine);if(!intent)continue;
+  const intent=makeIntent(item,skillId,pools,engine,masteryApi);if(!intent)continue;
   used.add(skillId);intents.push(intent);
  }
  const fill=[];
  for(const skillId of ordered){
   if(used.has(skillId))continue;
-  const kpIds=kpIdsForSkill(pools,skillId),state=skillState(kpIds,engine),category=state==='stable'?'stable':state;
+  const kpIds=kpIdsForSkill(pools,skillId),state=skillState(kpIds,engine,skillId,masteryApi),category=state==='stable'?'stable':state;
   fill.push({skillId,kpIds,state,category,order:ordered.indexOf(skillId)});
  }
  fill.sort((a,b)=>(CATEGORY_ORDER[a.category]??9)-(CATEGORY_ORDER[b.category]??9)||a.order-b.order);
@@ -135,7 +139,7 @@ function selectQuestionsForPlan(plan,sourceQuestions,limit,options){
 }
 function install(){
  const r=runtimeRoot(),catalog=r&&r.ManjingoContent;if(!catalog||typeof catalog.selectQuestionsForPlan!=='function'||catalog.__skillFirstPlanInstalled)return false;
- const legacy=catalog.selectQuestionsForPlan.bind(catalog);catalog.__legacySelectQuestionsForPlan=legacy;catalog.selectQuestionsForPlan=function(plan,questions,limit){try{return selectQuestionsForPlan(plan,questions,limit,{learning:learning(),rotation:rotation(),diversity})}catch(error){if(r&&r.console&&typeof r.console.warn==='function')r.console.warn('skill-first selector fallback',error);return legacy(plan,questions,limit)}};catalog.__skillFirstPlanInstalled=true;return true;
+ const legacy=catalog.selectQuestionsForPlan.bind(catalog);catalog.__legacySelectQuestionsForPlan=legacy;catalog.selectQuestionsForPlan=function(plan,questions,limit){try{return selectQuestionsForPlan(plan,questions,limit,{learning:learning(),rotation:rotation(),diversity,skillMastery:skillMasteryApi()})}catch(error){if(r&&r.console&&typeof r.console.warn==='function')r.console.warn('skill-first selector fallback',error);return legacy(plan,questions,limit)}};catalog.__skillFirstPlanInstalled=true;return true;
 }
 
 return{VERSION,coreQuestions,poolsFor,kpSkillsFor,kpIdsForSkill,orderedSkillIds,skillState,adaptPlan,selectQuestionsForPlan,install};
