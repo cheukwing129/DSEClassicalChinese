@@ -53,6 +53,8 @@ jobs:
             echo "::error::Missing FIREBASE_SERVICE_ACCOUNT_MANJINGO cleanup credential."
             exit 1
           fi
+      - name: Smoke test deployed Stage 3 learning path UI
+        run: npm run smoke:stage3
       - name: Smoke test production Pages learning API with a real write
         run: npm run smoke:pages
       - name: Cleanup temporary smoke user and learning data
