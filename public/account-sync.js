@@ -28,6 +28,7 @@ function mergeLearningState(local,remote){const a=local&&typeof local==='object'
  todayDate:todayB&&(!todayA||todayB>todayA)?todayB:todayA||todayB||null,
  lastGoalDate:[a.lastGoalDate,b.lastGoalDate].filter(Boolean).sort().pop()||null,
  knowledge:mergeObjectRecords(a.knowledge,b.knowledge),
+ skillMastery:mergeObjectRecords(a.skillMastery,b.skillMastery),
  conceptMastery:mergeObjectRecords(a.conceptMastery,b.conceptMastery),
  practiceHistory:mergePracticeHistory(a.practiceHistory,b.practiceHistory)
 }}
