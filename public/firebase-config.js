@@ -266,6 +266,17 @@ export async function fetchUserKnowledgeState(userId) {
   } catch (error) { console.warn('user knowledge read unavailable:', error); return {}; }
 }
 
+export async function fetchUserSkillState(userId) {
+  if (!userId) return {};
+  try {
+    const { firestoreModule } = await withTimeout(getFirebase(), 8000, 'Firebase SDK');
+    return await withTimeout(firestoreModule.getDocs(firestoreModule.collection(db, "users", userId, "skills")).then((snap) => Object.fromEntries(snap.docs.map((d) => {
+      const data=d.data();
+      return [d.id,{...data,skillId:d.id,lastAnsweredAt:isoTimestamp(data.lastAnsweredAt),updatedAt:isoTimestamp(data.updatedAt),source:data.source||'server-native-v1'}];
+    }))),8000,'skill mastery read');
+  } catch (error) { console.warn('skill mastery read unavailable:', error); return {}; }
+}
+
 export async function fetchUserConceptState(userId) {
   if (!userId) return {};
   try {

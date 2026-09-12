@@ -1,6 +1,8 @@
 import './learning-policy.js';
+import './curriculum-v1.js';
 
 const POLICY=globalThis.ManjingoLearningPolicy;
+const CURRICULUM=globalThis.ManjingoCurriculumV1;
 const PROJECT_FALLBACK = 'manjingo-95d9a';
 const TOKEN_SCOPE = 'https://www.googleapis.com/auth/datastore';
 const FIRESTORE_ROOT = 'https://firestore.googleapis.com/v1';
@@ -219,6 +221,19 @@ function updateWrite(env, path, data) { return { update: docObject(documentName(
 function masteryStatus(mastery) { return POLICY.masteryStatus(mastery); }
 function calculateLearningUpdate(prev, answer, baseXp, now) { return POLICY.calculateLearningUpdate({ prev, isCorrect: answer.isCorrect, usedHint: answer.usedHint, attemptCount: answer.attemptCount, baseXp, now }); }
 function calculateConceptUpdate(prev, answer, conceptKey, conceptLabel, now) { return POLICY.calculateConceptMasteryUpdate({ prev, conceptKey, conceptLabel, kpId: answer.kpId, questionId: answer.questionId, selectedAnswer: answer.selectedAnswer, correctAnswer: answer.correctAnswer, isCorrect: answer.isCorrect, usedHint: answer.usedHint, attemptCount: answer.attemptCount, now }); }
+function coreSkillId(questionData,kpId){
+  const explicit=Array.isArray(questionData&&questionData.skillIds)?questionData.skillIds.map(String).filter(Boolean):[];
+  const migration=CURRICULUM&&typeof CURRICULUM.migrationFor==='function'?CURRICULUM.migrationFor(kpId):CURRICULUM&&CURRICULUM.migration&&CURRICULUM.migration[kpId];
+  const migrated=migration&&Array.isArray(migration.targetSkillIds)?migration.targetSkillIds.map(String):[];
+  const ordered=[...migrated.filter(id=>explicit.includes(id)),...migrated,...explicit];
+  for(const id of ordered){
+    if(!/^[A-Za-z0-9._-]{2,128}$/.test(id))continue;
+    const def=CURRICULUM&&typeof CURRICULUM.skill==='function'?CURRICULUM.skill(id):null;
+    if(def&&Number(def.stage)<=2)return id;
+  }
+  return null;
+}
+function skillResult(skillId,record){if(!skillId||!record)return null;return{skillId,mastery:Number(record.mastery||0),status:record.status||masteryStatus(record.mastery),nextReviewAt:record.nextReviewAt instanceof Date?record.nextReviewAt.toISOString():record.nextReviewAt||null,interval:Number(record.interval||0),easeFactor:Number(record.easeFactor||2.5),repetition:Number(record.repetition||0),attempts:Number(record.attempts||0),correctCount:Number(record.correctCount||0),wrongCount:Number(record.wrongCount||0),hintCount:Number(record.hintCount||0),lastCorrect:record.lastCorrect??null,lastAnsweredAt:record.lastAnsweredAt instanceof Date?record.lastAnsweredAt.toISOString():record.lastAnsweredAt||null,kpIds:Array.isArray(record.kpIds)?record.kpIds.map(String):[],source:String(record.source||'server-native-v1')};}
 function calculateLevel(totalXp) {
   let level = 1, cumulative = 0;
   while (level < 99) { const needed = level === 1 ? 50 : 50 + (level - 1) * 30; if (cumulative + needed > totalXp) break; cumulative += needed; level += 1; }
@@ -245,7 +260,7 @@ async function submitAnswer(request, env, uid, trace) {
   try { raw = await request.json(); } catch (_) { throw Object.assign(new Error('JSON body required'), { status: 400 }); }
   const answer = validateAnswer(raw);
   const token = await timed(trace,'oauth',()=>getServiceAccessToken(env));
-  let baseXp = 8, conceptKey = answer.conceptKey, conceptLabel = answer.conceptLabel;
+  let baseXp = 8, conceptKey = answer.conceptKey, conceptLabel = answer.conceptLabel, skillId = null;
   if (answer.questionId) {
     const question = await timed(trace,'question_read',()=>getQuestionMetadata(env, token, answer.questionId));
     if (question) {
@@ -255,29 +270,42 @@ async function submitAnswer(request, env, uid, trace) {
       if (Number.isFinite(xp)) baseXp = clamp(xp, 1, 50);
       if (!conceptKey && question.data.misconceptionKey) conceptKey = String(question.data.misconceptionKey);
       if (!conceptLabel && question.data.misconceptionLabel) conceptLabel = String(question.data.misconceptionLabel);
+      skillId = coreSkillId(question.data, answer.kpId);
     }
   }
   const tx = await timed(trace,'tx_begin',()=>beginTransaction(env, token));
   try {
     const kpPath = `users/${uid}/knowledge/${answer.kpId}`;
+    const skillPath = skillId ? `users/${uid}/skills/${skillId}` : null;
     const gamePath = `users/${uid}/gamification/state`;
     const logPath = `users/${uid}/answerLogs/${answer.answerId}`;
     const conceptPath = conceptKey ? `users/${uid}/concepts/${conceptKey}` : null;
-    const txPaths=[kpPath,gamePath,logPath,...(conceptPath?[conceptPath]:[])];
+    const txPaths=[kpPath,...(skillPath?[skillPath]:[]),gamePath,logPath,...(conceptPath?[conceptPath]:[])];
     const txDocs=await timed(trace,'tx_reads',()=>batchGetDocuments(env,token,txPaths,tx));
-    const [kpDoc,gameDoc,logDoc]=txDocs;
-    const conceptDoc=conceptPath?txDocs[3]:null;
+    let cursor=0;
+    const kpDoc=txDocs[cursor++];
+    const skillDoc=skillPath?txDocs[cursor++]:null;
+    const gameDoc=txDocs[cursor++];
+    const logDoc=txDocs[cursor++];
+    const conceptDoc=conceptPath?txDocs[cursor++]:null;
     const gameExisting = gameDoc ? gameDoc.data : {};
     if (logDoc) {
       await timed(trace,'tx_rollback',()=>rollback(env, token, tx));
       const existing = logDoc.data;
-      return json({ success: true, quality: existing.quality, xpEarned: Number(existing.xpEarned || 0), mastery: Number(existing.mastery || 0), status: existing.status || null, nextReviewAt: existing.nextReviewAt || null, attempts: Number(existing.attempts || 0), correctCount: Number(existing.correctCount || 0), wrongCount: Number(existing.wrongCount || 0), hintCount: Number(existing.hintCount || 0), lastCorrect: existing.lastCorrect ?? null, lastAnsweredAt: existing.lastAnsweredAt || existing.answeredAt || null, totalXp: Number(existing.totalXp ?? gameExisting.totalXp ?? 0), todayXp: Number(existing.todayXp ?? gameExisting.todayXp ?? 0), streak: Number(existing.streak ?? gameExisting.streak ?? 0), streakFreezes: Number(existing.streakFreezes ?? gameExisting.streakFreezes ?? 0), streakIncreased: Boolean(existing.streakIncreased), level: Number(existing.level ?? gameExisting.level ?? 1), conceptMastery: existing.conceptMastery || null, duplicate: true });
+      return json({ success: true, quality: existing.quality, xpEarned: Number(existing.xpEarned || 0), mastery: Number(existing.mastery || 0), status: existing.status || null, nextReviewAt: existing.nextReviewAt || null, attempts: Number(existing.attempts || 0), correctCount: Number(existing.correctCount || 0), wrongCount: Number(existing.wrongCount || 0), hintCount: Number(existing.hintCount || 0), lastCorrect: existing.lastCorrect ?? null, lastAnsweredAt: existing.lastAnsweredAt || existing.answeredAt || null, totalXp: Number(existing.totalXp ?? gameExisting.totalXp ?? 0), todayXp: Number(existing.todayXp ?? gameExisting.todayXp ?? 0), streak: Number(existing.streak ?? gameExisting.streak ?? 0), streakFreezes: Number(existing.streakFreezes ?? gameExisting.streakFreezes ?? 0), streakIncreased: Boolean(existing.streakIncreased), level: Number(existing.level ?? gameExisting.level ?? 1), skillId: existing.skillId || skillId || null, skillMastery: existing.skillMastery || null, conceptMastery: existing.conceptMastery || null, duplicate: true });
     }
     const now = new Date();
     const prev = kpDoc ? kpDoc.data : {};
     const rawGame = gameExisting;
     const game = (rawGame.todayXpDate || answer.localDate) === answer.localDate ? rawGame : { ...rawGame, todayXp: 0, todayXpDate: answer.localDate };
     const update = calculateLearningUpdate(prev, answer, baseXp, now);
+    let nativeSkill=null,skillMastery=null;
+    if(skillPath){
+      const skillPrev=skillDoc?skillDoc.data:{};
+      const skillLearning=calculateLearningUpdate(skillPrev,answer,baseXp,now);
+      nativeSkill={...skillPrev,...skillLearning,skillId,kpIds:Array.from(new Set([...(Array.isArray(skillPrev.kpIds)?skillPrev.kpIds:[]),answer.kpId].map(String))),source:'server-native-v1',nextReviewAt:skillLearning.nextReviewAt,lastAnsweredAt:skillLearning.lastAnsweredAt,updatedAt:now};
+      skillMastery=skillResult(skillId,nativeSkill);
+    }
     const totalXp = Number(game.totalXp || 0) + update.xpEarned;
     const todayXp = Number(game.todayXp || 0) + update.xpEarned;
     const dailyGoalXp = Number(game.dailyGoalXp || 20);
@@ -304,18 +332,20 @@ async function submitAnswer(request, env, uid, trace) {
     const kpUpdate = { ...prev, ...update, nextReviewAt: update.nextReviewAt, lastAnsweredAt: update.lastAnsweredAt, updatedAt: now };
     const gameUpdate = { ...game, totalXp, todayXp, todayXpDate: answer.localDate, dailyGoalXp, streak, streakFreezes, lastActiveDate: todayXp >= dailyGoalXp ? answer.localDate : previousActiveDate, level, updatedAt: now };
     const log = {
-      answerId: answer.answerId, questionId: answer.questionId, kpIds: [answer.kpId], textId: answer.textId, conceptKey, conceptLabel,
+      answerId: answer.answerId, questionId: answer.questionId, kpIds: [answer.kpId], skillId, skillMastery, textId: answer.textId, conceptKey, conceptLabel,
       selectedAnswer: answer.selectedAnswer, correctAnswer: answer.correctAnswer, conceptMastery: conceptResult, isCorrect: answer.isCorrect,
       usedHint: answer.usedHint, attemptCount: answer.attemptCount, responseTimeMs: answer.responseTimeMs, localDate: answer.localDate,
       quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt,
       interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, attempts: update.attempts, correctCount: update.correctCount, wrongCount: update.wrongCount, hintCount: update.hintCount, lastCorrect: update.lastCorrect, lastAnsweredAt: update.lastAnsweredAt,
       totalXp, todayXp, streak, streakFreezes, streakIncreased, level, answeredAt: now
     };
-    const writes = [updateWrite(env, kpPath, kpUpdate), updateWrite(env, gamePath, gameUpdate)];
+    const writes = [updateWrite(env, kpPath, kpUpdate)];
+    if(skillPath&&nativeSkill)writes.push(updateWrite(env,skillPath,nativeSkill));
+    writes.push(updateWrite(env, gamePath, gameUpdate));
     if (conceptPath && conceptUpdate) writes.push(updateWrite(env, conceptPath, { ...conceptUpdate, lastAnsweredAt: conceptUpdate.lastAnsweredAt, updatedAt: now }));
     writes.push(updateWrite(env, logPath, log));
     await timed(trace,'commit',()=>commit(env, token, tx, writes));
-    return json({ success: true, quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt.toISOString(), interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, attempts: update.attempts, correctCount: update.correctCount, wrongCount: update.wrongCount, hintCount: update.hintCount, lastCorrect: update.lastCorrect, lastAnsweredAt: update.lastAnsweredAt.toISOString(), totalXp, todayXp, streak, streakFreezes, streakIncreased, level, conceptMastery: conceptResult, duplicate: false });
+    return json({ success: true, quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt.toISOString(), interval: update.interval, easeFactor: update.easeFactor, repetition: update.repetition, attempts: update.attempts, correctCount: update.correctCount, wrongCount: update.wrongCount, hintCount: update.hintCount, lastCorrect: update.lastCorrect, lastAnsweredAt: update.lastAnsweredAt.toISOString(), totalXp, todayXp, streak, streakFreezes, streakIncreased, level, skillId, skillMastery, conceptMastery: conceptResult, duplicate: false });
   } catch (error) {
     await timed(trace,'tx_rollback',()=>rollback(env, token, tx));
     throw error;

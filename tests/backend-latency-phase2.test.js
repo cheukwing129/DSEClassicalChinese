@@ -5,12 +5,12 @@ const path=require('node:path');
 
 const worker=fs.readFileSync(path.join(__dirname,'..','public','_worker.js'),'utf8');
 
-test('answer transaction batches user-state reads into one Firestore batchGet',()=>{
+test('answer transaction batches KP skill and user-state reads into one Firestore batchGet',()=>{
   assert.match(worker,/documents:batchGet/);
   assert.match(worker,/function batchGetDocuments\(env, token, paths, transaction\)/);
   assert.match(worker,/body:JSON\.stringify\(\{documents:names,\.\.\.\(transaction\?\{transaction\}:\{\}\)\}\)/);
   assert.match(worker,/timed\(trace,'tx_reads',\(\)=>batchGetDocuments\(env,token,txPaths,tx\)\)/);
-  assert.match(worker,/const txPaths=\[kpPath,gamePath,logPath,\.\.\.\(conceptPath\?\[conceptPath\]:\[\]\)\]/);
+  assert.match(worker,/const txPaths=\[kpPath,\.\.\.\(skillPath\?\[skillPath\]:\[\]\),gamePath,logPath,\.\.\.\(conceptPath\?\[conceptPath\]:\[\]\)\]/);
   assert.doesNotMatch(worker,/timed\(trace,'tx_reads',\(\)=>Promise\.all/);
 });
 
