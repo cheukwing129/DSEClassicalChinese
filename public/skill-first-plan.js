@@ -64,12 +64,20 @@ function skillState(kpIds,engine){
 }
 function preferredQuestionIds(item){return unique([...(Array.isArray(item&&item.conceptQuestionIds)?item.conceptQuestionIds:[]),...(Array.isArray(item&&item.misconceptionQuestionIds)?item.misconceptionQuestionIds:[])]);}
 function skillRank(ordered){const map=new Map();ordered.forEach((id,index)=>map.set(id,index));return id=>map.has(id)?map.get(id):Number.MAX_SAFE_INTEGER}
+function migratedSkills(kpId){
+ const id=String(kpId||'');
+ const rule=curriculum&&(typeof curriculum.migrationFor==='function'?curriculum.migrationFor(id):curriculum.migration&&curriculum.migration[id]);
+ return unique(rule&&rule.targetSkillIds);
+}
 function chooseSkillForItem(item,kpSkills,questionsById,used,ordered){
- const rank=skillRank(ordered),preferred=preferredQuestionIds(item),preferredSkills=[];
+ const rank=skillRank(ordered),kpId=String(item&&item.kpId||''),preferred=preferredQuestionIds(item),preferredSkills=[];
  for(const id of preferred){const q=questionsById.get(String(id));if(!q||!q.normalCore)continue;for(const skillId of unique(q.skillIds))if(!preferredSkills.includes(skillId))preferredSkills.push(skillId)}
- const candidates=unique([...(preferredSkills||[]),...(kpSkills.get(String(item&&item.kpId||''))||[])]).filter(id=>!used.has(id));
- candidates.sort((a,b)=>rank(a)-rank(b));
- return candidates[0]||null;
+ for(const tier of [preferredSkills,migratedSkills(kpId),kpSkills.get(kpId)||[]]){
+  const candidates=unique(tier).filter(id=>!used.has(id));
+  candidates.sort((a,b)=>rank(a)-rank(b));
+  if(candidates.length)return candidates[0];
+ }
+ return null;
 }
 function normalizedCategory(itemCategory,state){
  const category=String(itemCategory||'new');
