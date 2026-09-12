@@ -85,6 +85,20 @@ test('Pages smoke performs one real reviewed answer and verifies all learning wr
   assert.match(source,/expected HTTP 400/);
 });
 
+test('Pages smoke persists restores and deduplicates one real server practice session',()=>{
+  const source=read('scripts/smoke_pages_api.mjs');
+  assert.match(source,/health\.practicePolicy === 'server-practice-v1'/);
+  assert.match(source,/const practiceRoute = plan\.items\.find\(item => item && item\.skillId && item\.kpId\)/);
+  assert.match(source,/api\('\/api\/practice-session'/);
+  assert.match(source,/api\('\/api\/practice-state'/);
+  assert.match(source,/practiceState\.practiceIds\.includes\(practiceId\)/);
+  assert.match(source,/practiceState\.interventionState\[practicePayload\.skillId\]/);
+  assert.match(source,/duplicatePractice\.duplicate === true/);
+  assert.match(source,/reportTiming\(practiceResponse, 'practice-session', \['auth','oauth','kp_list','practice_tx_begin','practice_tx_reads','practice_commit','total'\]\)/);
+  assert.match(source,/reportTiming\(practiceStateResponse, 'practice-state', \['auth','oauth','interventions_list','total'\]\)/);
+  assert.match(source,/reportTiming\(duplicatePracticeResponse, 'practice-duplicate', \['auth','oauth','kp_list','practice_tx_begin','practice_tx_reads','practice_tx_rollback','total'\]\)/);
+});
+
 test('production smoke writes cleanup manifest immediately after creating temporary uid',()=>{
   const source=read('scripts/smoke_pages_api.mjs');
   const signup=source.indexOf("const signup = await firebaseIdentity('accounts:signUp'");
