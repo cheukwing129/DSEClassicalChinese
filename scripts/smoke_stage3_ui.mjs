@@ -14,30 +14,65 @@ async function readTextAsset(pathname, label) {
   return text;
 }
 
+function memoryStorage() {
+  const data = new Map();
+  return {
+    getItem(key) { return data.has(String(key)) ? data.get(String(key)) : null; },
+    setItem(key, value) { data.set(String(key), String(value)); },
+    removeItem(key) { data.delete(String(key)); }
+  };
+}
+
 console.log(`Smoke testing Stage 3 UI at ${baseUrl}`);
 
-const [homepageSource, homeShellSource, stage3Source, packSource] = await Promise.all([
+const [homepageSource, homeShellSource, themeSource, curriculumSource, diagnosticsSource, stage3Source, packSource] = await Promise.all([
   readTextAsset('/', 'homepage'),
   readTextAsset('/home-shell.js', 'home shell asset'),
+  readTextAsset('/theme-runtime.js', 'theme runtime asset'),
+  readTextAsset('/curriculum-v1.js', 'curriculum asset'),
+  readTextAsset('/stage3-diagnostics.js', 'Stage 3 diagnostics asset'),
   readTextAsset('/stage3-reading.js', 'Stage 3 reading asset'),
   readTextAsset('/question-pack-transfer-07.js', 'Stage 3 question pack')
 ]);
 
 check(homepageSource.includes('./home-shell.js'), 'deployed homepage does not load the home shell');
+check(homepageSource.includes('./theme-runtime.js'), 'deployed homepage does not load the theme runtime');
 check(homeShellSource.includes("script.src='./stage3-reading.js'"), 'deployed home shell does not load the Stage 3 reading runtime');
 check(homeShellSource.includes('loadStage3Reading();'), 'deployed home shell does not install the Stage 3 reading runtime');
+check(themeSource.includes("script.src='./stage3-diagnostics.js'"), 'deployed homepage runtime does not load Stage 3 diagnostics');
 
-const context = { console, window: {}, Array, Object, Number, String, Math, Set, Map };
+const context = { console, window: {}, Array, Object, Number, String, Math, Set, Map, Date, localStorage: memoryStorage() };
 vm.createContext(context);
+vm.runInContext(curriculumSource, context, { filename: 'production/curriculum-v1.js' });
+vm.runInContext(diagnosticsSource, context, { filename: 'production/stage3-diagnostics.js' });
 vm.runInContext(stage3Source, context, { filename: 'production/stage3-reading.js' });
 vm.runInContext(packSource, context, { filename: 'production/question-pack-transfer-07.js' });
+const diagnostics = context.ManjingoStage3Diagnostics;
 const stage3 = context.ManjingoStage3Reading;
 const pack = context.window.ManjingoQuestionPackTransfer07;
+check(diagnostics && typeof diagnostics.recordAttempt === 'function', 'deployed Stage 3 diagnostics runtime is missing recordAttempt()');
+check(typeof diagnostics.recordVerification === 'function', 'deployed Stage 3 diagnostics runtime is missing recordVerification()');
+check(Object.keys(diagnostics.DIAGNOSTIC_MAP || {}).length === 36, 'deployed Stage 3 diagnostic map does not cover all 36 questions');
 check(stage3 && typeof stage3.buildChallenge === 'function', 'deployed Stage 3 runtime is missing buildChallenge()');
 check(typeof stage3.summarizeResults === 'function', 'deployed Stage 3 runtime is missing summarizeResults()');
 check(typeof stage3.isStage3Question === 'function', 'deployed Stage 3 runtime is missing Stage 3 filtering');
 check(pack && Array.isArray(pack.questions), 'deployed Stage 3 question pack is missing');
 check(pack.questions.length === 36, `deployed Stage 3 pack contains ${pack.questions.length} questions instead of 36`);
+
+const coreSkillIds = new Set(context.ManjingoCurriculumV1.coreSkills().map(skill => skill.id));
+for (const [questionId, mappedSkillIds] of Object.entries(diagnostics.DIAGNOSTIC_MAP)) {
+  check(mappedSkillIds.length > 0, `${questionId} has no diagnostic skill`);
+  check(mappedSkillIds.every(skillId => coreSkillIds.has(skillId)), `${questionId} maps outside the 49 core skills`);
+}
+
+diagnostics.clear();
+diagnostics.recordAttempt('tr10q001', false, '2026-09-12T10:00:00Z');
+check(diagnostics.signals().length === 0, 'one Stage 3 miss incorrectly became a core weakness signal');
+diagnostics.recordAttempt('tr10q002', false, '2026-09-12T10:01:00Z');
+check(diagnostics.signals().some(signal => signal.skillId === 'read.logical-relation'), 'repeated cross-question Stage 3 evidence did not request verification');
+const verification = diagnostics.recordVerification('read.logical-relation', { correctCount: 2, total: 2, at: '2026-09-12T10:05:00Z' });
+check(verification && verification.passed, 'two-question core verification did not pass');
+check(diagnostics.signals().length === 0, 'passed verification did not retire Stage 3 soft evidence');
 
 const skillIds = ['read.argumentation', 'transfer.short-passage', 'transfer.mixed'];
 for (const skillId of skillIds) {
@@ -72,4 +107,4 @@ const summary = stage3.summarizeResults([
 ]);
 check(summary.total === 6 && summary.correct === 4 && summary.rows.length === 3, 'deployed Stage 3 result summary is invalid');
 
-console.log('✓ deployed Stage 3 loader, 36-question passage bank, six-round rotation, and three-skill summary are healthy');
+console.log('✓ deployed Stage 3 loader, 36-question bank, soft core diagnostics, verification reset, rotation, and summary are healthy');
