@@ -25,6 +25,8 @@ test('real reviewed KP universe gives every one of the 49 core skills a server p
  assert.equal(core.length,49);
  for(const skill of core)assert.ok((routes.get(skill.id)||[]).length>0,`missing server route for ${skill.id}`);
  assert.equal(Object.keys(planner.NATIVE_KP_SKILLS).length,14);
+ const compatibilitySkills=Array.from(new Set(Object.values(planner.QUESTION_EVIDENCE_KP_SKILLS).flat())).sort();
+ assert.deepEqual(compatibilitySkills,['fw.nai','lex.causative','lex.polysemy','read.referent-tracking']);
 });
 
 test('fresh learner receives ten unique skills from only the first unlocked stage',()=>{
