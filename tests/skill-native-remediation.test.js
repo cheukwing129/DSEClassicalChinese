@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const policy=require('../public/practice-effectiveness.js');
+const accountSync=require('../public/account-sync.js');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
 function learningWith(history,records){return{
@@ -55,4 +56,9 @@ test('weakness and results practice links carry the exact selected skill',()=>{
  assert.match(weakness,/function href\(kpId,skillId\)/);assert.match(weakness,/&skillId='\+encodeURIComponent\(skillId\)/);assert.match(weakness,/href\(item\.kpId,item\.skillId\)/);
  assert.match(dashboard,/function href\(item\)/);assert.match(dashboard,/&skillId='\+encodeURIComponent\(item\.skillId\)/);
  assert.match(lesson,/requestedSkillId=params\.get\('skillId'\)\|\|''/);assert.match(lesson,/resolveTargetSkill\(kpId,requestedSkillId\)/);
+});
+
+test('cross-device practice merge keeps different skills distinct on a shared route',()=>{
+ const completedAt='2026-09-12T12:00:00Z',base={kpId:'kp_shared',routeKpId:'kp_shared',completedAt,strategy:'targeted',beforeMastery:40,afterMastery:44},merged=accountSync.mergePracticeHistory([{...base,skillId:'fw.nai'}],[{...base,skillId:'fw.ze'}]);
+ assert.equal(merged.length,2);assert.deepEqual(new Set(merged.map(x=>x.skillId)),new Set(['fw.nai','fw.ze']));
 });
