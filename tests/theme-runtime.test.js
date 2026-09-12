@@ -44,3 +44,17 @@ test('Ink Spirit theme is token-driven, accessible, and keeps Classic intact',()
   assert.match(source,/localStorage/);
   assert.match(source,/manjingo:themechange/);
 });
+
+test('Manyingo theme logos remain native flat vectors without raster halos',()=>{
+  const ink=read('public/brand/manyingo-logo-ink.svg');
+  const classic=read('public/brand/manyingo-logo-classic.svg');
+  [ink,classic].forEach(svg=>{
+    assert.match(svg,/<svg\b/);
+    assert.doesNotMatch(svg,/<image\b/);
+    assert.doesNotMatch(svg,/data:image\//);
+    assert.match(svg,/#d4a85b/i);
+    assert.match(svg,/>Manyıngo<\/text>/);
+  });
+  assert.match(ink,/<text[^>]*fill="#12314f"/);
+  assert.match(classic,/<text[^>]*fill="#58cc02"/);
+});
