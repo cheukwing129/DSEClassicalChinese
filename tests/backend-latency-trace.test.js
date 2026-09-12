@@ -15,12 +15,17 @@ test('worker exposes only fixed safe latency stages through Server-Timing',()=>{
   assert.match(source,/timed\(trace,'oauth'/);
   assert.match(source,/timed\(trace,'knowledge_list'/);
   assert.match(source,/timed\(trace,'concepts_list'/);
+  assert.match(source,/timed\(trace,'interventions_list'/);
   assert.match(source,/timed\(trace,'kp_list'/);
   assert.match(source,/timed\(trace,'question_read'/);
   assert.match(source,/timed\(trace,'tx_begin'/);
   assert.match(source,/timed\(trace,'tx_reads'/);
   assert.match(source,/timed\(trace,'commit'/);
-  assert.doesNotMatch(source,/server-timing[^\n]*(uid|token|email|answerId)/i);
+  assert.match(source,/timed\(trace,'practice_tx_begin'/);
+  assert.match(source,/timed\(trace,'practice_tx_reads'/);
+  assert.match(source,/timed\(trace,'practice_commit'/);
+  assert.match(source,/timed\(trace,'practice_tx_rollback'/);
+  assert.doesNotMatch(source,/server-timing[^\n]*(uid|token|email|answerId|practiceId)/i);
 });
 
 test('health response carries total Server-Timing without exposing credentials',async()=>{
@@ -41,6 +46,9 @@ test('production smoke requires and prints latency breakdowns before accepting b
   const source=read('scripts/smoke_pages_api.mjs');
   assert.match(source,/function reportTiming\(response, label, required = \[\]\)/);
   assert.match(source,/console\.log\(`⏱ \$\{label\}: \$\{value\}`\)/);
-  assert.match(source,/reportTiming\(planResponse, 'daily-plan', \['auth','oauth','knowledge_list','concepts_list','kp_list','total'\]\)/);
+  assert.match(source,/reportTiming\(planResponse, 'daily-plan', \['auth','oauth','knowledge_list','concepts_list','interventions_list','kp_list','total'\]\)/);
+  assert.match(source,/reportTiming\(practiceResponse, 'practice-session', \['auth','oauth','kp_list','practice_tx_begin','practice_tx_reads','practice_commit','total'\]\)/);
+  assert.match(source,/reportTiming\(practiceStateResponse, 'practice-state', \['auth','oauth','interventions_list','total'\]\)/);
+  assert.match(source,/reportTiming\(duplicatePracticeResponse, 'practice-duplicate', \['auth','oauth','kp_list','practice_tx_begin','practice_tx_reads','practice_tx_rollback','total'\]\)/);
   assert.match(source,/reportTiming\(submitResponse, 'submit-answer', \['auth','oauth','question_read','tx_begin','tx_reads','commit','total'\]\)/);
 });
