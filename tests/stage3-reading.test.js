@@ -10,22 +10,35 @@ function loadPack(){const context={window:{},Array,Object,Number,String,Math,Set
 
 test('Stage 3 challenge recognises the three advanced passage skills only',()=>{
  const pack=loadPack();
- assert.equal(pack.questions.length,18);
+ assert.equal(pack.questions.length,36);
  assert.equal(pack.questions.every(stage3.isStage3Question),true);
  assert.equal(stage3.isStage3Question({transferLevel:2,skillIds:['read.argumentation']}),false);
  assert.equal(stage3.isStage3Question({transferLevel:3,skillIds:['read.context-clues']}),false);
 });
 
-test('each challenge draws two questions from each Stage 3 skill and rotates the 18-question pool',()=>{
- const pack=loadPack(),first=stage3.buildChallenge(pack.questions,{},2),second=stage3.buildChallenge(pack.questions,first.nextCursors,2),third=stage3.buildChallenge(pack.questions,second.nextCursors,2);
- for(const run of [first,second,third]){
+test('each Stage 3 skill has twelve questions across at least five source texts',()=>{
+ const pack=loadPack();
+ for(const skill of stage3.SKILLS){
+  const questions=pack.questions.filter(q=>stage3.skillId(q)===skill.id);
+  assert.equal(questions.length,12,skill.id+' should have twelve questions');
+  assert.ok(new Set(questions.map(q=>q.sourceTextId)).size>=5,skill.id+' should use at least five source texts');
+  const sourceCounts=new Map();
+  questions.forEach(q=>sourceCounts.set(q.sourceTextId,(sourceCounts.get(q.sourceTextId)||0)+1));
+  assert.ok(Math.max(...sourceCounts.values())<=3,skill.id+' should cap one source at 25% of the pool');
+ }
+});
+
+test('each challenge draws two questions from each Stage 3 skill and rotates the 36-question pool',()=>{
+ const pack=loadPack(),runs=[];let cursors={};
+ for(let i=0;i<6;i+=1){const built=stage3.buildChallenge(pack.questions,cursors,2);runs.push(built);cursors=built.nextCursors;}
+ for(const run of runs){
   assert.equal(run.questions.length,6);
   const counts=new Map(stage3.SKILLS.map(skill=>[skill.id,0]));
   run.questions.forEach(q=>counts.set(stage3.skillId(q),counts.get(stage3.skillId(q))+1));
   for(const skill of stage3.SKILLS)assert.equal(counts.get(skill.id),2,skill.id+' should contribute two questions');
  }
- const ids=[...first.questions,...second.questions,...third.questions].map(q=>q.id);
- assert.equal(new Set(ids).size,18,'three consecutive runs should cover all eighteen Stage 3 questions before repeating');
+ const ids=runs.flatMap(run=>run.questions).map(q=>q.id);
+ assert.equal(new Set(ids).size,36,'six consecutive runs should cover all thirty-six Stage 3 questions before repeating');
 });
 
 test('Stage 3 summary reports overall and per-skill performance',()=>{
