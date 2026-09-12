@@ -22,11 +22,14 @@ test('Stage 3 production smoke validates loader runtime rotation and summary',()
   assert.match(source,/summary\.total === 6 && summary\.correct === 4 && summary\.rows\.length === 3/);
 });
 
-test('production smoke command runs the Stage 3 guard before backend write smoke',()=>{
+test('Stage 3 smoke stays separate and runs before the existing Pages write smoke',()=>{
   const pkg=JSON.parse(read('package.json'));
-  const command=pkg.scripts['smoke:pages'];
-  assert.match(command,/^node scripts\/smoke_stage3_ui\.mjs &&/);
-  assert.match(command,/smoke_pages_api\.mjs$/);
+  const workflow=read('.github/workflows/pages-production-smoke.yml');
+  assert.equal(pkg.scripts['smoke:stage3'],'node scripts/smoke_stage3_ui.mjs');
+  assert.equal(pkg.scripts['smoke:pages'],'node scripts/smoke_sync_guard.mjs && node scripts/smoke_answer_outbox.mjs && node scripts/smoke_practice_reliability.mjs && node scripts/smoke_pages_api.mjs');
+  const stage3=workflow.indexOf('run: npm run smoke:stage3');
+  const pages=workflow.indexOf('run: npm run smoke:pages');
+  assert.ok(stage3>=0 && pages>stage3);
 });
 
 test('Pages deployment wait includes Stage 3 runtime and loader assets',()=>{
