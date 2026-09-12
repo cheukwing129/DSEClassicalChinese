@@ -8,13 +8,21 @@ const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 test('answer transaction derives a trusted core skill from reviewed metadata and curriculum migration',()=>{
  const worker=read('public/_worker.js');
  assert.match(worker,/import '\.\/curriculum-v1\.js'/);
- assert.match(worker,/function coreSkillId\(questionData,kpId\)/);
- assert.match(worker,/questionData&&questionData\.skillIds/);
- assert.match(worker,/CURRICULUM\.migrationFor\(kpId\)/);
- assert.match(worker,/Number\(def\.stage\)<=2/);
+ assert.match(worker,/import '\.\/question-skill-contract\.js'/);
+ assert.match(worker,/function coreSkillId\(questionData,kpId,targetSkillId\)/);
+ assert.match(worker,/resolveCoreSkill\(questionData,kpId,targetSkillId,CURRICULUM\)/);
  const answerValidation=worker.match(/function validateAnswer\(raw\) \{([\s\S]*?)\n\}\nfunction validatePracticeSession/);
  assert.ok(answerValidation);
  assert.doesNotMatch(answerValidation[1],/raw\.skillId/);
+ assert.match(answerValidation[1],/raw\.targetSkillId/);
+});
+
+test('answer transaction accepts only a target skill validated against the reviewed question',()=>{
+ const worker=read('public/_worker.js'),client=read('public/index.html');
+ assert.match(client,/targetSkillId:q\.skillId\|\|null/);
+ assert.match(worker,/coreSkillId\(question\.data, answer\.kpId, answer\.targetSkillId\)/);
+ assert.match(worker,/targetSkillId requires a known questionId/);
+ assert.match(worker,/requestedSkillId:answer\.targetSkillId/);
 });
 
 test('server commits skill mastery atomically with KP gamification and answer log',()=>{

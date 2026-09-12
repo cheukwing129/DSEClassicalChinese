@@ -1,11 +1,13 @@
 import './learning-policy.js';
 import './curriculum-v1.js';
+import './question-skill-contract.js';
 import './server-skill-plan.js';
 import './practice-effectiveness.js';
 import './server-practice-state.js';
 
 const POLICY=globalThis.ManjingoLearningPolicy;
 const CURRICULUM=globalThis.ManjingoCurriculumV1;
+const QUESTION_SKILL_CONTRACT=globalThis.ManjingoQuestionSkillContract;
 const SERVER_SKILL_PLAN=globalThis.ManjingoServerSkillPlan;
 const SERVER_PRACTICE=globalThis.ManjingoServerPracticeState;
 const PROJECT_FALLBACK = 'manjingo-95d9a';
@@ -226,18 +228,7 @@ function updateWrite(env, path, data) { return { update: docObject(documentName(
 function masteryStatus(mastery) { return POLICY.masteryStatus(mastery); }
 function calculateLearningUpdate(prev, answer, baseXp, now) { return POLICY.calculateLearningUpdate({ prev, isCorrect: answer.isCorrect, usedHint: answer.usedHint, attemptCount: answer.attemptCount, baseXp, now }); }
 function calculateConceptUpdate(prev, answer, conceptKey, conceptLabel, now) { return POLICY.calculateConceptMasteryUpdate({ prev, conceptKey, conceptLabel, kpId: answer.kpId, questionId: answer.questionId, selectedAnswer: answer.selectedAnswer, correctAnswer: answer.correctAnswer, isCorrect: answer.isCorrect, usedHint: answer.usedHint, attemptCount: answer.attemptCount, now }); }
-function coreSkillId(questionData,kpId){
-  const explicit=Array.isArray(questionData&&questionData.skillIds)?questionData.skillIds.map(String).filter(Boolean):[];
-  const migration=CURRICULUM&&typeof CURRICULUM.migrationFor==='function'?CURRICULUM.migrationFor(kpId):CURRICULUM&&CURRICULUM.migration&&CURRICULUM.migration[kpId];
-  const migrated=migration&&Array.isArray(migration.targetSkillIds)?migration.targetSkillIds.map(String):[];
-  const ordered=[...migrated.filter(id=>explicit.includes(id)),...migrated,...explicit];
-  for(const id of ordered){
-    if(!/^[A-Za-z0-9._-]{2,128}$/.test(id))continue;
-    const def=CURRICULUM&&typeof CURRICULUM.skill==='function'?CURRICULUM.skill(id):null;
-    if(def&&Number(def.stage)<=2)return id;
-  }
-  return null;
-}
+function coreSkillId(questionData,kpId,targetSkillId){return QUESTION_SKILL_CONTRACT.resolveCoreSkill(questionData,kpId,targetSkillId,CURRICULUM)}
 function skillResult(skillId,record){if(!skillId||!record)return null;return{skillId,mastery:Number(record.mastery||0),status:record.status||masteryStatus(record.mastery),nextReviewAt:record.nextReviewAt instanceof Date?record.nextReviewAt.toISOString():record.nextReviewAt||null,interval:Number(record.interval||0),easeFactor:Number(record.easeFactor||2.5),repetition:Number(record.repetition||0),attempts:Number(record.attempts||0),correctCount:Number(record.correctCount||0),wrongCount:Number(record.wrongCount||0),hintCount:Number(record.hintCount||0),lastCorrect:record.lastCorrect??null,lastAnsweredAt:record.lastAnsweredAt instanceof Date?record.lastAnsweredAt.toISOString():record.lastAnsweredAt||null,kpIds:Array.isArray(record.kpIds)?record.kpIds.map(String):[],source:String(record.source||'server-native-v1')};}
 function calculateLevel(totalXp) {
   let level = 1, cumulative = 0;
@@ -252,10 +243,11 @@ function validateAnswer(raw) {
   const localDate = raw.localDate ? String(raw.localDate) : new Date().toISOString().slice(0, 10);
   const answerId = raw.answerId ? String(raw.answerId) : crypto.randomUUID().replace(/-/g, '');
   const conceptKey = optionalText(raw.conceptKey, 128);
-  if (!Number.isInteger(attemptCount) || attemptCount < 1 || attemptCount > 10 || (responseTimeMs != null && (!Number.isFinite(responseTimeMs) || responseTimeMs < 0 || responseTimeMs > 600000)) || !/^\d{4}-\d{2}-\d{2}$/.test(localDate) || !/^[A-Za-z0-9_-]{8,128}$/.test(answerId) || (conceptKey && !/^[A-Za-z0-9:_-]+$/.test(conceptKey))) throw Object.assign(new Error('Invalid answer payload'), { status: 400 });
+  const targetSkillId = optionalText(raw.targetSkillId, 128);
+  if (!Number.isInteger(attemptCount) || attemptCount < 1 || attemptCount > 10 || (responseTimeMs != null && (!Number.isFinite(responseTimeMs) || responseTimeMs < 0 || responseTimeMs > 600000)) || !/^\d{4}-\d{2}-\d{2}$/.test(localDate) || !/^[A-Za-z0-9_-]{8,128}$/.test(answerId) || (conceptKey && !/^[A-Za-z0-9:_-]+$/.test(conceptKey)) || (targetSkillId && !/^[A-Za-z0-9._-]{2,128}$/.test(targetSkillId))) throw Object.assign(new Error('Invalid answer payload'), { status: 400 });
   return {
     answerId, kpId: String(raw.kpId), questionId: raw.questionId ? String(raw.questionId) : null, textId: raw.textId ? String(raw.textId) : null,
-    conceptKey, conceptLabel: optionalText(raw.conceptLabel, 160), selectedAnswer: optionalText(raw.selectedAnswer, 500), correctAnswer: optionalText(raw.correctAnswer, 500),
+    conceptKey, conceptLabel: optionalText(raw.conceptLabel, 160), selectedAnswer: optionalText(raw.selectedAnswer, 500), correctAnswer: optionalText(raw.correctAnswer, 500), targetSkillId,
     isCorrect: raw.isCorrect, usedHint: Boolean(raw.usedHint), attemptCount, responseTimeMs, localDate
   };
 }
@@ -282,8 +274,9 @@ async function submitAnswer(request, env, uid, trace) {
       if (Number.isFinite(xp)) baseXp = clamp(xp, 1, 50);
       if (!conceptKey && question.data.misconceptionKey) conceptKey = String(question.data.misconceptionKey);
       if (!conceptLabel && question.data.misconceptionLabel) conceptLabel = String(question.data.misconceptionLabel);
-      skillId = coreSkillId(question.data, answer.kpId);
+      skillId = coreSkillId(question.data, answer.kpId, answer.targetSkillId);
     }
+    else if(answer.targetSkillId)throw Object.assign(new Error('targetSkillId requires a known questionId'),{status:400});
   }
   const tx = await timed(trace,'tx_begin',()=>beginTransaction(env, token));
   try {
@@ -344,7 +337,7 @@ async function submitAnswer(request, env, uid, trace) {
     const kpUpdate = { ...prev, ...update, nextReviewAt: update.nextReviewAt, lastAnsweredAt: update.lastAnsweredAt, updatedAt: now };
     const gameUpdate = { ...game, totalXp, todayXp, todayXpDate: answer.localDate, dailyGoalXp, streak, streakFreezes, lastActiveDate: todayXp >= dailyGoalXp ? answer.localDate : previousActiveDate, level, updatedAt: now };
     const log = {
-      answerId: answer.answerId, questionId: answer.questionId, kpIds: [answer.kpId], skillId, skillMastery, textId: answer.textId, conceptKey, conceptLabel,
+      answerId: answer.answerId, questionId: answer.questionId, kpIds: [answer.kpId], requestedSkillId:answer.targetSkillId, skillId, skillMastery, textId: answer.textId, conceptKey, conceptLabel,
       selectedAnswer: answer.selectedAnswer, correctAnswer: answer.correctAnswer, conceptMastery: conceptResult, isCorrect: answer.isCorrect,
       usedHint: answer.usedHint, attemptCount: answer.attemptCount, responseTimeMs: answer.responseTimeMs, localDate: answer.localDate,
       quality: update.quality, xpEarned: update.xpEarned, mastery: update.mastery, status: update.status, nextReviewAt: update.nextReviewAt,
