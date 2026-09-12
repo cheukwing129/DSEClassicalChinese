@@ -21,11 +21,14 @@ test('Firestore content sync defaults to read-only review and supports ADC',()=>
   assert.doesNotMatch(source,/csv-parser/);
 });
 
-test('Firestore importer loads stage 3 passage content and preserves passage metadata',()=>{
+test('Firestore importer loads stage 3 and prescribed-text language metadata',()=>{
   const source=read('scripts/import_to_firestore.js');
   assert.match(source,/question-pack-transfer-07\.js/);
   assert.match(source,/passageId:question\.passageId\|\|null/);
   assert.match(source,/passageText:question\.passageText\|\|null/);
+  assert.match(source,/question-pack-settext-language-01\.js/);
+  assert.match(source,/sourceWorkId:question\.sourceWorkId\|\|null/);
+  assert.match(source,/setTextLanguage:question\.setTextLanguage===true\?true:null/);
 });
 
 test('Firestore importer resolves Firebase Admin through the Functions package boundary',()=>{
@@ -44,10 +47,23 @@ test('prune only removes stale question and knowledge-point documents',()=>{
   assert.match(source,/Firestore catalog still differs after synchronization/);
 });
 
-test('production catalog workflow requires tests preview explicit confirmation and final verification',()=>{
+test('successful main tests trigger only non-destructive automatic catalog upsert',()=>{
   const workflow=read('.github/workflows/firebase-content-sync.yml');
   assert.match(workflow,/workflow_dispatch:/);
+  assert.match(workflow,/workflow_run:/);
+  assert.match(workflow,/workflows: \['Tests'\]/);
+  assert.match(workflow,/workflow_run\.conclusion == 'success'/);
+  assert.match(workflow,/workflow_run\.head_branch == 'main'/);
   assert.doesNotMatch(workflow,/\npush:/);
+  const autoStep=workflow.indexOf('Safely upsert reviewed catalog after successful main tests');
+  const applyIndex=workflow.indexOf('import_to_firestore.js --apply',autoStep);
+  assert.ok(autoStep>=0&&applyIndex>autoStep);
+  const autoBlock=workflow.slice(autoStep,workflow.indexOf('- name: Safely upsert reviewed catalog\n',autoStep));
+  assert.doesNotMatch(autoBlock,/--prune|--verify/);
+});
+
+test('manual prune still requires preview explicit confirmation and final exact verification',()=>{
+  const workflow=read('.github/workflows/firebase-content-sync.yml');
   assert.match(workflow,/sync-and-prune/);
   assert.match(workflow,/PRUNE_REVIEWED_CONTENT/);
   assert.match(workflow,/FIREBASE_SERVICE_ACCOUNT_MANJINGO/);
