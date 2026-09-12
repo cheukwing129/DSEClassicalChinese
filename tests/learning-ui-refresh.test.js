@@ -19,7 +19,9 @@ function runtime(){
   };
   const window={
     ManjingoContent:{knowledgePoints:[],getKnowledgePointIds(){return[]},selectQuestionsForPlan(){return[]}},
-    ManjingoLearningPath:{buildStages(){return[]},availableKnowledgePointIds(){return[]},currentStage(){return null}},
+    ManjingoLearningPath:{buildStages(){return[]},availableSkillIds(){return[]},currentStage(){return null}},
+    ManjingoQuestionMetadataV1:{annotate(question){return question}},
+    ManjingoSkillResultsV1:{allItems(){return[]},coreSkills(){return[]},kpIdsForSkill(){return[]},skill(){return null}},
     ManjingoLocalLearning:learning,
     ManjingoWeaknessPanel:{render(){weaknessRenders++}},
     ManjingoMasteryDashboard:{mount(){dashboardRenders++}},
