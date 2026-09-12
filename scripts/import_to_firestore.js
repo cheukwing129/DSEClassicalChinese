@@ -10,6 +10,7 @@
  *   public/question-pack-transfer-03.js
  *   public/question-pack-transfer-04.js
  *   public/question-pack-transfer-05.js
+ *   public/question-pack-transfer-06.js
  *   public/content-catalog.js
  *   public/question-pack-adaptive-01.js
  *   public/question-pack-adaptive-02.js
@@ -79,7 +80,7 @@ function loadReviewedCatalog() {
   vm.createContext(context);
   for (const file of [
     'question-pack-02.js','question-pack-03.js','question-pack-lesson.js','question-pack-capacity-01.js',
-    'question-pack-transfer-01.js','question-pack-transfer-03.js','question-pack-transfer-04.js','question-pack-transfer-05.js',
+    'question-pack-transfer-01.js','question-pack-transfer-03.js','question-pack-transfer-04.js','question-pack-transfer-05.js','question-pack-transfer-06.js',
     'content-catalog.js','question-pack-adaptive-01.js','question-pack-adaptive-02.js','question-pack-adaptive-03.js','question-difficulty.js'
   ]) {
     const source = fs.readFileSync(path.join(root, 'public', file), 'utf8');
