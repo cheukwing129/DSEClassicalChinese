@@ -76,7 +76,7 @@ function ensureHost(){
 }
 function renderLanding(){
  const host=ensureHost(),state=readState();if(!host)return false;
- host.innerHTML='<div class="stage3-kicker">STAGE 3 · 進階閱讀</div><h2 class="stage3-title">篇章挑戰</h2><p class="stage3-lead">用陌生文言短篇練習跨句理解。每輪 6 題，從 18 題題庫輪換抽取三種能力各 2 題。</p><div class="stage3-skill-grid">'+SKILLS.map(skill=>'<div class="stage3-skill"><strong>'+esc(skill.label)+'</strong><span>'+esc(skill.description)+'</span></div>').join('')+'</div><div class="stage3-meta"><span class="stage3-pill">6 題</span><span class="stage3-pill">約 8 分鐘</span><span class="stage3-pill">陌生篇章</span>'+(state.bestScore?'<span class="stage3-pill">最佳 '+state.bestScore+' / 6</span>':'')+'</div><button class="action" id="stage3Start" type="button">開始篇章挑戰</button><div class="stage3-note">這是獨立進階練習，不會改動每日 10 題核心學習的安排。</div>';
+ host.innerHTML='<div class="stage3-kicker">STAGE 3 · 進階閱讀</div><h2 class="stage3-title">篇章挑戰</h2><p class="stage3-lead">用陌生文言短篇練習跨句理解。每輪 6 題，從 36 題題庫輪換抽取三種能力各 2 題。</p><div class="stage3-skill-grid">'+SKILLS.map(skill=>'<div class="stage3-skill"><strong>'+esc(skill.label)+'</strong><span>'+esc(skill.description)+'</span></div>').join('')+'</div><div class="stage3-meta"><span class="stage3-pill">6 題</span><span class="stage3-pill">約 8 分鐘</span><span class="stage3-pill">陌生篇章</span>'+(state.bestScore?'<span class="stage3-pill">最佳 '+state.bestScore+' / 6</span>':'')+'</div><button class="action" id="stage3Start" type="button">開始篇章挑戰</button><div class="stage3-note">這是獨立進階練習，不會改動每日 10 題核心學習的安排。</div>';
  const button=root.document.getElementById('stage3Start');if(button)button.addEventListener('click',startChallenge);return true;
 }
 function startChallenge(){
