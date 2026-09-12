@@ -38,13 +38,13 @@ html.app-booting{min-height:100%;background:#fff}html.app-booting body{visibilit
 <script>
 (function(){
 'use strict';
-const content=window.ManyingoContent;
+const content=window.ManjingoContent;
 const localQuestions=content?content.questions.slice():[];
-const planRuntime=window.ManyingoDailyPlanRuntime;
+const planRuntime=window.ManjingoDailyPlanRuntime;
 const SESSION_TARGET=10;
 let questions=localQuestions.slice(),index=0,sessionActive=false,currentPlanSource='local',cloudQuestionPool=[],replanScheduled=false,cloudReplanToken=0;
 const completedQuestionIds=new Set();
-function learning(){return window.ManyingoLocalLearning}
+function learning(){return window.ManjingoLocalLearning}
 function progress(){return learning()?learning().getProgress():{totalXp:0,todayXp:0,streak:0}}
 function localDate(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function levelInfo(totalXp){let level=1,xp=totalXp,need=50;while(xp>=need&&level<99){xp-=need;level++;need=50+(level-2)*30}return{level,current:xp,need};}
@@ -73,7 +73,7 @@ function showLearningFeedback(box,q,correct,result){const fb=box.querySelector('
 function answerIsCurrent(box,answerId){return !!box&&!!box.dataset&&box.dataset.answerId===String(answerId||'')}
 async function answer(box,q,value){if(box.dataset.answered)return;box.dataset.answered='1';completedQuestionIds.add(String(q.id));const answerId=createAnswerId();box.dataset.answerId=answerId;const correct=normal(value)===normal(q.a);box.querySelectorAll('.option').forEach(function(b){b.disabled=true;const selected=b.textContent===String(value),isAnswer=normal(b.textContent)===normal(q.a);if(selected)b.classList.add(correct?'correct':'wrong');if(!correct&&isAnswer)b.classList.add('correct')});const check=box.querySelector('#check'),input=box.querySelector('#input'),nextButton=box.querySelector('#next');if(check)check.disabled=true;if(input)input.disabled=true;if(nextButton)nextButton.disabled=false;showLearningFeedback(box,q,correct,null);try{const result=await cloudSubmit(q,correct,answerId,value);if(result&&result.success){const synced=learning()?learning().syncRemoteResult(q.kpId,result):result;const repair=correct&&learning()?learning().resolveQuestionMisconceptions(q.kpId,q.id,{skipConcept:true}):{resolvedMisconceptions:0,remainingMisconceptionWeight:0};render();if(answerIsCurrent(box,answerId))showLearningFeedback(box,q,correct,{...result,...synced,...repair,conceptMastery:synced&&synced.conceptMastery||result.conceptMastery||null});document.getElementById('status').textContent=result.duplicate?'☁️ 答案已存在，沒有重複計分':'☁️ 已同步學習進度';scheduleRemainingPlanRefresh();void refreshCloudRemainingPlan();return}}catch(e){console.warn('cloud answer unavailable; switching to local',e)}const localResult=learning()?learning().submit(q.kpId,correct,{questionId:q.id,selectedAnswer:value,correctAnswer:q.a,conceptKey:q.misconceptionKey,conceptLabel:q.misconceptionLabel,attemptCount:1,usedHint:false,baseXp:q.baseXp||q.xp||8}):null;render();if(answerIsCurrent(box,answerId))showLearningFeedback(box,q,correct,localResult);document.getElementById('status').textContent=correct?'📱 已記錄：掌握度已更新':'📱 已記錄：這個知識點會優先複習';scheduleRemainingPlanRefresh();}
 window.addEventListener('manjingo:learning-state-changed',scheduleRemainingPlanRefresh);
-document.getElementById('start').onclick=function(){const shell=window.ManyingoHomeShell;if(shell)shell.showView('today');document.getElementById('plan').classList.add('hidden');document.getElementById('quiz').classList.remove('hidden');index=0;sessionActive=true;completedQuestionIds.clear();if(!questions.length)questions=buildLocalPlan().questions;if(!questions.length){finish();return}renderQuestion();if(shell)shell.focusQuiz()};
+document.getElementById('start').onclick=function(){const shell=window.ManjingoHomeShell;if(shell)shell.showView('today');document.getElementById('plan').classList.add('hidden');document.getElementById('quiz').classList.remove('hidden');index=0;sessionActive=true;completedQuestionIds.clear();if(!questions.length)questions=buildLocalPlan().questions;if(!questions.length){finish();return}renderQuestion();if(shell)shell.focusQuiz()};
 function revealApp(){document.documentElement.classList.remove('app-booting')}
 render();applyLocalPlan();revealApp();void loadCloudPlan();
 })();
