@@ -81,7 +81,8 @@ test('all six v1 mascot state assets exist while candidate and production artwor
 test('thinking and determined states are connected to semantic learning UI',()=>{
   const css=read('public/app-ui.css');
   const runtime=read('public/mascot-runtime.js');
-  assert.match(css,/body\.app-nav-ready>\.title::after[^}]*moling-neutral\.svg/);
+  assert.match(css,/body\.app-nav-ready>\.title[^}]*manyingo-logo-classic\.svg/);
+  assert.match(css,/html\[data-ui-theme="ink"\] body\.app-nav-ready>\.title[^}]*manyingo-logo-ink\.svg/);
   assert.match(css,/\.player-status \.streak::before[^}]*moling-determined\.svg/);
   assert.match(css,/#lessonApp \.lesson-step>\.lesson-icon\.mascot-thinking[^}]*moling-thinking\.svg/);
   assert.match(runtime,/semanticThinkingIcon/);
