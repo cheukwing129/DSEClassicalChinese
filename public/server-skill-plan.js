@@ -1,7 +1,7 @@
 (function(root,factory){
 'use strict';
 let curriculum=root&&root.ManjingoCurriculumV1;
-if(typeof module==='object'&&module.exports){curriculum=require('./curriculum-v1.js');module.exports=factory(curriculum);return;}
+if(typeof module==='object'&&module.exports){curriculum=require('./curriculum-v1.js');const api=factory(curriculum);module.exports=api;root.ManjingoServerSkillPlan=api;if(root.window&&root.window!==root)root.window.ManjingoServerSkillPlan=api;return;}
 const api=factory(curriculum);root.ManjingoServerSkillPlan=api;if(root.window&&root.window!==root)root.window.ManjingoServerSkillPlan=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(curriculum){
 'use strict';
