@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
-function load(){const values=new Map(),localStorage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,String(v)),removeItem:k=>values.delete(k)},context={window:{localStorage},localStorage,Map,Set,Array,Object,String,Number,Math,JSON};vm.createContext(context);vm.runInContext(read('public/question-rotation.js'),context);return{rotation:context.ManjingoQuestionRotation||context.window.ManjingoQuestionRotation,values};}
+function load(options={}){const values=new Map(),localStorage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,String(v)),removeItem:k=>values.delete(k)},window={localStorage,...(options.window||{})},context={window,localStorage,Map,Set,Array,Object,String,Number,Math,JSON};vm.createContext(context);vm.runInContext(read('public/question-rotation.js'),context);return{rotation:context.ManjingoQuestionRotation||context.window.ManjingoQuestionRotation,values,window};}
 function q(id,kpId='kp',sourceSentenceId=null){const value={id,kpId,q:'題目 '+id};if(sourceSentenceId)value.sourceSentenceId=sourceSentenceId;return value;}
 
 test('recently displayed questions rotate behind unseen questions',()=>{const{rotation}=load(),list=[q('q1'),q('q2'),q('q3'),q('q4'),q('q5')];assert.deepEqual(Array.from(rotation.select(list,3),x=>x.id),['q1','q2','q3']);rotation.remember(list[0]);rotation.remember(list[1]);rotation.remember(list[2]);assert.deepEqual(Array.from(rotation.select(list,3),x=>x.id),['q4','q5','q1']);});
@@ -21,4 +21,15 @@ test('source sentence history is capped independently from per-kp question histo
 
 test('clear removes both question and source sentence history',()=>{const{rotation}=load();rotation.remember(q('q1','kp1','sentence:one'));assert.equal(rotation.recentSentenceIds().length,1);rotation.clear();assert.equal(rotation.recentIds('kp1').length,0);assert.equal(rotation.recentSentenceIds().length,0);});
 
-test('homepage plan and lesson practice share rotation while daily selection adds source diversity',()=>{const catalog=read('public/content-catalog.js'),lesson=read('public/local-lesson.js'),rotation=read('public/question-rotation.js');assert.match(catalog,/curriculum-v1\.js[\s\S]*question-metadata-v1\.js[\s\S]*question-diversity-v1\.js[\s\S]*question-rotation\.js/);assert.match(catalog,/rotation\.rank\(pool\)/);assert.match(catalog,/diversity\.choose\(ranked,queue/);assert.match(catalog,/recentSentenceIds/);assert.match(lesson,/rot\.select\(list,count\)/);assert.match(lesson,/rot\.rank\(list\)/);assert.match(lesson,/rot\.remember\(q\)/);assert.match(rotation,/\.question,\.lesson-question/);});
+test('catalog and lesson rotation rebalance authoring-order answer bias',()=>{
+ const allA=Array.from({length:8},(_,i)=>({id:'lesson'+(i+1),kpId:'kp',q:'題目 '+(i+1),type:'choice',o:['A','B','C','D'],a:'A'}));
+ const content={questions:allA.map(item=>({...item,o:item.o.slice()}))};
+ const{rotation,window}=load({window:{ManjingoContent:content}});
+ const catalogSlots=window.ManjingoContent.questions.map(item=>item.o.indexOf(item.a)),catalogCounts=[0,0,0,0];catalogSlots.forEach(slot=>catalogCounts[slot]++);
+ assert.ok(Math.max(...catalogCounts)-Math.min(...catalogCounts)<=1,JSON.stringify(catalogCounts));
+ const selected=rotation.select(allA,4),selectedCounts=[0,0,0,0];selected.forEach(item=>selectedCounts[item.o.indexOf(item.a)]++);
+ assert.ok(Math.max(...selectedCounts)-Math.min(...selectedCounts)<=1,JSON.stringify(selectedCounts));
+ assert.ok(selected.some(item=>item.o[0]!=='A'));
+});
+
+test('homepage plan and lesson practice share rotation while daily selection adds source diversity',()=>{const catalog=read('public/content-catalog.js'),lesson=read('public/local-lesson.js'),rotation=read('public/question-rotation.js');assert.match(catalog,/curriculum-v1\.js[\s\S]*question-metadata-v1\.js[\s\S]*question-diversity-v1\.js[\s\S]*question-rotation\.js/);assert.match(catalog,/rotation\.rank\(pool\)/);assert.match(catalog,/diversity\.choose\(ranked,queue/);assert.match(catalog,/recentSentenceIds/);assert.match(lesson,/rot\.select\(list,count\)/);assert.match(lesson,/rot\.rank\(list\)/);assert.match(lesson,/rot\.remember\(q\)/);assert.match(rotation,/\.question,\.lesson-question/);assert.match(rotation,/balanceCatalogChoices/);});
