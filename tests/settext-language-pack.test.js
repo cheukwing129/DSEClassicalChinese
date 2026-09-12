@@ -64,7 +64,7 @@ test('second language pack targets eighteen previously uncovered natural languag
  assert.equal(pack.questions.length,18);
  assert.equal(new Set(pack.questions.map(q=>q.id)).size,18);
  assert.equal(pack.questions.every(q=>/^stl2q\d{3}$/.test(q.id)),true);
- const primary=pack.questions.map(q=>q.skillIds[0]).sort();
+ const primary=Array.from(pack.questions,q=>String(q.skillIds[0])).sort();
  assert.deepEqual(primary,TARGETED_02);
  assert.deepEqual([...new Set(pack.questions.map(q=>q.difficultyTier))].sort(),['application','foundation','transfer']);
  assert.ok(new Set(pack.questions.map(q=>q.sourceTextId)).size>=8,'targeted pack should still draw from at least eight prescribed groups');
