@@ -49,3 +49,10 @@ test('practice session metadata preserves skill and concrete route',()=>{
 test('targeted lesson question pool spans KP routes for one skill',()=>{
  const questions=[{id:'a1',kpId:'kp_a',skillIds:['fw.zhi'],normalCore:true},{id:'b1',kpId:'kp_b',skillIds:['fw.zhi'],normalCore:true},{id:'e1',kpId:'kp_a',skillIds:['fw.er'],normalCore:true}],window={ManjingoContent:{questions,knowledgePoints:[]},ManjingoSkillResultsV1:{annotatedQuestions(){return questions},kpIdsForSkill(id){return id==='fw.zhi'?['kp_a','kp_b']:['kp_a']}},ManjingoLocalLearning:{getKnowledge(){return{misconceptions:{}}}},ManjingoQuestionRotation:{rank(list){return list.slice()}}},context={window,console,Map,Set,Array,Object,Number,String,Math,RegExp,Date,URLSearchParams};vm.createContext(context);vm.runInContext(read('public/local-lesson.js'),context);const selected=context.window.ManjingoLocalLesson.targetedQuestions('kp_a',5,'fw.zhi');assert.deepEqual(Array.from(selected,x=>x.id),['a1','b1']);
 });
+
+test('weakness and results practice links carry the exact selected skill',()=>{
+ const weakness=read('public/weakness-panel.js'),dashboard=read('public/mastery-dashboard.js'),lesson=read('public/local-lesson.js');
+ assert.match(weakness,/function href\(kpId,skillId\)/);assert.match(weakness,/&skillId='\+encodeURIComponent\(skillId\)/);assert.match(weakness,/href\(item\.kpId,item\.skillId\)/);
+ assert.match(dashboard,/function href\(item\)/);assert.match(dashboard,/&skillId='\+encodeURIComponent\(item\.skillId\)/);
+ assert.match(lesson,/requestedSkillId=params\.get\('skillId'\)\|\|''/);assert.match(lesson,/resolveTargetSkill\(kpId,requestedSkillId\)/);
+});
