@@ -27,7 +27,7 @@ test('only reviewed static metadata is cached and caches stay bounded',()=>{
 });
 
 test('latency optimization preserves authoritative question validation and OAuth exchange',()=>{
-  assert.match(worker,/grant_type: 'urn:ietf:params:oauth-grant-type:jwt-bearer'/.source.replace('oauth-grant','oauth:grant'));
+  assert.match(worker,/grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer'/);
   assert.match(worker,/const questionKpId = question\.data\.kpId/);
   assert.match(worker,/questionKpId && questionKpId !== answer\.kpId/);
   assert.match(worker,/getQuestionMetadata\(env, token, answer\.questionId\)/);
