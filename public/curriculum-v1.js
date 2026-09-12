@@ -1,156 +1,31 @@
 (function(root,factory){
-'use strict';
-const api=factory();
-if(typeof module==='object'&&module.exports)module.exports=api;
-root.ManjingoCurriculumV1=api;
-if(root.window&&root.window!==root)root.window.ManjingoCurriculumV1=api;
+'use strict';const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.ManjingoCurriculumV1=api;if(root.window&&root.window!==root)root.window.ManjingoCurriculumV1=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
 'use strict';
-
 const VERSION='language-transfer-v1';
-
-const domains=[
- {id:'lex',label:'詞彙與語義',core:true},
- {id:'fw',label:'文言虛詞',core:true},
- {id:'syn',label:'文言句法',core:true},
- {id:'read',label:'閱讀策略',core:true},
- {id:'trans',label:'翻譯',core:true},
- {id:'transfer',label:'陌生語境遷移',core:true}
-];
-
+const domains=[{id:'lex',label:'詞彙與語義',core:true},{id:'fw',label:'文言虛詞',core:true},{id:'syn',label:'文言句法',core:true},{id:'read',label:'閱讀策略',core:true},{id:'trans',label:'翻譯',core:true},{id:'transfer',label:'陌生語境遷移',core:true}];
 const skills=[
- {id:'lex.context-inference',domain:'lex',label:'利用上下文推斷實詞義',stage:1},
- {id:'lex.polysemy',domain:'lex',label:'一詞多義',stage:1},
- {id:'lex.ancient-modern',domain:'lex',label:'古今異義',stage:1},
- {id:'lex.word-class-shift',domain:'lex',label:'詞類活用',stage:2},
- {id:'lex.causative',domain:'lex',label:'使動用法',stage:2},
- {id:'lex.intentional',domain:'lex',label:'意動用法',stage:2},
- {id:'lex.tongjia',domain:'lex',label:'通假／文字對應',stage:2},
- {id:'lex.semantic-role',domain:'lex',label:'依句法位置判斷詞性與語義功能',stage:2},
- {id:'fw.zhi',domain:'fw',label:'之',stage:1},
- {id:'fw.er',domain:'fw',label:'而',stage:1},
- {id:'fw.yi',domain:'fw',label:'以',stage:1},
- {id:'fw.yu',domain:'fw',label:'於',stage:1},
- {id:'fw.qi',domain:'fw',label:'其',stage:1},
- {id:'fw.wei',domain:'fw',label:'為',stage:1},
- {id:'fw.zhe',domain:'fw',label:'者',stage:1},
- {id:'fw.suo',domain:'fw',label:'所',stage:1},
- {id:'fw.ze',domain:'fw',label:'則',stage:1},
- {id:'fw.nai',domain:'fw',label:'乃',stage:1},
- {id:'fw.qie',domain:'fw',label:'且',stage:2},
- {id:'fw.hu',domain:'fw',label:'乎',stage:2},
- {id:'fw.yan',domain:'fw',label:'焉',stage:2},
- {id:'fw.ye',domain:'fw',label:'也',stage:1},
- {id:'syn.judgment',domain:'syn',label:'判斷句',stage:1},
- {id:'syn.passive',domain:'syn',label:'被動句',stage:1},
- {id:'syn.object-fronting',domain:'syn',label:'賓語前置',stage:1},
- {id:'syn.adverbial-postpose',domain:'syn',label:'狀語／介詞結構後置',stage:2},
- {id:'syn.attributive-postpose',domain:'syn',label:'定語後置',stage:2},
- {id:'syn.ellipsis-subject',domain:'syn',label:'主語省略',stage:1},
- {id:'syn.ellipsis-object',domain:'syn',label:'賓語／介詞賓語省略',stage:2},
- {id:'syn.negative-patterns',domain:'syn',label:'否定結構',stage:1},
- {id:'syn.interrogative-patterns',domain:'syn',label:'疑問結構',stage:1},
- {id:'syn.fixed-patterns',domain:'syn',label:'常見固定格式',stage:2},
- {id:'read.sentence-core',domain:'read',label:'找句子主幹',stage:1},
- {id:'read.referent-tracking',domain:'read',label:'代詞與省略主語追蹤',stage:1},
- {id:'read.logical-relation',domain:'read',label:'因果／轉折／承接／假設／並列',stage:1},
- {id:'read.parallel-inference',domain:'read',label:'利用對偶／平行結構推義',stage:2},
- {id:'read.context-clues',domain:'read',label:'上下文語義線索',stage:1},
- {id:'read.actor-tracking',domain:'read',label:'多人物敘事施事者追蹤',stage:2},
- {id:'read.unknown-word-tolerance',domain:'read',label:'不逐字全懂仍能掌握句意',stage:2},
- {id:'read.argumentation',domain:'read',label:'論證方法與說理關係',stage:3},
- {id:'trans.lexical-fidelity',domain:'trans',label:'關鍵實詞落實',stage:1},
- {id:'trans.function-word',domain:'trans',label:'虛詞處理',stage:1},
- {id:'trans.reorder',domain:'trans',label:'倒裝還原',stage:1},
- {id:'trans.supplement',domain:'trans',label:'省略補足',stage:1},
- {id:'trans.ancient-modern',domain:'trans',label:'古今義轉換',stage:1},
- {id:'trans.fluency',domain:'trans',label:'準確而自然的現代漢語',stage:2},
- {id:'trans.integrated',domain:'trans',label:'綜合翻譯',stage:2},
- {id:'transfer.single-sentence',domain:'transfer',label:'單句陌生語境',stage:1},
- {id:'transfer.sentence-pair',domain:'transfer',label:'兩句互證',stage:2},
- {id:'transfer.micro-passage',domain:'transfer',label:'3–5 句小段',stage:2},
- {id:'transfer.short-passage',domain:'transfer',label:'短篇陌生文言',stage:3},
- {id:'transfer.mixed',domain:'transfer',label:'字詞＋句式＋翻譯混合任務',stage:3}
+{id:'lex.context-inference',domain:'lex',label:'利用上下文推斷實詞義',stage:1},{id:'lex.polysemy',domain:'lex',label:'一詞多義',stage:1},{id:'lex.ancient-modern',domain:'lex',label:'古今異義',stage:1},{id:'lex.word-class-shift',domain:'lex',label:'詞類活用',stage:2},{id:'lex.causative',domain:'lex',label:'使動用法',stage:2},{id:'lex.intentional',domain:'lex',label:'意動用法',stage:2},{id:'lex.tongjia',domain:'lex',label:'通假／文字對應',stage:2},{id:'lex.semantic-role',domain:'lex',label:'依句法位置判斷詞性與語義功能',stage:2},
+{id:'fw.zhi',domain:'fw',label:'之',stage:1},{id:'fw.er',domain:'fw',label:'而',stage:1},{id:'fw.yi',domain:'fw',label:'以',stage:1},{id:'fw.yu',domain:'fw',label:'於',stage:1},{id:'fw.qi',domain:'fw',label:'其',stage:1},{id:'fw.wei',domain:'fw',label:'為',stage:1},{id:'fw.zhe',domain:'fw',label:'者',stage:1},{id:'fw.suo',domain:'fw',label:'所',stage:1},{id:'fw.ze',domain:'fw',label:'則',stage:1},{id:'fw.nai',domain:'fw',label:'乃',stage:1},{id:'fw.qie',domain:'fw',label:'且',stage:2},{id:'fw.hu',domain:'fw',label:'乎',stage:2},{id:'fw.yan',domain:'fw',label:'焉',stage:2},{id:'fw.ye',domain:'fw',label:'也',stage:1},
+{id:'syn.judgment',domain:'syn',label:'判斷句',stage:1},{id:'syn.passive',domain:'syn',label:'被動句',stage:1},{id:'syn.object-fronting',domain:'syn',label:'賓語前置',stage:1},{id:'syn.adverbial-postpose',domain:'syn',label:'狀語／介詞結構後置',stage:2},{id:'syn.attributive-postpose',domain:'syn',label:'定語後置',stage:2},{id:'syn.ellipsis-subject',domain:'syn',label:'主語省略',stage:1},{id:'syn.ellipsis-object',domain:'syn',label:'賓語／介詞賓語省略',stage:2},{id:'syn.negative-patterns',domain:'syn',label:'否定結構',stage:1},{id:'syn.interrogative-patterns',domain:'syn',label:'疑問結構',stage:1},{id:'syn.fixed-patterns',domain:'syn',label:'常見固定格式',stage:2},
+{id:'read.sentence-core',domain:'read',label:'找句子主幹',stage:1},{id:'read.referent-tracking',domain:'read',label:'代詞與省略主語追蹤',stage:1},{id:'read.logical-relation',domain:'read',label:'因果／轉折／承接／假設／並列',stage:1},{id:'read.parallel-inference',domain:'read',label:'利用對偶／平行結構推義',stage:2},{id:'read.context-clues',domain:'read',label:'上下文語義線索',stage:1},{id:'read.actor-tracking',domain:'read',label:'多人物敘事施事者追蹤',stage:2},{id:'read.unknown-word-tolerance',domain:'read',label:'不逐字全懂仍能掌握句意',stage:2},{id:'read.argumentation',domain:'read',label:'論證方法與說理關係',stage:3},
+{id:'trans.lexical-fidelity',domain:'trans',label:'關鍵實詞落實',stage:1},{id:'trans.function-word',domain:'trans',label:'虛詞處理',stage:1},{id:'trans.reorder',domain:'trans',label:'倒裝還原',stage:1},{id:'trans.supplement',domain:'trans',label:'省略補足',stage:1},{id:'trans.ancient-modern',domain:'trans',label:'古今義轉換',stage:1},{id:'trans.fluency',domain:'trans',label:'準確而自然的現代漢語',stage:2},{id:'trans.integrated',domain:'trans',label:'綜合翻譯',stage:2},
+{id:'transfer.single-sentence',domain:'transfer',label:'單句陌生語境',stage:1},{id:'transfer.sentence-pair',domain:'transfer',label:'兩句互證',stage:2},{id:'transfer.micro-passage',domain:'transfer',label:'3–5 句小段',stage:2},{id:'transfer.short-passage',domain:'transfer',label:'短篇陌生文言',stage:3},{id:'transfer.mixed',domain:'transfer',label:'字詞＋句式＋翻譯混合任務',stage:3}
 ];
-
 const migration={
- kp_yueyang_001:{action:'refactor',targetSkillIds:['lex.context-inference']},
- kp_yueyang_004:{action:'optional-set-text',targetSkillIds:[]},
- kp_virtual_zhi:{action:'retain',targetSkillIds:['fw.zhi']},
- kp_virtual_er:{action:'retain',targetSkillIds:['fw.er']},
- kp_virtual_yi:{action:'retain',targetSkillIds:['fw.yi']},
- kp_virtual_yu:{action:'retain',targetSkillIds:['fw.yu']},
- kp_virtual_qi:{action:'retain',targetSkillIds:['fw.qi']},
- kp_virtual_ze:{action:'retain',targetSkillIds:['fw.ze']},
- kp_virtual_wei:{action:'retain',targetSkillIds:['fw.wei']},
- kp_virtual_zhe:{action:'retain',targetSkillIds:['fw.zhe']},
- kp_virtual_suo:{action:'retain',targetSkillIds:['fw.suo']},
- kp_virtual_ye:{action:'retain',targetSkillIds:['fw.ye']},
- kp_read_sentence_core:{action:'retain',targetSkillIds:['read.sentence-core']},
- kp_read_context_clues:{action:'retain',targetSkillIds:['read.context-clues']},
- kp_read_logical_relation:{action:'retain',targetSkillIds:['read.logical-relation']},
- kp_syn_negative_patterns:{action:'retain',targetSkillIds:['syn.negative-patterns']},
- kp_syn_interrogative_patterns:{action:'retain',targetSkillIds:['syn.interrogative-patterns']},
- kp_trans_function_word:{action:'retain',targetSkillIds:['trans.function-word']},
- kp_trans_supplement:{action:'retain',targetSkillIds:['trans.supplement']},
- kp_trans_ancient_modern:{action:'retain',targetSkillIds:['trans.ancient-modern']},
- gj_004:{action:'retain',targetSkillIds:['lex.ancient-modern']},
- gj_005:{action:'retain',targetSkillIds:['lex.ancient-modern']},
- cy_004:{action:'refactor',targetSkillIds:['lex.word-class-shift']},
- cy_006:{action:'retain',targetSkillIds:['lex.word-class-shift']},
- sx_001:{action:'retain',targetSkillIds:['syn.judgment']},
- sx_003:{action:'retain',targetSkillIds:['syn.passive']},
- sx_004:{action:'retain',targetSkillIds:['syn.passive']},
- sx_005:{action:'retain',targetSkillIds:['syn.ellipsis-subject','syn.ellipsis-object']},
- sx_006:{action:'retain',targetSkillIds:['syn.object-fronting']},
- sx_008:{action:'retain',targetSkillIds:['syn.adverbial-postpose']},
- kp_translation_001:{action:'refactor',targetSkillIds:['trans.reorder','trans.lexical-fidelity','trans.integrated']},
- kp_theme_001:{action:'optional-set-text',targetSkillIds:[]},
- kp_argument_001:{action:'advanced-reading',targetSkillIds:['read.argumentation']},
- kp_argument_002:{action:'advanced-reading',targetSkillIds:['read.argumentation']},
- kp_argument_003:{action:'advanced-reading',targetSkillIds:['read.argumentation']},
- kp_yueyang_context:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
- kp_yueyang_scene:{action:'optional-set-text',targetSkillIds:[]},
- kp_yueyang_emotion:{action:'optional-set-text',targetSkillIds:[]},
- kp_chushi_loyalty:{action:'optional-set-text',targetSkillIds:[]},
- kp_chushi_reward:{action:'optional-set-text',targetSkillIds:[]},
- kp_chushi_experience:{action:'optional-set-text',targetSkillIds:[]},
- kp_fish_righteousness:{action:'optional-set-text',targetSkillIds:[]},
- kp_fish_shame:{action:'optional-set-text',targetSkillIds:[]},
- kp_shengyou_adversity:{action:'optional-set-text',targetSkillIds:[]},
- kp_shengyou_country:{action:'optional-set-text',targetSkillIds:[]},
- kp_caogui_trust:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
- kp_caogui_strategy:{action:'optional-set-text',targetSkillIds:[]},
- kp_zouji_selfknowledge:{action:'optional-set-text',targetSkillIds:[]},
- kp_zouji_remonstrance:{action:'optional-set-text',targetSkillIds:[]},
- kp_taohua_discovery:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
- kp_taohua_society:{action:'optional-set-text',targetSkillIds:[]},
- kp_loushi_character:{action:'optional-set-text',targetSkillIds:[]},
- kp_loushi_allusion:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
- kp_ai_lotus_symbol:{action:'optional-set-text',targetSkillIds:[]},
- kp_ai_lotus_contrast:{action:'optional-set-text',targetSkillIds:[]},
- kp_maqianli_talent:{action:'optional-set-text',targetSkillIds:[]},
- kp_maqianli_ignorance:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
- kp_xiaoshi_pool:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
- kp_xiaoshi_mood:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
- kp_p3_zhi:{action:'merge',targetSkillIds:['fw.zhi']},
- kp_p3_er:{action:'merge',targetSkillIds:['fw.er']},
- kp_p3_yi:{action:'merge',targetSkillIds:['fw.yi']},
- kp_p3_yu:{action:'merge',targetSkillIds:['fw.yu']},
- kp_p3_qi:{action:'merge',targetSkillIds:['fw.qi']},
- kp_p3_judgment:{action:'merge',targetSkillIds:['syn.judgment']},
- kp_p3_passive:{action:'merge',targetSkillIds:['syn.passive']},
- kp_p3_fronting:{action:'merge',targetSkillIds:['syn.object-fronting']},
- kp_p3_adverbial:{action:'merge',targetSkillIds:['syn.adverbial-postpose']},
- kp_p3_ellipsis:{action:'merge',targetSkillIds:['syn.ellipsis-subject','syn.ellipsis-object']},
- kp_p3_translation:{action:'merge',targetSkillIds:['trans.integrated']},
- kp_p3_argument:{action:'advanced-reading',targetSkillIds:['read.argumentation']}
+kp_yueyang_001:{action:'refactor',targetSkillIds:['lex.context-inference']},kp_yueyang_004:{action:'optional-set-text',targetSkillIds:[]},
+kp_virtual_zhi:{action:'retain',targetSkillIds:['fw.zhi']},kp_virtual_er:{action:'retain',targetSkillIds:['fw.er']},kp_virtual_yi:{action:'retain',targetSkillIds:['fw.yi']},kp_virtual_yu:{action:'retain',targetSkillIds:['fw.yu']},kp_virtual_qi:{action:'retain',targetSkillIds:['fw.qi']},kp_virtual_ze:{action:'retain',targetSkillIds:['fw.ze']},kp_virtual_wei:{action:'retain',targetSkillIds:['fw.wei']},kp_virtual_zhe:{action:'retain',targetSkillIds:['fw.zhe']},kp_virtual_suo:{action:'retain',targetSkillIds:['fw.suo']},kp_virtual_ye:{action:'retain',targetSkillIds:['fw.ye']},
+kp_read_sentence_core:{action:'retain',targetSkillIds:['read.sentence-core']},kp_read_context_clues:{action:'retain',targetSkillIds:['read.context-clues']},kp_read_logical_relation:{action:'retain',targetSkillIds:['read.logical-relation']},kp_syn_negative_patterns:{action:'retain',targetSkillIds:['syn.negative-patterns']},kp_syn_interrogative_patterns:{action:'retain',targetSkillIds:['syn.interrogative-patterns']},
+kp_trans_function_word:{action:'retain',targetSkillIds:['trans.function-word']},kp_trans_supplement:{action:'retain',targetSkillIds:['trans.supplement']},kp_trans_ancient_modern:{action:'retain',targetSkillIds:['trans.ancient-modern']},kp_transfer_single_sentence:{action:'retain',targetSkillIds:['transfer.single-sentence']},
+gj_004:{action:'retain',targetSkillIds:['lex.ancient-modern']},gj_005:{action:'retain',targetSkillIds:['lex.ancient-modern']},cy_004:{action:'refactor',targetSkillIds:['lex.word-class-shift']},cy_006:{action:'retain',targetSkillIds:['lex.word-class-shift']},
+sx_001:{action:'retain',targetSkillIds:['syn.judgment']},sx_003:{action:'retain',targetSkillIds:['syn.passive']},sx_004:{action:'retain',targetSkillIds:['syn.passive']},sx_005:{action:'retain',targetSkillIds:['syn.ellipsis-subject','syn.ellipsis-object']},sx_006:{action:'retain',targetSkillIds:['syn.object-fronting']},sx_008:{action:'retain',targetSkillIds:['syn.adverbial-postpose']},
+kp_translation_001:{action:'refactor',targetSkillIds:['trans.reorder','trans.lexical-fidelity','trans.integrated']},kp_theme_001:{action:'optional-set-text',targetSkillIds:[]},
+kp_argument_001:{action:'advanced-reading',targetSkillIds:['read.argumentation']},kp_argument_002:{action:'advanced-reading',targetSkillIds:['read.argumentation']},kp_argument_003:{action:'advanced-reading',targetSkillIds:['read.argumentation']},
+kp_yueyang_context:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},kp_yueyang_scene:{action:'optional-set-text',targetSkillIds:[]},kp_yueyang_emotion:{action:'optional-set-text',targetSkillIds:[]},kp_chushi_loyalty:{action:'optional-set-text',targetSkillIds:[]},kp_chushi_reward:{action:'optional-set-text',targetSkillIds:[]},kp_chushi_experience:{action:'optional-set-text',targetSkillIds:[]},kp_fish_righteousness:{action:'optional-set-text',targetSkillIds:[]},kp_fish_shame:{action:'optional-set-text',targetSkillIds:[]},kp_shengyou_adversity:{action:'optional-set-text',targetSkillIds:[]},kp_shengyou_country:{action:'optional-set-text',targetSkillIds:[]},kp_caogui_trust:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},kp_caogui_strategy:{action:'optional-set-text',targetSkillIds:[]},kp_zouji_selfknowledge:{action:'optional-set-text',targetSkillIds:[]},kp_zouji_remonstrance:{action:'optional-set-text',targetSkillIds:[]},kp_taohua_discovery:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},kp_taohua_society:{action:'optional-set-text',targetSkillIds:[]},kp_loushi_character:{action:'optional-set-text',targetSkillIds:[]},kp_loushi_allusion:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},kp_ai_lotus_symbol:{action:'optional-set-text',targetSkillIds:[]},kp_ai_lotus_contrast:{action:'optional-set-text',targetSkillIds:[]},kp_maqianli_talent:{action:'optional-set-text',targetSkillIds:[]},kp_maqianli_ignorance:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},kp_xiaoshi_pool:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},kp_xiaoshi_mood:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
+kp_p3_zhi:{action:'merge',targetSkillIds:['fw.zhi']},kp_p3_er:{action:'merge',targetSkillIds:['fw.er']},kp_p3_yi:{action:'merge',targetSkillIds:['fw.yi']},kp_p3_yu:{action:'merge',targetSkillIds:['fw.yu']},kp_p3_qi:{action:'merge',targetSkillIds:['fw.qi']},kp_p3_judgment:{action:'merge',targetSkillIds:['syn.judgment']},kp_p3_passive:{action:'merge',targetSkillIds:['syn.passive']},kp_p3_fronting:{action:'merge',targetSkillIds:['syn.object-fronting']},kp_p3_adverbial:{action:'merge',targetSkillIds:['syn.adverbial-postpose']},kp_p3_ellipsis:{action:'merge',targetSkillIds:['syn.ellipsis-subject','syn.ellipsis-object']},kp_p3_translation:{action:'merge',targetSkillIds:['trans.integrated']},kp_p3_argument:{action:'advanced-reading',targetSkillIds:['read.argumentation']}
 };
-
 const dailyPolicy={sessionSize:10,languageSkillTarget:{min:7,max:8},transferTarget:{min:2,max:3},setTextRecallTarget:{min:0,max:0},maxQuestionsPerSourceText:2,maxQuestionsPerSourceSentence:1,wrongAnswerFollowup:'same-skill-different-context-first'};
 const qualityPolicy={minimumQuestionsPerCoreSkill:6,minimumSourceTextsPerCoreSkill:3,minimumUnseenOrNonSetTextQuestions:2,maximumSingleSentenceShare:0.25,matureQuestionsPerSkill:{min:10,max:20},matureSourceTextsPerSkill:5};
-function skill(id){return skills.find(x=>x.id===String(id))||null}
-function migrationFor(kpId){return migration[String(kpId)]||null}
-function coreSkills(){return skills.filter(x=>x.stage<=2)}
+function skill(id){return skills.find(x=>x.id===String(id))||null}function migrationFor(kpId){return migration[String(kpId)]||null}function coreSkills(){return skills.filter(x=>x.stage<=2)}
 return{VERSION,domains,skills,migration,dailyPolicy,qualityPolicy,skill,migrationFor,coreSkills};
 });
