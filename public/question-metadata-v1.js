@@ -138,6 +138,12 @@ function migrationFor(kpId){
   return curriculum.migration&&curriculum.migration[String(kpId)]||null;
 }
 
+function skillStage(skillId){
+  if(!curriculum)return 0;
+  const definition=typeof curriculum.skill==='function'?curriculum.skill(skillId):Array.isArray(curriculum.skills)?curriculum.skills.find(x=>String(x.id)===String(skillId)):null;
+  return Number(definition&&definition.stage)||0;
+}
+
 function normalizeSentence(value){
   return String(value||'').replace(/[\s\u3000，。！？；：、,.!?;:“”"'（）()《》〈〉【】\[\]—…]/g,'').toLowerCase();
 }
@@ -200,7 +206,7 @@ function classify(question){
     else if(migration.action==='advanced-reading')mode='advanced';
     else if(migration.action==='optional-set-text')mode='set-text';
   }else if(explicitSkills.length){
-    mode='core';
+    mode=explicitSkills.some(skillId=>skillStage(skillId)>=3)?'advanced':'core';
     skillIds=explicitSkills;
   }
   return{
