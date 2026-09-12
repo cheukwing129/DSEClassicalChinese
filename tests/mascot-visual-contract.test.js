@@ -185,8 +185,8 @@ test('thinking P3 QA covers all-ink identity A/B and hint layouts',()=>{
 
 test('production placements use canonical state assets instead of the legacy baseline directly',()=>{
   const css=read('public/app-ui.css');
-  assert.match(css,/brand\/manyingo-logo-classic\.svg/);
-  assert.match(css,/brand\/manyingo-logo-ink\.svg/);
+  assert.match(css,/brand\/manyingo-logo-classic\.webp/);
+  assert.match(css,/brand\/manyingo-logo-ink\.webp/);
   assert.match(css,/mascot\/moling-determined\.svg/);
   assert.match(css,/mascot\/moling-thinking\.svg/);
   assert.doesNotMatch(css,/background:url\('\.\/mascot-moling\.svg'\)/);

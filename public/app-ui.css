@@ -50,7 +50,7 @@ body .small,#lessonApp .lesson-question-count{color:var(--ui-muted)}
 /* Homepage page-level rhythm */
 body.app-nav-ready{max-width:640px;margin:0 auto;padding-top:14px}
 .title{letter-spacing:-.035em}
-body.app-nav-ready>.title{display:block;width:min(100%,520px);height:112px;min-height:0;margin:0 auto!important;font-size:0;color:transparent!important;background:url('./brand/manyingo-logo-classic.svg') center/contain no-repeat}
+body.app-nav-ready>.title{display:block;width:min(100%,520px);height:112px;min-height:0;margin:0 auto!important;font-size:0;color:transparent!important;background-image:url('./brand/manyingo-logo-classic.png');background-image:image-set(url('./brand/manyingo-logo-classic.webp') type('image/webp'),url('./brand/manyingo-logo-classic.png') type('image/png'));background-position:center;background-size:contain;background-repeat:no-repeat}
 body.app-nav-ready>.title::after{content:none}
 .status{color:var(--ui-muted)!important;margin-bottom:12px!important}
 .home-view{padding-bottom:8px}
@@ -248,7 +248,7 @@ html[data-ui-theme="ink"] summary:focus-visible{outline-color:rgba(212,168,91,.5
 html[data-ui-theme="ink"] body .card,
 html[data-ui-theme="ink"] #lessonApp .lesson-head,
 html[data-ui-theme="ink"] #lessonApp .lesson-content{border-color:var(--ui-border);box-shadow:var(--ui-shadow)}
-html[data-ui-theme="ink"] body.app-nav-ready>.title{background-image:url('./brand/manyingo-logo-ink.svg')}
+html[data-ui-theme="ink"] body.app-nav-ready>.title{background-image:url('./brand/manyingo-logo-ink.png');background-image:image-set(url('./brand/manyingo-logo-ink.webp') type('image/webp'),url('./brand/manyingo-logo-ink.png') type('image/png'))}
 html[data-ui-theme="ink"] .circle{border-color:var(--brand-warm-gold);background:linear-gradient(145deg,#20344e,#17666b)}
 html[data-ui-theme="ink"] .fill,
 html[data-ui-theme="ink"] #lessonApp .lesson-progress div,
