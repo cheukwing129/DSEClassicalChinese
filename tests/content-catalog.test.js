@@ -13,19 +13,20 @@ const transferPackSource = fs.readFileSync(path.join(__dirname, '..', 'public', 
 const transferPack03Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-transfer-03.js'), 'utf8');
 const transferPack04Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-transfer-04.js'), 'utf8');
 const transferPack05Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-transfer-05.js'), 'utf8');
+const transferPack06Source = fs.readFileSync(path.join(__dirname, '..', 'public', 'question-pack-transfer-06.js'), 'utf8');
 
 function loadContext() {
   const context = { window: {}, Map, Set, Array, Object, Number, String, Math };
   vm.createContext(context);
-  for (const source of [pack02Source,pack03Source,lessonPackSource,capacityPackSource,transferPackSource,transferPack03Source,transferPack04Source,transferPack05Source,catalogSource]) vm.runInContext(source, context);
+  for (const source of [pack02Source,pack03Source,lessonPackSource,capacityPackSource,transferPackSource,transferPack03Source,transferPack04Source,transferPack05Source,transferPack06Source,catalogSource]) vm.runInContext(source, context);
   return context;
 }
 function loadCatalog(){return loadContext().window.ManjingoContent;}
 
-test('reviewed local catalog contains 340 questions across the 71 teachable knowledge points',()=>{
+test('reviewed local catalog contains 346 questions across the 72 teachable knowledge points',()=>{
  const catalog=loadCatalog(),kpIds=catalog.getKnowledgePointIds({teachableOnly:true});
- assert.equal(catalog.catalogVersion,'reviewed-v1');assert.equal(catalog.questions.length,340);assert.equal(kpIds.length,71);
- for(const id of ['kp_virtual_wei','kp_virtual_zhe','kp_virtual_suo','kp_virtual_ye','kp_read_sentence_core','kp_read_context_clues','kp_read_logical_relation','kp_syn_negative_patterns','kp_syn_interrogative_patterns','kp_trans_function_word','kp_trans_supplement','kp_trans_ancient_modern']) assert.ok(kpIds.includes(id),`missing ${id}`);
+ assert.equal(catalog.catalogVersion,'reviewed-v1');assert.equal(catalog.questions.length,346);assert.equal(kpIds.length,72);
+ for(const id of ['kp_virtual_wei','kp_virtual_zhe','kp_virtual_suo','kp_virtual_ye','kp_read_sentence_core','kp_read_context_clues','kp_read_logical_relation','kp_syn_negative_patterns','kp_syn_interrogative_patterns','kp_trans_function_word','kp_trans_supplement','kp_trans_ancient_modern','kp_transfer_single_sentence']) assert.ok(kpIds.includes(id),`missing ${id}`);
 });
 
 test('capacity pack keeps only validated explained questions',()=>{
@@ -33,14 +34,14 @@ test('capacity pack keeps only validated explained questions',()=>{
  for(const q of pack.questions){assert.ok(q.kpId&&q.q&&q.a&&q.explanation);if(q.type==='choice'){assert.ok(Array.isArray(q.o));assert.ok(q.o.includes(q.a),`${q.id} answer must appear in options`);}}
 });
 
-test('transfer packs contain 118 source-aware unseen-context questions',()=>{
- const w=loadContext().window,legacy=w.ManjingoQuestionPackTransfer01,functionWords=w.ManjingoQuestionPackTransfer03,reading=w.ManjingoQuestionPackTransfer04,translation=w.ManjingoQuestionPackTransfer05;
- assert.equal(legacy.questions.length,46);assert.equal(functionWords.questions.length,24);assert.equal(reading.questions.length,24);assert.equal(translation.questions.length,24);
- assert.equal(functionWords.knowledgePoints.length,4);assert.equal(reading.knowledgePoints.length,4);assert.equal(translation.knowledgePoints.length,4);
- const questions=[...legacy.questions,...functionWords.questions,...reading.questions,...translation.questions];
- assert.equal(new Set(questions.map(q=>q.id)).size,118);
- assert.equal(questions.filter(q=>/^tr1q\d{3}$/.test(q.id)).length,20);assert.equal(questions.filter(q=>/^tr2q\d{3}$/.test(q.id)).length,26);assert.equal(questions.filter(q=>/^tr3q\d{3}$/.test(q.id)).length,24);assert.equal(questions.filter(q=>/^tr4q\d{3}$/.test(q.id)).length,24);assert.equal(questions.filter(q=>/^tr5q\d{3}$/.test(q.id)).length,24);
- for(const q of questions){assert.match(q.id,/^tr[12345]q\d{3}$/);assert.equal(q.textId,'CROSS');assert.ok(Array.isArray(q.skillIds)&&q.skillIds.length>0,`${q.id}: explicit skillIds required`);assert.ok(String(q.sourceTextId||'').trim(),`${q.id}: real source required`);assert.notEqual(q.sourceTextId,'CROSS');assert.ok(String(q.sourceSentenceId||'').startsWith('sentence:'),`${q.id}: stable sentence id required`);assert.equal(q.sourceKind,'classical-canon');assert.ok(q.transferLevel>=2);assert.ok(q.explanation.length>=12);assert.ok(Array.isArray(q.o)&&q.o.includes(q.a));}
+test('transfer packs contain 124 source-aware unseen-context questions',()=>{
+ const w=loadContext().window,legacy=w.ManjingoQuestionPackTransfer01,functionWords=w.ManjingoQuestionPackTransfer03,reading=w.ManjingoQuestionPackTransfer04,translation=w.ManjingoQuestionPackTransfer05,singleSentence=w.ManjingoQuestionPackTransfer06;
+ assert.equal(legacy.questions.length,46);assert.equal(functionWords.questions.length,24);assert.equal(reading.questions.length,24);assert.equal(translation.questions.length,24);assert.equal(singleSentence.questions.length,6);
+ assert.equal(functionWords.knowledgePoints.length,4);assert.equal(reading.knowledgePoints.length,4);assert.equal(translation.knowledgePoints.length,4);assert.equal(singleSentence.knowledgePoints.length,1);
+ const questions=[...legacy.questions,...functionWords.questions,...reading.questions,...translation.questions,...singleSentence.questions];
+ assert.equal(new Set(questions.map(q=>q.id)).size,124);
+ assert.equal(questions.filter(q=>/^tr1q\d{3}$/.test(q.id)).length,20);assert.equal(questions.filter(q=>/^tr2q\d{3}$/.test(q.id)).length,26);assert.equal(questions.filter(q=>/^tr3q\d{3}$/.test(q.id)).length,24);assert.equal(questions.filter(q=>/^tr4q\d{3}$/.test(q.id)).length,24);assert.equal(questions.filter(q=>/^tr5q\d{3}$/.test(q.id)).length,24);assert.equal(questions.filter(q=>/^tr6q\d{3}$/.test(q.id)).length,6);
+ for(const q of questions){assert.match(q.id,/^tr[123456]q\d{3}$/);assert.equal(q.textId,'CROSS');assert.ok(Array.isArray(q.skillIds)&&q.skillIds.length>0,`${q.id}: explicit skillIds required`);assert.ok(String(q.sourceTextId||'').trim(),`${q.id}: real source required`);assert.notEqual(q.sourceTextId,'CROSS');assert.ok(String(q.sourceSentenceId||'').startsWith('sentence:'),`${q.id}: stable sentence id required`);assert.equal(q.sourceKind,'classical-canon');assert.ok(q.transferLevel>=2);assert.ok(q.explanation.length>=12);assert.ok(Array.isArray(q.o)&&q.o.includes(q.a));}
 });
 
 function assertDedicated(pack,targets,requireRawTiers=false){
@@ -49,7 +50,7 @@ function assertDedicated(pack,targets,requireRawTiers=false){
   const questions=pack.questions.filter(q=>q.kpId===kpId);
   assert.equal(questions.length,6,`${kpId} should have six questions`);
   assert.ok(new Set(questions.map(q=>q.sourceTextId)).size>=3,`${kpId} needs at least three sources`);
-  assert.equal(questions.every(q=>q.skillIds.length===1&&q.skillIds[0]===skillId),true);
+  assert.equal(questions.every(q=>q.skillIds.includes(skillId)),true);
   if(requireRawTiers)assert.deepEqual([...new Set(questions.map(q=>q.difficultyTier))].sort(),['application','foundation','transfer']);
  }
 }
@@ -57,6 +58,7 @@ function assertDedicated(pack,targets,requireRawTiers=false){
 test('stage 1 function-word pack gives four dedicated skills six questions across diverse sources',()=>assertDedicated(loadContext().window.ManjingoQuestionPackTransfer03,new Map([['kp_virtual_wei','fw.wei'],['kp_virtual_zhe','fw.zhe'],['kp_virtual_suo','fw.suo'],['kp_virtual_ye','fw.ye']])));
 test('stage 1 reading pack gives four dedicated skills six questions and three difficulty tiers',()=>assertDedicated(loadContext().window.ManjingoQuestionPackTransfer04,new Map([['kp_read_sentence_core','read.sentence-core'],['kp_read_context_clues','read.context-clues'],['kp_read_logical_relation','read.logical-relation'],['kp_syn_negative_patterns','syn.negative-patterns']]),true));
 test('stage 1 translation pack gives four dedicated skills six questions and three difficulty tiers',()=>assertDedicated(loadContext().window.ManjingoQuestionPackTransfer05,new Map([['kp_syn_interrogative_patterns','syn.interrogative-patterns'],['kp_trans_function_word','trans.function-word'],['kp_trans_supplement','trans.supplement'],['kp_trans_ancient_modern','trans.ancient-modern']]),true));
+test('stage 1 single-sentence pack gives six questions across six sources and three tiers',()=>assertDedicated(loadContext().window.ManjingoQuestionPackTransfer06,new Map([['kp_transfer_single_sentence','transfer.single-sentence']]),true));
 
 test('foundation pack uses stable ids and no retired temporary filler ids',()=>{const pack=loadContext().window.ManjingoQuestionPackLesson,retired=new Set(['lpq001','lpq002','lpq003','lpq004','lpq019','lpq022','lpq023','lpq024','lpq025','lpq026','lpq027','lpq028','lpq029','lpq030','lpq031','lpq032','lpq033','lpq034','lpq035','lpq049','lpq050','lpq051']);assert.equal(pack.kind,'foundation');assert.equal(pack.questions.length,44);assert.equal(pack.questions.some(q=>retired.has(String(q.id))),false);for(const id of ['lpq064','lpq065','lpq066'])assert.ok(pack.questions.some(q=>q.id===id));});
 test('all local question ids remain unique',()=>{const ids=loadCatalog().questions.map(q=>String(q.id));assert.equal(new Set(ids).size,ids.length);});
