@@ -84,7 +84,7 @@ function loadReviewedCatalog() {
     'content-catalog.js','question-pack-adaptive-01.js','question-pack-adaptive-02.js','question-pack-adaptive-03.js','question-difficulty.js'
   ]) {
     const source = fs.readFileSync(path.join(root, 'public', file), 'utf8');
-    vm.runInContext(source, context, { filename: file });
+    vm.runInContext(source, context, { filename:file });
   }
   const catalog = context.window.ManjingoContent;
   if (!catalog || !Array.isArray(catalog.questions) || !Array.isArray(catalog.knowledgePoints)) throw new Error('Reviewed content catalog failed to load');
@@ -97,8 +97,16 @@ function textTargets() {
 
 function catalogTargets(catalog) {
   const version = String(catalog.catalogVersion || 'reviewed');
+  const skillIdsByKp = new Map();
+  for (const question of catalog.questions) {
+    const kpId=String(question&&question.kpId||'');
+    if(!kpId)continue;
+    const current=skillIdsByKp.get(kpId)||new Set();
+    for(const skillId of Array.isArray(question.skillIds)?question.skillIds:[])if(skillId)current.add(String(skillId));
+    skillIdsByKp.set(kpId,current);
+  }
   const knowledgePoints = catalog.knowledgePoints.map(kp => ({
-    id:String(kp.kpId), data:{textId:kp.textId==='CROSS'?null:(kp.textId||null),type:kp.type||null,content:kp.content||kp.kpId,difficulty:Number(kp.difficulty||1),teachable:kp.teachable!==false,catalogVersion:version}
+    id:String(kp.kpId), data:{textId:kp.textId==='CROSS'?null:(kp.textId||null),type:kp.type||null,content:kp.content||kp.kpId,difficulty:Number(kp.difficulty||1),teachable:kp.teachable!==false,skillIds:Array.from(skillIdsByKp.get(String(kp.kpId))||[]),catalogVersion:version}
   }));
   const questions = catalog.questions.map(question => ({
     id:String(question.id), data:{
