@@ -45,7 +45,10 @@ if(happy.artStatus==='placeholder-treatment'){
   if(referencesBaseline)fail('production happy must not reference mascot-moling.svg');
   if(overlayLanguage)fail('production happy description must not describe a baseline/overlay treatment');
   if(happySvg===neutralSvg)fail('production happy cannot be identical to neutral');
-  if(happySvg.length<900)fail('production happy SVG is suspiciously small for a distinct artwork replacement');
+  if(happySvg.length<30000||!/<image\\b/i.test(happySvg)||!embedded)fail('production happy embedded artwork missing');
+  if(!validWebp)fail('production happy must embed a valid WebP');
+  if(!hasAlpha)fail('production happy WebP must contain real alpha');
+  if(!/單節圓頭墨臂/.test(happySvg))fail('production happy must preserve one-piece rounded limb language');
   ok('production happy is independent from the legacy baseline');
   ok('production happy remains structurally distinct from neutral');
 }else{
