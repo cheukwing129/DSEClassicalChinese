@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.join(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const readBuffer=file=>fs.readFileSync(path.join(root,file));
 const theme=require('../public/theme-runtime.js');
 
 test('theme runtime keeps Classic as safe default and exposes Ink Spirit',()=>{
@@ -28,8 +29,10 @@ test('homepage and lesson apply the saved theme before the UI foundation',()=>{
 test('Ink Spirit theme is token-driven, accessible, and keeps Classic intact',()=>{
   const css=read('public/app-ui.css');
   const source=read('public/theme-runtime.js');
-  assert.match(css,/manyingo-logo-classic\.svg/);
-  assert.match(css,/manyingo-logo-ink\.svg/);
+  assert.match(css,/manyingo-logo-classic\.png/);
+  assert.match(css,/manyingo-logo-classic\.webp/);
+  assert.match(css,/manyingo-logo-ink\.png/);
+  assert.match(css,/manyingo-logo-ink\.webp/);
   assert.doesNotMatch(css,/body\.app-nav-ready>\.title::after\{content:""/);
   const homepage=read('public/index.html');
   assert.match(homepage,/<h1 class="title">Manyingo<\/h1>/);
@@ -45,16 +48,21 @@ test('Ink Spirit theme is token-driven, accessible, and keeps Classic intact',()
   assert.match(source,/manjingo:themechange/);
 });
 
-test('Manyingo theme logos remain native flat vectors without raster halos',()=>{
-  const ink=read('public/brand/manyingo-logo-ink.svg');
-  const classic=read('public/brand/manyingo-logo-classic.svg');
-  [ink,classic].forEach(svg=>{
-    assert.match(svg,/<svg\b/);
-    assert.doesNotMatch(svg,/<image\b/);
-    assert.doesNotMatch(svg,/data:image\//);
-    assert.match(svg,/#d4a85b/i);
-    assert.match(svg,/>Manyıngo<\/text>/);
+test('Manyingo theme logos use transparent raster masters with lossless WebP delivery',()=>{
+  ['ink','classic'].forEach(theme=>{
+    const png=readBuffer(`public/brand/manyingo-logo-${theme}.png`);
+    const webp=readBuffer(`public/brand/manyingo-logo-${theme}.webp`);
+    assert.equal(png.subarray(1,4).toString('ascii'),'PNG');
+    assert.equal(png.readUInt32BE(16),1981);
+    assert.equal(png.readUInt32BE(20),554);
+    assert.equal(png[25],6,'PNG must keep RGBA transparency');
+    assert.equal(webp.subarray(0,4).toString('ascii'),'RIFF');
+    assert.equal(webp.subarray(8,12).toString('ascii'),'WEBP');
+    assert.ok(webp.length>100000,'logo must not collapse into a placeholder');
   });
-  assert.match(ink,/<text[^>]*fill="#12314f"/);
-  assert.match(classic,/<text[^>]*fill="#58cc02"/);
+  assert.notDeepEqual(
+    readBuffer('public/brand/manyingo-logo-ink.png'),
+    readBuffer('public/brand/manyingo-logo-classic.png'),
+    'theme wordmarks must remain visually distinct'
+  );
 });
