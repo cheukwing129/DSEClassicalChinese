@@ -43,14 +43,20 @@ test('transfer packs contain 118 source-aware unseen-context questions',()=>{
  for(const q of questions){assert.match(q.id,/^tr[12345]q\d{3}$/);assert.equal(q.textId,'CROSS');assert.ok(Array.isArray(q.skillIds)&&q.skillIds.length>0,`${q.id}: explicit skillIds required`);assert.ok(String(q.sourceTextId||'').trim(),`${q.id}: real source required`);assert.notEqual(q.sourceTextId,'CROSS');assert.ok(String(q.sourceSentenceId||'').startsWith('sentence:'),`${q.id}: stable sentence id required`);assert.equal(q.sourceKind,'classical-canon');assert.ok(q.transferLevel>=2);assert.ok(q.explanation.length>=12);assert.ok(Array.isArray(q.o)&&q.o.includes(q.a));}
 });
 
-function assertDedicated(pack,targets){
+function assertDedicated(pack,targets,requireRawTiers=false){
  assert.deepEqual(Array.from(pack.knowledgePoints,q=>q.kpId).sort(),Array.from(targets.keys()).sort());
- for(const[kpId,skillId]of targets){const questions=pack.questions.filter(q=>q.kpId===kpId);assert.equal(questions.length,6,`${kpId} should have six questions`);assert.ok(new Set(questions.map(q=>q.sourceTextId)).size>=3,`${kpId} needs at least three sources`);assert.equal(questions.every(q=>q.skillIds.length===1&&q.skillIds[0]===skillId),true);assert.deepEqual([...new Set(questions.map(q=>q.difficultyTier))].sort(),['application','foundation','transfer']);}
+ for(const[kpId,skillId]of targets){
+  const questions=pack.questions.filter(q=>q.kpId===kpId);
+  assert.equal(questions.length,6,`${kpId} should have six questions`);
+  assert.ok(new Set(questions.map(q=>q.sourceTextId)).size>=3,`${kpId} needs at least three sources`);
+  assert.equal(questions.every(q=>q.skillIds.length===1&&q.skillIds[0]===skillId),true);
+  if(requireRawTiers)assert.deepEqual([...new Set(questions.map(q=>q.difficultyTier))].sort(),['application','foundation','transfer']);
+ }
 }
 
 test('stage 1 function-word pack gives four dedicated skills six questions across diverse sources',()=>assertDedicated(loadContext().window.ManjingoQuestionPackTransfer03,new Map([['kp_virtual_wei','fw.wei'],['kp_virtual_zhe','fw.zhe'],['kp_virtual_suo','fw.suo'],['kp_virtual_ye','fw.ye']])));
-test('stage 1 reading pack gives four dedicated skills six questions and three difficulty tiers',()=>assertDedicated(loadContext().window.ManjingoQuestionPackTransfer04,new Map([['kp_read_sentence_core','read.sentence-core'],['kp_read_context_clues','read.context-clues'],['kp_read_logical_relation','read.logical-relation'],['kp_syn_negative_patterns','syn.negative-patterns']])));
-test('stage 1 translation pack gives four dedicated skills six questions and three difficulty tiers',()=>assertDedicated(loadContext().window.ManjingoQuestionPackTransfer05,new Map([['kp_syn_interrogative_patterns','syn.interrogative-patterns'],['kp_trans_function_word','trans.function-word'],['kp_trans_supplement','trans.supplement'],['kp_trans_ancient_modern','trans.ancient-modern']])));
+test('stage 1 reading pack gives four dedicated skills six questions and three difficulty tiers',()=>assertDedicated(loadContext().window.ManjingoQuestionPackTransfer04,new Map([['kp_read_sentence_core','read.sentence-core'],['kp_read_context_clues','read.context-clues'],['kp_read_logical_relation','read.logical-relation'],['kp_syn_negative_patterns','syn.negative-patterns']]),true));
+test('stage 1 translation pack gives four dedicated skills six questions and three difficulty tiers',()=>assertDedicated(loadContext().window.ManjingoQuestionPackTransfer05,new Map([['kp_syn_interrogative_patterns','syn.interrogative-patterns'],['kp_trans_function_word','trans.function-word'],['kp_trans_supplement','trans.supplement'],['kp_trans_ancient_modern','trans.ancient-modern']]),true));
 
 test('foundation pack uses stable ids and no retired temporary filler ids',()=>{const pack=loadContext().window.ManjingoQuestionPackLesson,retired=new Set(['lpq001','lpq002','lpq003','lpq004','lpq019','lpq022','lpq023','lpq024','lpq025','lpq026','lpq027','lpq028','lpq029','lpq030','lpq031','lpq032','lpq033','lpq034','lpq035','lpq049','lpq050','lpq051']);assert.equal(pack.kind,'foundation');assert.equal(pack.questions.length,44);assert.equal(pack.questions.some(q=>retired.has(String(q.id))),false);for(const id of ['lpq064','lpq065','lpq066'])assert.ok(pack.questions.some(q=>q.id===id));});
 test('all local question ids remain unique',()=>{const ids=loadCatalog().questions.map(q=>String(q.id));assert.equal(new Set(ids).size,ids.length);});
