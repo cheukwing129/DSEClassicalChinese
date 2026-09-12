@@ -19,7 +19,7 @@ function unique(values){return Array.from(new Set((values||[]).map(String).filte
 function attempted(record){return !!(record&&(Number(record.attempts)>0||Number(record.correctCount)>0||Number(record.wrongCount)>0||record.lastAnsweredAt))}
 function recordTime(record){return timeValue(record&&record.lastAnsweredAt||record&&record.updatedAt)}
 function nativeRecord(record){return String(record&&record.source||'').includes('native')}
-function newerRecord(a,b){if(!a)return b||null;if(!b)return a;const at=recordTime(a),bt=recordTime(b);if(at!==bt)return at>bt?a:b;const an=nativeRecord(a),bn=nativeRecord(b);if(an!==bn)return an?a:b;const aa=Number(a.attempts)||0,ba=Number(b.attempts)||0;if(aa!==ba)return aa>ba?a:b;return a}
+function newerRecord(a,b){if(!a)return b||null;if(!b)return a;const an=nativeRecord(a),bn=nativeRecord(b),aa=Number(a.attempts)||0,ba=Number(b.attempts)||0,at=recordTime(a),bt=recordTime(b);if(an===bn){if(aa!==ba)return aa>ba?a:b;if(at!==bt)return at>bt?a:b;return a}if(at!==bt)return at>bt?a:b;return an?a:b}
 function metadata(){const r=runtimeRoot();return r&&r.ManjingoQuestionMetadataV1||null}
 function content(){const r=runtimeRoot();return r&&r.ManjingoContent||null}
 function annotatedQuestions(){const c=content(),list=c&&Array.isArray(c.questions)?c.questions:[],m=metadata();return m&&typeof m.annotateAll==='function'?m.annotateAll(list):list}
