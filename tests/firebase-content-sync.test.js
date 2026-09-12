@@ -21,12 +21,13 @@ test('Firestore content sync defaults to read-only review and supports ADC',()=>
   assert.doesNotMatch(source,/csv-parser/);
 });
 
-test('Firestore importer loads stage 3 and prescribed-text language metadata',()=>{
+test('Firestore importer loads stage 3 and both prescribed-text language packs with metadata',()=>{
   const source=read('scripts/import_to_firestore.js');
   assert.match(source,/question-pack-transfer-07\.js/);
   assert.match(source,/passageId:question\.passageId\|\|null/);
   assert.match(source,/passageText:question\.passageText\|\|null/);
   assert.match(source,/question-pack-settext-language-01\.js/);
+  assert.match(source,/question-pack-settext-language-02\.js/);
   assert.match(source,/sourceWorkId:question\.sourceWorkId\|\|null/);
   assert.match(source,/setTextLanguage:question\.setTextLanguage===true\?true:null/);
 });
