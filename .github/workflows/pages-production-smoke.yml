@@ -34,6 +34,7 @@ jobs:
           for attempt in $(seq 1 18); do
             if curl -fsS "$MANJINGO_BASE_URL/practice-outbox.js" | grep -q 'manjingo_practice_outbox_v1' && \
                curl -fsS "$MANJINGO_BASE_URL/stage3-reading.js" | grep -q 'ManjingoStage3Reading' && \
+               curl -fsS "$MANJINGO_BASE_URL/question-pack-transfer-07.js" | grep -q 'tr10q036' && \
                curl -fsS "$MANJINGO_BASE_URL/home-shell.js" | grep -q 'stage3-reading.js'; then
               echo "Pages reliability and Stage 3 assets are available."
               exit 0
