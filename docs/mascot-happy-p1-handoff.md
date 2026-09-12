@@ -23,15 +23,15 @@
 
 ## 3. Production artwork 特徵
 
-P1 v2 最終採用：
+P1 v3 全墨修正版採用：
 
-- 明亮、朝前的大眼睛；
+- 與 P2–P5 一致的純黑豆豆眼及白色高光；
 - 單一清楚笑容，沒有腹部第二條裝飾弧線；
-- 雙手克制抬起，提供「很好／抓到重點」的輕快動勢；
-- 暖金只以低透明度臉頰點綴出現；
+- 站穩並只讓一側短墨臂克制抬起；每側均為直接連接身體的單節圓頭墨臂，不另分手掌、手腕或手指；
+- 使用全墨炭灰至深墨藍漸變、克制粉紅腮紅及既定金色雲紋；
 - 不使用星星、彩帶、勾號、文字或大型勝利手勢作主要訊號。
 
-第一版 candidate 曾因暖金腹部弧線在 48–64px 容易像第二張嘴而被修正；這個負面案例應保留作之後 state artwork 的小尺寸教訓。
+第一版 candidate 曾因暖金腹部弧線在 48–64px 容易像第二張嘴而被修正；v2 雖完成當時驗收，但後來與全墨豆豆眼角色 DNA 明顯分岔，並在正式答對卡被使用者辨認為舊版。v3 因此改為與 P2–P5 同一全墨系列。
 
 ## 4. 與其他 state 的邊界
 
@@ -85,7 +85,7 @@ npm test
 - 215×320 viewBox、accessible title/desc、無 embedded text；
 - production artwork 不再引用 legacy `mascot-moling.svg`；
 - production artwork 與 neutral 不完全相同；
-- SVG 有足夠獨立 vector 結構。
+- SVG 內嵌獨立 WebP artwork，且具有真正透明 alpha。
 
 Global validator 亦會拒絕任何 `artStatus=production` 但仍引用 baseline 的假 promotion。
 
