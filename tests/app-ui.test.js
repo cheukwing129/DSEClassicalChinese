@@ -8,7 +8,7 @@ test('homepage and lesson share one UI foundation',()=>{
   const shell=read('public/home-shell.js'),lesson=read('public/lesson.html');
   assert.match(shell,/function installUiFoundation\(\)/);
   assert.match(shell,/link\.href='\.\/app-ui\.css'/);
-  assert.match(shell,/installUiFoundation\(\);enhancePlayerStatus\(\)/);
+  assert.match(shell,/function install\(\)\{installUiFoundation\(\);loadStage3Reading\(\);enhancePlayerStatus\(\)/);
   assert.match(lesson,/rel="stylesheet" href="\.\/app-ui\.css"/);
 });
 
