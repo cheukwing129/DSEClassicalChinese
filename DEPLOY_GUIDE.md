@@ -1,8 +1,8 @@
-# Manjingo v2 部署指南
+# Manyingo v2 部署指南
 
 ## 目前架構
 
-Manjingo production 以 **Cloudflare Pages + Pages Functions Advanced Mode + Firebase Spark / Firestore** 為主：
+Manyingo production 以 **Cloudflare Pages + Pages Functions Advanced Mode + Firebase Spark / Firestore** 為主：
 
 ```text
 Browser
@@ -23,7 +23,7 @@ Browser
 ## 目錄結構
 
 ```text
-manjingo/
+manyingo/
 ├── public/
 │   ├── _worker.js                 <- Cloudflare server-side learning API
 │   ├── index.html
@@ -50,7 +50,7 @@ manjingo/
 
 ### Pages runtime secrets
 
-`wrangler.toml` 只保存非敏感：
+`wrangler.toml` 只保存非敏感設定。Firebase project ID 是既有技術識別碼，為避免高風險後端遷移，**即使品牌已改為 Manyingo 亦繼續保留舊 project ID**：
 
 ```toml
 [vars]
@@ -81,6 +81,14 @@ Pages Worker 使用 service account OAuth 2.0 存取 Cloud Firestore REST API。
 
 ## Cloudflare Pages 部署
 
+目前正式 Pages project 名稱為 `manyingo`，production URL 為：
+
+```text
+https://manyingo.pages.dev
+```
+
+部署：
+
 ```bash
 npm install
 npm test
@@ -91,26 +99,30 @@ npm run deploy
 
 ## Production smoke test
 
-repo 內建非寫入 smoke test：
+repo 內建 production smoke test：
 
 ```bash
-MANJINGO_BASE_URL=https://manjingo.pages.dev npm run smoke:pages
+MANJINGO_BASE_URL=https://manyingo.pages.dev npm run smoke:pages
 ```
 
-測試會：
+> `MANJINGO_BASE_URL` 是沿用中的 legacy internal variable name。它不是公開品牌名稱，目前刻意保留以避免不必要的 CI／script rename 風險；其值應指向新的 Manyingo production URL。
 
-1. 檢查 `/api/health` 且要求 `configured:true`。
-2. 透過 Firebase Identity Toolkit 建立一個臨時匿名 Auth user，取得真實 Firebase ID token。
-3. 用該 token 呼叫 `/api/daily-plan` 與 `/api/due-knowledge-points`，實際驗證 Worker token 驗證、service-account OAuth、Firestore IAM 與 Firestore reads。
-4. 對 `/api/submit-answer` 只送無效 payload，預期 HTTP 400，確認 authenticated submit route 可到達但**不寫入任何學習資料**。
-5. 最後刪除臨時匿名 Auth user。
+測試會驗證：
 
-`.github/workflows/pages-production-smoke.yml` 可手動觸發，也會每日排程，但 job 預設跳過。正式啟用前在 GitHub repository variables 設定：
+1. `/api/health` 回報 `configured:true`。
+2. 透過 Firebase Identity Toolkit 建立臨時匿名 Auth user，取得真實 Firebase ID token。
+3. 以該 token 呼叫 production learning API，驗證 Worker token 驗證、service-account OAuth、Firestore IAM 與 Firestore reads。
+4. 執行真實但可清理的測試寫入，驗證 production write path。
+5. 最後清理臨時 Auth user 與測試學習資料。
+
+`.github/workflows/pages-production-smoke.yml` 可手動觸發，也會每日排程；正式環境在 GitHub repository variables 設定：
 
 - `ENABLE_PAGES_SMOKE=true`
-- `MANJINGO_BASE_URL=https://manjingo.pages.dev`（若 production URL 不同才需要覆寫）
+- `MANJINGO_BASE_URL=https://manyingo.pages.dev`
 
-這個 workflow 不需要也不應保存 `FIREBASE_PRIVATE_KEY` 或 `FIREBASE_CLIENT_EMAIL`；server secrets 只存在 Cloudflare Pages runtime。
+清理 smoke test 臨時資料所需的 service-account credential 由 GitHub Actions secret `FIREBASE_SERVICE_ACCOUNT_MANJINGO` 提供。這個 secret 名稱同樣屬於 legacy internal identifier，暫時保留；不要把其內容提交到 Git。
+
+Cloudflare runtime 本身所需的 `FIREBASE_PRIVATE_KEY` 與 `FIREBASE_CLIENT_EMAIL` 則只存在 Cloudflare Pages 的 encrypted secrets。
 
 ## Firebase Spark
 
@@ -127,6 +139,19 @@ Firestore Rules 仍允許登入者讀自己的 `gamification`、`knowledge`、`a
 - 若未來刻意升級 Blaze 才考慮重新啟用 Firebase Functions deploy。
 
 目前正式學習 API 以 `public/_worker.js` 為準，`functions/` 主要保留演算法 parity、migration 與 rollback 參考。
+
+## 品牌與 legacy technical IDs
+
+公開品牌一律使用 **Manyingo 文言年糕**；GitHub repository、Cloudflare Pages project 與公開網址亦使用 `manyingo`。
+
+以下既有名稱屬內部 technical IDs，為保持資料、登入、同步及部署相容性，目前刻意保留，不應只為品牌一致性而改名：
+
+- Firebase project ID：`manjingo-95d9a`
+- GitHub variable：`MANJINGO_BASE_URL`
+- GitHub secret：`FIREBASE_SERVICE_ACCOUNT_MANJINGO`
+- JavaScript `Manjingo*` namespaces
+- `manjingo_*` localStorage / outbox keys
+- internal service identifiers
 
 ## 學習流程
 
