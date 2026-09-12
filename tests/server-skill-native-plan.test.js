@@ -94,7 +94,7 @@ test('server-authoritative reteach outranks ordinary review and keeps its stored
 test('effective server intervention cools a weak skill instead of immediately re-escalating it',()=>{
  const skills=[skillDoc('fw.zhi',50,{lastCorrect:false})];
  const interventions=[{id:'fw.zhi',data:{skillId:'fw.zhi',routeKpId:'kp_virtual_zhi',learningState:{key:'remedial-effective',label:'補救後已穩定',priority:0,actionable:false,tone:'success'},updatedAt:'2026-09-12T07:30:00Z',source:'server-native-v1'}}];
- const result=plan({skills,interventions});
+ const result=plan({skills,interventions,targetCount:14});
  const item=result.items.find(x=>x.skillId==='fw.zhi');
  assert.ok(item);
  assert.equal(item.interventionCooldown,true);
