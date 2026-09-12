@@ -18,9 +18,11 @@ function write(key,value){const s=storage();if(!s)return false;try{s.setItem(key
 function timeValue(value){if(!value)return 0;try{if(typeof value.toDate==='function')return value.toDate().getTime();if(Number.isFinite(Number(value._seconds)))return Number(value._seconds)*1000;if(Number.isFinite(Number(value.seconds)))return Number(value.seconds)*1000;const time=new Date(value).getTime();return Number.isFinite(time)?time:0}catch(e){return 0}}
 function recordTime(record){const value=record&&typeof record==='object'?record:{};const answered=timeValue(value.lastAnsweredAt||value.updatedAt),observed=timeValue(value.difficultyObservability&&value.difficultyObservability.lastDecision&&value.difficultyObservability.lastDecision.observedAt);return Math.max(answered,observed)}
 function newerRecord(a,b){const left=a&&typeof a==='object'?a:{},right=b&&typeof b==='object'?b:{},la=Number(left.attempts)||0,ra=Number(right.attempts)||0;if(la!==ra)return la>ra?left:right;const lt=recordTime(left),rt=recordTime(right);if(lt!==rt)return rt>lt?right:left;const ln=String(left.source||'').includes('server-native'),rn=String(right.source||'').includes('server-native');if(ln!==rn)return rn?right:left;return left}
+function newerSkillRecord(a,b){const left=a&&typeof a==='object'?a:{},right=b&&typeof b==='object'?b:{},ln=String(left.source||'').includes('server-native'),rn=String(right.source||'').includes('server-native'),la=Number(left.attempts)||0,ra=Number(right.attempts)||0,lt=recordTime(left),rt=recordTime(right);if(ln===rn){if(la!==ra)return la>ra?left:right;if(lt!==rt)return lt>rt?left:right;return left}if(lt!==rt)return lt>rt?left:right;return ln?left:right}
 function practiceSignature(item){return [String(item&&item.kpId||''),String(item&&item.completedAt||''),String(item&&item.strategy||'legacy'),Number(item&&item.beforeMastery)||0,Number(item&&item.afterMastery)||0].join('|')}
 function mergePracticeHistory(a,b){const seen=new Set(),items=[];[...(Array.isArray(a)?a:[]),...(Array.isArray(b)?b:[])].forEach(item=>{const key=practiceSignature(item);if(!item||!item.kpId||seen.has(key))return;seen.add(key);items.push({...item})});return items.sort((x,y)=>timeValue(y.completedAt)-timeValue(x.completedAt)).slice(0,200)}
 function mergeObjectRecords(a,b){const result={},keys=new Set([...Object.keys(a||{}),...Object.keys(b||{})]);keys.forEach(key=>{result[key]={...newerRecord(a&&a[key],b&&b[key])}});return result}
+function mergeSkillRecords(a,b){const result={},keys=new Set([...Object.keys(a||{}),...Object.keys(b||{})]);keys.forEach(key=>{result[key]={...newerSkillRecord(a&&a[key],b&&b[key])}});return result}
 function mergeLearningState(local,remote){const a=local&&typeof local==='object'?local:{},b=remote&&typeof remote==='object'?remote:{},todayA=String(a.todayDate||''),todayB=String(b.todayDate||''),sameDay=todayA&&todayB&&todayA===todayB;return{
  totalXp:Math.max(Number(a.totalXp)||0,Number(b.totalXp)||0),
  todayXp:sameDay?Math.max(Number(a.todayXp)||0,Number(b.todayXp)||0):(timeValue(todayB)>timeValue(todayA)?Number(b.todayXp)||0:Number(a.todayXp)||0),
@@ -28,7 +30,7 @@ function mergeLearningState(local,remote){const a=local&&typeof local==='object'
  todayDate:todayB&&(!todayA||todayB>todayA)?todayB:todayA||todayB||null,
  lastGoalDate:[a.lastGoalDate,b.lastGoalDate].filter(Boolean).sort().pop()||null,
  knowledge:mergeObjectRecords(a.knowledge,b.knowledge),
- skillMastery:mergeObjectRecords(a.skillMastery,b.skillMastery),
+ skillMastery:mergeSkillRecords(a.skillMastery,b.skillMastery),
  conceptMastery:mergeObjectRecords(a.conceptMastery,b.conceptMastery),
  practiceHistory:mergePracticeHistory(a.practiceHistory,b.practiceHistory)
 }}
@@ -42,7 +44,7 @@ async function syncNow(options){if(syncPromise)return syncPromise;syncPromise=(a
 function schedule(){if(timer)clearTimeout(timer);timer=setTimeout(()=>{timer=null;void syncNow({silent:true})},1800)}
 function clearLocal(){const s=storage();if(!s)return false;try{s.removeItem(LEARNING_KEY);s.removeItem(ROTATION_KEY);return true}catch(e){return false}}
 function install(){if(installed)return true;installed=true;const target=root.window||root;if(target&&typeof target.addEventListener==='function'){target.addEventListener('manjingo:learning-state-changed',event=>{if(event&&event.detail&&event.detail.source==='account-sync')return;schedule()});target.addEventListener('online',()=>schedule())}const doc=root.document||(root.window&&root.window.document);if(doc){const start=()=>{setTimeout(()=>void syncNow({silent:true}),0)};if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start);else start()}return true}
-const api={LEARNING_KEY,ROTATION_KEY,SENTENCE_HISTORY_KEY,MAX_ROTATION_PER_KP,MAX_SENTENCE_HISTORY,timeValue,recordTime,newerRecord,mergePracticeHistory,mergeLearningState,mergeRotation,mergeGame,syncNow,schedule,clearLocal,install};
+const api={LEARNING_KEY,ROTATION_KEY,SENTENCE_HISTORY_KEY,MAX_ROTATION_PER_KP,MAX_SENTENCE_HISTORY,timeValue,recordTime,newerRecord,newerSkillRecord,mergePracticeHistory,mergeLearningState,mergeRotation,mergeGame,syncNow,schedule,clearLocal,install};
 if(typeof document!=='undefined'||root.document||(root.window&&root.window.document))install();
 return api;
 });

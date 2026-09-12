@@ -23,7 +23,7 @@ test('only reviewed static metadata is cached and caches stay bounded',()=>{
   assert.match(worker,/while\(questionMetadataCache\.size>QUESTION_CACHE_MAX\)/);
   assert.match(worker,/getQuestionMetadata\(env, token, questionId\)/);
   assert.match(worker,/getKnowledgePointUniverse\(env, token\)/);
-  assert.doesNotMatch(worker,/knowledgeCache|conceptCache|gamificationCache|answerLogCache/);
+  assert.doesNotMatch(worker,/knowledgeCache|conceptCache|gamificationCache|answerLogCache|skillCache/);
 });
 
 test('latency optimization preserves authoritative question validation and OAuth exchange',()=>{
@@ -34,8 +34,10 @@ test('latency optimization preserves authoritative question validation and OAuth
   assert.match(worker,/if \(!conceptKey && question\.data\.misconceptionKey\)/);
 });
 
-test('daily plan reuses only the global knowledge-point universe cache',()=>{
+test('daily plan reads live skill state while reusing only the global knowledge-point universe cache',()=>{
   assert.match(worker,/timed\(trace,'knowledge_list',\(\)=>listDocuments\(env, token, `users\/\$\{uid\}\/knowledge`\)\)/);
+  assert.match(worker,/timed\(trace,'skills_list',\(\)=>listDocuments\(env, token, `users\/\$\{uid\}\/skills`\)\)/);
   assert.match(worker,/timed\(trace,'concepts_list',\(\)=>listDocuments\(env, token, `users\/\$\{uid\}\/concepts`\)\)/);
   assert.match(worker,/timed\(trace,'kp_list',\(\)=>getKnowledgePointUniverse\(env, token\)\)/);
+  assert.match(worker,/SERVER_SKILL_PLAN\.buildPlan/);
 });

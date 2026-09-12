@@ -1,8 +1,10 @@
 import './learning-policy.js';
 import './curriculum-v1.js';
+import './server-skill-plan.js';
 
 const POLICY=globalThis.ManjingoLearningPolicy;
 const CURRICULUM=globalThis.ManjingoCurriculumV1;
+const SERVER_SKILL_PLAN=globalThis.ManjingoServerSkillPlan;
 const PROJECT_FALLBACK = 'manjingo-95d9a';
 const TOKEN_SCOPE = 'https://www.googleapis.com/auth/datastore';
 const FIRESTORE_ROOT = 'https://firestore.googleapis.com/v1';
@@ -355,31 +357,14 @@ async function submitAnswer(request, env, uid, trace) {
 function isDue(data, now) { const value = data && data.nextReviewAt; return !value || new Date(value).getTime() <= now.getTime(); }
 async function dailyPlan(env, uid, trace) {
   const token = await timed(trace,'oauth',()=>getServiceAccessToken(env));
-  const [knowledge, concepts, kpUniverseDocs] = await Promise.all([
+  const [knowledge, skills, concepts, kpUniverseDocs] = await Promise.all([
     timed(trace,'knowledge_list',()=>listDocuments(env, token, `users/${uid}/knowledge`)),
+    timed(trace,'skills_list',()=>listDocuments(env, token, `users/${uid}/skills`)),
     timed(trace,'concepts_list',()=>listDocuments(env, token, `users/${uid}/concepts`)),
     timed(trace,'kp_list',()=>getKnowledgePointUniverse(env, token))
   ]);
-  const now = new Date(), targetCount = 10;
-  const kpUniverse = new Set(kpUniverseDocs.map(x => x.id));
-  const known = new Map(knowledge.map(x => [x.id, x.data]));
-  const due = knowledge.filter(x => isDue(x.data, now)).sort((a, b) => new Date(a.data.nextReviewAt || 0) - new Date(b.data.nextReviewAt || 0));
-  const dueIds = new Set(due.map(x => x.id));
-  const weakOnly = knowledge.filter(x => !dueIds.has(x.id) && Number(x.data.mastery || 0) < 61).sort((a, b) => Number(a.data.mastery || 0) - Number(b.data.mastery || 0));
-  const fresh = kpUniverseDocs.filter(x => !known.has(x.id));
-  const conceptByKp = new Map();
-  concepts.filter(x => Number(x.data.attempts || 0) > 0 && (Number(x.data.mastery || 0) < 60 || x.data.lastCorrect === false))
-    .sort((a, b) => (a.data.lastCorrect === false ? -1 : 1) - (b.data.lastCorrect === false ? -1 : 1) || Number(a.data.mastery || 0) - Number(b.data.mastery || 0))
-    .forEach(x => { const kpId = (Array.isArray(x.data.kpIds) ? x.data.kpIds.map(String) : []).find(id => kpUniverse.has(id)); if (kpId && !conceptByKp.has(kpId)) conceptByKp.set(kpId, { ...x.data, conceptKey: x.id }); });
-  const selected = [];
-  const extra = kpId => { const c = conceptByKp.get(kpId); return c ? { conceptReview: true, conceptKey: c.conceptKey, conceptLabel: c.conceptLabel || c.conceptKey, conceptMastery: Number(c.mastery || 0), conceptQuestionIds: Array.isArray(c.questionIds) ? c.questionIds.map(String) : [] } : {}; };
-  const push = (id, category, priority, override = {}) => { if (!id || selected.length >= targetCount || selected.some(x => x.kpId === id)) return; selected.push({ kpId: id, category, priority, ...extra(id), ...override }); };
-  due.slice(0, 5).forEach(x => push(x.id, 'review', 100));
-  for (const [kpId, c] of conceptByKp) push(kpId, 'weak', 90, { conceptReview: true, conceptKey: c.conceptKey, conceptLabel: c.conceptLabel || c.conceptKey, conceptMastery: Number(c.mastery || 0), conceptQuestionIds: Array.isArray(c.questionIds) ? c.questionIds.map(String) : [] });
-  weakOnly.slice(0, 3).forEach(x => push(x.id, 'weak', 80));
-  fresh.slice(0, 2).forEach(x => push(x.id, 'new', 60));
-  [...due, ...weakOnly, ...fresh].forEach(x => push(x.id, dueIds.has(x.id) ? 'review' : weakOnly.some(w => w.id === x.id) ? 'weak' : 'new', dueIds.has(x.id) ? 100 : weakOnly.some(w => w.id === x.id) ? 80 : 60));
-  return json({ targetCount: selected.length, items: selected, review: selected.filter(x => x.category === 'review').map(x => x.kpId), weak: selected.filter(x => x.category === 'weak').map(x => x.kpId), newKnowledgePoints: selected.filter(x => x.category === 'new').map(x => x.kpId), conceptReview: selected.filter(x => x.conceptReview).map(x => ({ kpId: x.kpId, conceptKey: x.conceptKey, conceptMastery: x.conceptMastery })), totalRecommended: selected.length });
+  const plan=SERVER_SKILL_PLAN.buildPlan({knowledge,skills,concepts,kpUniverse:kpUniverseDocs,targetCount:Number(CURRICULUM&&CURRICULUM.dailyPolicy&&CURRICULUM.dailyPolicy.sessionSize)||10,now:new Date()});
+  return json(plan);
 }
 async function dueKnowledge(env, uid, trace) {
   const token = await timed(trace,'oauth',()=>getServiceAccessToken(env));
