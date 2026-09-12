@@ -50,6 +50,7 @@ body .small,#lessonApp .lesson-question-count{color:var(--ui-muted)}
 /* Homepage page-level rhythm */
 body.app-nav-ready{max-width:640px;margin:0 auto;padding-top:14px}
 .title{letter-spacing:-.035em}
+/* Classic keeps the original green brand title. */
 body.app-nav-ready>.title{display:flex;align-items:center;justify-content:center;gap:14px;color:var(--ui-green)!important;min-height:92px;margin:2px 0 0!important}
 body.app-nav-ready>.title::after{content:"";display:block;width:58px;height:86px;flex:0 0 58px;background:url('./mascot/moling-neutral.svg') center/contain no-repeat}
 .status{color:var(--ui-muted)!important;margin-bottom:12px!important}
