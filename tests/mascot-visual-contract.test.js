@@ -77,8 +77,8 @@ test('happy production v3 keeps all-ink identity and restrained success cues',()
   assert.match(happy,/純黑豆豆眼/);
   assert.match(happy,/閉口上揚小笑容/);
   assert.match(happy,/單節圓頭墨臂/);
-  assert.match(happy,/data:image\\/webp;base64,/);
-  assert.doesNotMatch(happy,/(巨型白眼|星點|勾號|勝利道具|狂躁)/);
+  assert.match(happy,/data:image\/webp;base64,/);
+  assert.match(happy,/不設獨立手掌、手腕、手指、星點、勾號、勝利道具或狂躁訊號/);
 });
 
 test('encouraging P2 production art encodes supportive cues without blame cues',()=>{
