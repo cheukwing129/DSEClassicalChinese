@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      MANJINGO_BASE_URL: ${{ vars.MANJINGO_BASE_URL || 'https://manjingo.pages.dev' }}
+      MANJINGO_BASE_URL: ${{ vars.MANJINGO_BASE_URL || 'https://manyingo.pages.dev' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
