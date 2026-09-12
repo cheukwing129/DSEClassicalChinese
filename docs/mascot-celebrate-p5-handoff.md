@@ -21,7 +21,7 @@
 - 215×320 透明 artwork contract；
 - 不增加毛筆、服裝、獎牌、獎盃或其他身份道具。
 
-## 3. Candidate v4
+## 3. Production v4
 
 `public/mascot/moling-celebrate.svg`
 
@@ -40,7 +40,7 @@ Lifecycle：
 
 `provisional → candidate → production`
 
-目前保持 `celebrate.artStatus = candidate`，完成 Gate A–E 前不可升 production。
+Gate A–E 已完成，`celebrate.artStatus = production`；後續改動仍須保留本文件的身份、強度、情緒安全、尺寸及完成頁面約束。
 
 ## 4. Gate A–E
 
