@@ -4,13 +4,19 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '17 9 * * *'
+  workflow_run:
+    workflows: ['Tests']
+    types: [completed]
 
 permissions:
   contents: read
 
 jobs:
   smoke:
-    if: vars.ENABLE_PAGES_SMOKE == 'true'
+    if: >-
+      vars.ENABLE_PAGES_SMOKE == 'true' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -22,6 +28,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Wait for Pages reliability assets after main
+        if: github.event_name == 'workflow_run'
+        run: |
+          for attempt in $(seq 1 18); do
+            if curl -fsS "$MANJINGO_BASE_URL/practice-outbox.js" | grep -q 'manjingo_practice_outbox_v1'; then
+              echo "Pages reliability assets are available."
+              exit 0
+            fi
+            echo "Waiting for Pages deployment ($attempt/18)..."
+            sleep 10
+          done
+          echo "::error::Pages did not expose the practice reliability assets within 3 minutes."
+          exit 1
       - name: Install Firebase Admin cleanup runtime
         run: npm install --prefix functions --no-audit --no-fund
       - name: Require cleanup credential before creating a smoke user
