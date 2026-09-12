@@ -11,14 +11,14 @@ function loadCatalog() {
   vm.createContext(context);
   for (const file of [
     'public/question-pack-02.js','public/question-pack-03.js','public/question-pack-lesson.js','public/question-pack-capacity-01.js',
-    'public/question-pack-transfer-01.js','public/question-pack-transfer-03.js','public/question-pack-transfer-04.js','public/question-pack-transfer-05.js','public/content-catalog.js'
+    'public/question-pack-transfer-01.js','public/question-pack-transfer-03.js','public/question-pack-transfer-04.js','public/question-pack-transfer-05.js','public/question-pack-transfer-06.js','public/content-catalog.js'
   ]) vm.runInContext(source(file), context, { filename:file });
   return context.window.ManjingoContent;
 }
 
 test('every active question meets the reviewed structural quality floor', () => {
   const catalog = loadCatalog();
-  assert.equal(catalog.questions.length, 340);
+  assert.equal(catalog.questions.length, 346);
   for (const q of catalog.questions) {
     assert.ok(String(q.id || '').trim(), 'question id is required');
     assert.ok(String(q.kpId || '').trim(), `${q.id}: kpId is required`);
@@ -43,7 +43,7 @@ test('reviewed catalog is the only Firestore question import source', () => {
   const importer = source('scripts/import_to_firestore.js');
   const readme = source('scripts/README.md');
   assert.match(importer, /loadReviewedCatalog/);
-  for (const name of ['question-pack-02.js','question-pack-03.js','question-pack-lesson.js','question-pack-capacity-01.js','question-pack-transfer-01.js','question-pack-transfer-03.js','question-pack-transfer-04.js','question-pack-transfer-05.js','content-catalog.js']) assert.match(importer,new RegExp(name.replaceAll('.','\\.')));
+  for (const name of ['question-pack-02.js','question-pack-03.js','question-pack-lesson.js','question-pack-capacity-01.js','question-pack-transfer-01.js','question-pack-transfer-03.js','question-pack-transfer-04.js','question-pack-transfer-05.js','question-pack-transfer-06.js','content-catalog.js']) assert.match(importer,new RegExp(name.replaceAll('.','\\.')));
   assert.doesNotMatch(importer, /questions_v2_template\.csv/);
   assert.match(importer, /--prune/);
   assert.match(readme, /legacy \/ historical files/);
