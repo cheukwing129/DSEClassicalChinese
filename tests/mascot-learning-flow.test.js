@@ -58,7 +58,8 @@ test('all six v1 mascot state assets exist while candidate and production artwor
   assert.match(celebrate,/celebrate 狀態 P5 production artwork v4/);
   const happy=read('public/mascot/moling-happy.svg');
   assert.doesNotMatch(happy,/\.\.\/mascot-moling\.svg/);
-  assert.match(happy,/<(?:path|ellipse|circle)\b/);
+  assert.match(happy,/<image\b/);
+  assert.match(happy,/data:image\/webp;base64,/);
   assert.match(happy,/happy P1 production artwork v3/);
   const thinking=read('public/mascot/moling-thinking.svg');
   assert.doesNotMatch(thinking,/\.\.\/mascot-moling\.svg/);
