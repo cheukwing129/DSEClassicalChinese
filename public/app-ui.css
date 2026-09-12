@@ -201,3 +201,82 @@ body .feedback-ui.wrong,#lessonApp .feedback-ui.wrong{border-color:#ffc5c5}
   html{scroll-behavior:auto}
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+
+/* Selectable interface themes */
+.ui-theme-switcher{display:flex;align-items:center;justify-content:flex-end;gap:4px;width:min(100%,640px);margin:0 auto 6px;padding:0 2px;color:var(--ui-muted);font-size:11px;font-weight:850}
+.ui-theme-label{margin-right:3px}
+.ui-theme-choice{min-height:34px;padding:5px 10px;border:1px solid var(--ui-border);border-radius:999px;background:var(--ui-surface);color:var(--ui-muted);font:inherit;cursor:pointer}
+.ui-theme-choice.active,.ui-theme-choice[aria-pressed="true"]{border-color:var(--brand-warm-gold);background:#fff8e8;color:#70551d;box-shadow:0 0 0 1px rgba(212,168,91,.12)}
+.ui-theme-choice:focus-visible{outline:3px solid rgba(212,168,91,.34);outline-offset:2px}
+body.study-focus>.ui-theme-switcher{display:none}
+
+html[data-ui-theme="ink"]{
+  --green:#17666b;
+  --ink:#101b35;
+  --text:#3d4654;
+  --gray:#7e8893;
+  --red:#c65362;
+  --light-green:#edf5f1;
+  --light-red:#fff0f1;
+  --orange:#bd8734;
+  --ui-bg:#eef1f3;
+  --ui-surface:#fbfcfc;
+  --ui-surface-soft:#f0f3f4;
+  --ui-border:#d4dce0;
+  --ui-border-strong:#bcc8ce;
+  --ui-ink:#101b35;
+  --ui-text:#3d4654;
+  --ui-muted:#77828c;
+  --ui-green:#17666b;
+  --ui-green-dark:#10494f;
+  --ui-green-soft:#e8f1ef;
+  --ui-danger:#c65362;
+  --ui-shadow:0 10px 30px rgba(16,27,53,.09);
+  --brand-ink-teal:#174f59;
+  --brand-warm-gold:#d4a85b;
+}
+html[data-ui-theme="ink"],html[data-ui-theme="ink"] body{
+  background:
+    radial-gradient(circle at 50% -90px,rgba(212,168,91,.13),transparent 280px),
+    linear-gradient(180deg,#f6f7f5 0,#eef1f3 46%,#e9edef 100%);
+}
+html[data-ui-theme="ink"] button:focus-visible,
+html[data-ui-theme="ink"] a:focus-visible,
+html[data-ui-theme="ink"] input:focus-visible,
+html[data-ui-theme="ink"] summary:focus-visible{outline-color:rgba(212,168,91,.55)}
+html[data-ui-theme="ink"] body .card,
+html[data-ui-theme="ink"] #lessonApp .lesson-head,
+html[data-ui-theme="ink"] #lessonApp .lesson-content{border-color:var(--ui-border);box-shadow:var(--ui-shadow)}
+html[data-ui-theme="ink"] body.app-nav-ready>.title{color:var(--ui-ink)!important}
+html[data-ui-theme="ink"] .circle{border-color:var(--brand-warm-gold);background:linear-gradient(145deg,#20344e,#17666b)}
+html[data-ui-theme="ink"] .fill,
+html[data-ui-theme="ink"] #lessonApp .lesson-progress div,
+html[data-ui-theme="ink"] .study-progress-track i{background:linear-gradient(90deg,#174f59,#2a7b78 72%,#d4a85b)}
+html[data-ui-theme="ink"] body .action,
+html[data-ui-theme="ink"] #lessonApp .action{border-color:#173c50;background:linear-gradient(135deg,#20344e,#17666b);box-shadow:0 4px 0 #0d303d;color:#fff}
+html[data-ui-theme="ink"] body .option,
+html[data-ui-theme="ink"] #lessonApp .option{border-color:#aebbc2;background:rgba(251,252,252,.94)}
+html[data-ui-theme="ink"] body .option:hover,
+html[data-ui-theme="ink"] #lessonApp .option:hover{border-color:#688792;background:#f5f8f8}
+html[data-ui-theme="ink"] body .option.correct,
+html[data-ui-theme="ink"] #lessonApp .option.correct{border-color:#2b7774;background:#e7f3ed}
+html[data-ui-theme="ink"] body .option.wrong,
+html[data-ui-theme="ink"] #lessonApp .option.wrong{border-color:#c65362;background:#fff0f1}
+html[data-ui-theme="ink"] .feedback-ui.correct .feedback-result{background:linear-gradient(90deg,#eef5f0,#f8f3e7)}
+html[data-ui-theme="ink"] .feedback-ui.wrong .feedback-result{background:#fff1f2}
+html[data-ui-theme="ink"] .feedback-ui.correct .feedback-result-icon{background:#17666b}
+html[data-ui-theme="ink"] .feedback-ui.wrong .feedback-result-icon{background:#c65362}
+html[data-ui-theme="ink"] .session-summary-impact{border-color:#d8c38d;background:#faf5e8}
+html[data-ui-theme="ink"] .session-summary-impact>strong{color:#70551d}
+html[data-ui-theme="ink"] .home-tabs.app-bottom-nav{border-color:#cbd5da;background:rgba(246,248,248,.94);box-shadow:0 12px 36px rgba(16,27,53,.18)}
+html[data-ui-theme="ink"] .app-bottom-nav .home-tab.active{background:#dfeaec;color:#174f59}
+html[data-ui-theme="ink"] .app-bottom-nav .home-tab.active:after{background:#d4a85b}
+html[data-ui-theme="ink"] .ui-theme-choice.active,
+html[data-ui-theme="ink"] .ui-theme-choice[aria-pressed="true"]{border-color:#d4a85b;background:#20344e;color:#fff4d7}
+html[data-ui-theme="ink"] #lessonApp .lesson-tip{background:#faf4df;border:1px solid #e5d19e}
+html[data-ui-theme="ink"] #lessonApp .lesson-examples{background:#eef2f3}
+@media(max-width:430px){
+  .ui-theme-switcher{margin-bottom:2px;padding-right:0}
+  .ui-theme-choice{min-height:32px;padding:4px 9px}
+}
