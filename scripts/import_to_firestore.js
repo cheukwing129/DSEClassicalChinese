@@ -11,6 +11,7 @@
  *   public/question-pack-transfer-04.js
  *   public/question-pack-transfer-05.js
  *   public/question-pack-transfer-06.js
+ *   public/question-pack-transfer-07.js
  *   public/content-catalog.js
  *   public/question-pack-adaptive-01.js
  *   public/question-pack-adaptive-02.js
@@ -80,7 +81,7 @@ function loadReviewedCatalog() {
   vm.createContext(context);
   for (const file of [
     'question-pack-02.js','question-pack-03.js','question-pack-lesson.js','question-pack-capacity-01.js',
-    'question-pack-transfer-01.js','question-pack-transfer-03.js','question-pack-transfer-04.js','question-pack-transfer-05.js','question-pack-transfer-06.js',
+    'question-pack-transfer-01.js','question-pack-transfer-03.js','question-pack-transfer-04.js','question-pack-transfer-05.js','question-pack-transfer-06.js','question-pack-transfer-07.js',
     'content-catalog.js','question-pack-adaptive-01.js','question-pack-adaptive-02.js','question-pack-adaptive-03.js','question-difficulty.js'
   ]) {
     const source = fs.readFileSync(path.join(root, 'public', file), 'utf8');
@@ -114,6 +115,7 @@ function catalogTargets(catalog) {
       options:Array.isArray(question.o)?Array.from(question.o,String):[],answer:question.a==null?'':String(question.a),explanation:question.explanation||'',
       misconceptionKey:question.misconceptionKey||null,misconceptionLabel:question.misconceptionLabel||null,difficultyTier:question.difficultyTier||null,
       skillIds:Array.isArray(question.skillIds)?Array.from(question.skillIds,String):[],sourceTextId:question.sourceTextId||null,sourceSentenceId:question.sourceSentenceId||null,
+      passageId:question.passageId||null,passageText:question.passageText||null,
       sourceKind:question.sourceKind||null,transferLevel:Number.isInteger(question.transferLevel)?question.transferLevel:null,baseXp:Number(question.baseXp||question.xp||8),catalogVersion:version
     }
   }));

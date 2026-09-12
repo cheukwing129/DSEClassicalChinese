@@ -26,6 +26,9 @@ kp_p3_zhi:{action:'merge',targetSkillIds:['fw.zhi']},kp_p3_er:{action:'merge',ta
 };
 const dailyPolicy={sessionSize:10,languageSkillTarget:{min:7,max:8},transferTarget:{min:2,max:3},setTextRecallTarget:{min:0,max:0},maxQuestionsPerSourceText:2,maxQuestionsPerSourceSentence:1,wrongAnswerFollowup:'same-skill-different-context-first'};
 const qualityPolicy={minimumQuestionsPerCoreSkill:6,minimumSourceTextsPerCoreSkill:3,minimumUnseenOrNonSetTextQuestions:2,maximumSingleSentenceShare:0.25,matureQuestionsPerSkill:{min:10,max:20},matureSourceTextsPerSkill:5};
-function skill(id){return skills.find(x=>x.id===String(id))||null}function migrationFor(kpId){return migration[String(kpId)]||null}function coreSkills(){return skills.filter(x=>x.stage<=2)}
-return{VERSION,domains,skills,migration,dailyPolicy,qualityPolicy,skill,migrationFor,coreSkills};
+function skill(id){return skills.find(x=>x.id===String(id))||null}
+function migrationFor(kpId){return migration[String(kpId)]||null}
+function coreSkills(){return skills.filter(x=>x.stage<=2)}
+function advancedSkills(){return skills.filter(x=>x.stage===3)}
+return{VERSION,domains,skills,migration,dailyPolicy,qualityPolicy,skill,migrationFor,coreSkills,advancedSkills};
 });

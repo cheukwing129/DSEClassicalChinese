@@ -21,6 +21,13 @@ test('Firestore content sync defaults to read-only review and supports ADC',()=>
   assert.doesNotMatch(source,/csv-parser/);
 });
 
+test('Firestore importer loads stage 3 passage content and preserves passage metadata',()=>{
+  const source=read('scripts/import_to_firestore.js');
+  assert.match(source,/question-pack-transfer-07\.js/);
+  assert.match(source,/passageId:question\.passageId\|\|null/);
+  assert.match(source,/passageText:question\.passageText\|\|null/);
+});
+
 test('Firestore importer resolves Firebase Admin through the Functions package boundary',()=>{
   const source=read('scripts/import_to_firestore.js');
   assert.match(source,/createRequire/);
