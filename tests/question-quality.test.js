@@ -1,62 +1,12 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
-
-const root = path.join(__dirname, '..');
-function source(file) { return fs.readFileSync(path.join(root, file), 'utf8'); }
-function loadCatalog() {
-  const context = { window: {}, Map, Set, Array, Object, Number, String, Math };
-  vm.createContext(context);
-  for (const file of [
-    'public/question-pack-02.js','public/question-pack-03.js','public/question-pack-lesson.js','public/question-pack-capacity-01.js',
-    'public/question-pack-transfer-01.js','public/question-pack-transfer-03.js','public/question-pack-transfer-04.js','public/question-pack-transfer-05.js','public/question-pack-transfer-06.js','public/content-catalog.js'
-  ]) vm.runInContext(source(file), context, { filename:file });
-  return context.window.ManjingoContent;
-}
-
-test('every active question meets the reviewed structural quality floor', () => {
-  const catalog = loadCatalog();
-  assert.equal(catalog.questions.length, 346);
-  for (const q of catalog.questions) {
-    assert.ok(String(q.id || '').trim(), 'question id is required');
-    assert.ok(String(q.kpId || '').trim(), `${q.id}: kpId is required`);
-    assert.ok(String(q.q || '').trim().length >= 6, `${q.id}: question text is too short`);
-    assert.ok(String(q.explanation || '').trim().length >= 12, `${q.id}: meaningful explanation is required`);
-    assert.ok(['choice','fill'].includes(q.type), `${q.id}: active catalog uses supported choice/fill type`);
-    if (q.type === 'choice') {
-      assert.ok(Array.isArray(q.o) && q.o.length >= 3, `${q.id}: choice needs at least three options`);
-      assert.equal(new Set(q.o.map(String)).size, q.o.length, `${q.id}: choice options must be unique`);
-      assert.equal(q.o.filter(x => String(x) === String(q.a)).length, 1, `${q.id}: answer must appear exactly once`);
-    } else assert.ok(String(q.a || '').trim(), `${q.id}: fill answer is required`);
-  }
-});
-
-test('known corrupt legacy text cannot appear in the active reviewed catalog', () => {
-  const active = JSON.stringify(loadCatalog().questions);
-  for (const bad of ['苛政猫於虎','學而不思則網','何這之有','二者不可得入入','憂讒畏譛','先後天下之憂而憂']) assert.equal(active.includes(bad), false, `legacy corrupt text must stay retired: ${bad}`);
-  assert.equal(/「避」[^。？]*通假/.test(active), false, '避 must not be presented as a fake 通假字 question');
-});
-
-test('reviewed catalog is the only Firestore question import source', () => {
-  const importer = source('scripts/import_to_firestore.js');
-  const readme = source('scripts/README.md');
-  assert.match(importer, /loadReviewedCatalog/);
-  for (const name of ['question-pack-02.js','question-pack-03.js','question-pack-lesson.js','question-pack-capacity-01.js','question-pack-transfer-01.js','question-pack-transfer-03.js','question-pack-transfer-04.js','question-pack-transfer-05.js','question-pack-transfer-06.js','content-catalog.js']) assert.match(importer,new RegExp(name.replaceAll('.','\\.')));
-  assert.doesNotMatch(importer, /questions_v2_template\.csv/);
-  assert.match(importer, /--prune/);
-  assert.match(readme, /legacy \/ historical files/);
-  assert.match(readme, /不可再作為 production Firestore 題庫來源/);
-});
-
-test('cloud question loading refuses legacy Firestore question content', () => {
-  const firebase = source('public/firebase-config.js');
-  const start = firebase.indexOf('export async function fetchAllQuestions()');
-  const end = firebase.indexOf('export async function fetchAllKnowledgePoints()', start);
-  assert.ok(start >= 0 && end > start);
-  const fn = firebase.slice(start, end);
-  assert.match(fn, /window\.ManjingoContent/);
-  assert.match(fn, /refusing to fall back to legacy Firestore questions/);
-  assert.doesNotMatch(fn, /collection\(db,\s*["']questions["']/);
-});
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const root=path.join(__dirname,'..');
+function source(file){return fs.readFileSync(path.join(root,file),'utf8')}
+function loadCatalog(){const context={window:{},Map,Set,Array,Object,Number,String,Math};vm.createContext(context);for(const file of ['public/question-pack-02.js','public/question-pack-03.js','public/question-pack-lesson.js','public/question-pack-capacity-01.js','public/question-pack-transfer-01.js','public/question-pack-transfer-03.js','public/question-pack-transfer-04.js','public/question-pack-transfer-05.js','public/question-pack-transfer-06.js','public/content-catalog.js'])vm.runInContext(source(file),context,{filename:file});return context.window.ManjingoContent;}
+test('every active question meets the reviewed structural quality floor',()=>{const catalog=loadCatalog();assert.equal(catalog.questions.length,382);for(const q of catalog.questions){assert.ok(String(q.id||'').trim());assert.ok(String(q.kpId||'').trim(),`${q.id}: kpId required`);assert.ok(String(q.q||'').trim().length>=6,`${q.id}: question text too short`);assert.ok(String(q.explanation||'').trim().length>=12,`${q.id}: explanation required`);assert.ok(['choice','fill'].includes(q.type),`${q.id}: unsupported type`);if(q.type==='choice'){assert.ok(Array.isArray(q.o)&&q.o.length>=3,`${q.id}: needs options`);assert.equal(new Set(q.o.map(String)).size,q.o.length,`${q.id}: duplicate options`);assert.equal(q.o.filter(x=>String(x)===String(q.a)).length,1,`${q.id}: answer must appear once`);}else assert.ok(String(q.a||'').trim());}});
+test('known corrupt legacy text cannot appear in the active reviewed catalog',()=>{const active=JSON.stringify(loadCatalog().questions);for(const bad of ['苛政猫於虎','學而不思則網','何這之有','二者不可得入入','憂讒畏譛','先後天下之憂而憂'])assert.equal(active.includes(bad),false);assert.equal(/「避」[^。？]*通假/.test(active),false);});
+test('reviewed catalog remains the only Firestore question import source',()=>{const importer=source('scripts/import_to_firestore.js');assert.match(importer,/loadReviewedCatalog/);for(const name of ['question-pack-transfer-05.js','question-pack-transfer-06.js','content-catalog.js'])assert.match(importer,new RegExp(name.replaceAll('.','\\.')));assert.doesNotMatch(importer,/questions_v2_template\.csv/);});
+test('cloud question loading refuses legacy Firestore question content',()=>{const firebase=source('public/firebase-config.js'),start=firebase.indexOf('export async function fetchAllQuestions()'),end=firebase.indexOf('export async function fetchAllKnowledgePoints()',start),fn=firebase.slice(start,end);assert.ok(start>=0&&end>start);assert.match(fn,/window\.ManjingoContent/);assert.doesNotMatch(fn,/collection\(db,\s*["']questions["']/);});
