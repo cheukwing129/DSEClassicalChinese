@@ -35,8 +35,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const vm = require('vm');
 const { createRequire } = require('module');
+const { loadReviewedCatalog } = require('./reviewed_catalog.js');
 
 const root = path.join(__dirname, '..');
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'manjingo-95d9a';
@@ -78,22 +78,6 @@ function readSimpleCsv(filePath) {
   });
 }
 
-function loadReviewedCatalog() {
-  const context = { window: {}, Map, Set, Array, Object, Number, String, Math };
-  vm.createContext(context);
-  for (const file of [
-    'question-pack-02.js','question-pack-03.js','question-pack-lesson.js','question-pack-capacity-01.js',
-    'question-pack-transfer-01.js','question-pack-transfer-03.js','question-pack-transfer-04.js','question-pack-transfer-05.js','question-pack-transfer-06.js','question-pack-transfer-07.js','question-pack-settext-language-01.js','question-pack-settext-language-02.js',
-    'content-catalog.js','question-pack-adaptive-01.js','question-pack-adaptive-02.js','question-pack-adaptive-03.js','question-difficulty.js'
-  ]) {
-    const source = fs.readFileSync(path.join(root, 'public', file), 'utf8');
-    vm.runInContext(source, context, { filename:file });
-  }
-  const catalog = context.window.ManjingoContent;
-  if (!catalog || !Array.isArray(catalog.questions) || !Array.isArray(catalog.knowledgePoints)) throw new Error('Reviewed content catalog failed to load');
-  return catalog;
-}
-
 function textTargets() {
   return readSimpleCsv(path.join(root, 'data', 'texts_template.csv')).map(row => ({ id:String(row.textId), data:{title:row.title,author:row.author,dynasty:row.dynasty,genre:row.genre,summary:row.summary} }));
 }
@@ -116,7 +100,7 @@ function catalogTargets(catalog) {
       type:question.type,kpId:question.kpId,textId:question.textId==='CROSS'?null:(question.textId||null),question:question.q,
       options:Array.isArray(question.o)?Array.from(question.o,String):[],answer:question.a==null?'':String(question.a),explanation:question.explanation||'',
       misconceptionKey:question.misconceptionKey||null,misconceptionLabel:question.misconceptionLabel||null,difficultyTier:question.difficultyTier||null,
-      skillIds:Array.isArray(question.skillIds)?Array.from(question.skillIds,String):[],sourceTextId:question.sourceTextId||null,sourceSentenceId:question.sourceSentenceId||null,
+      skillIds:Array.isArray(question.skillIds)?Array.from(question.skillIds,String):[],skillContractVersion:question.skillContractVersion||null,sourceTextId:question.sourceTextId||null,sourceSentenceId:question.sourceSentenceId||null,
       sourceWorkId:question.sourceWorkId||null,setTextLanguage:question.setTextLanguage===true?true:null,
       passageId:question.passageId||null,passageText:question.passageText||null,
       sourceKind:question.sourceKind||null,transferLevel:Number.isInteger(question.transferLevel)?question.transferLevel:null,baseXp:Number(question.baseXp||question.xp||8),catalogVersion:version
