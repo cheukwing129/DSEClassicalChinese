@@ -28,6 +28,10 @@ if(!/<title\b[^>]*>[^<]*開心|<title\b[^>]*>[^<]*happy/i.test(happySvg))fail('h
 if(!/<desc\b/i.test(happySvg))fail('happy SVG should retain an accessible description');
 
 const referencesBaseline=/mascot-moling\.svg/.test(happySvg);
+const embedded=happySvg.match(/data:image\/webp;base64,([^"']+)/i);
+const webp=embedded?Buffer.from(embedded[1],'base64'):null;
+const validWebp=webp&&webp.subarray(0,4).toString('ascii')==='RIFF'&&webp.subarray(8,12).toString('ascii')==='WEBP';
+const hasAlpha=validWebp&&((webp.subarray(12,16).toString('ascii')==='VP8X'&&(webp[20]&0x10)!==0)||webp.includes(Buffer.from('ALPH')));
 const overlayLanguage=/沿用正式角色 artwork|點綴|baseline\s*\+\s*overlay/i.test(happySvg);
 
 if(happy.artStatus==='placeholder-treatment'){
@@ -45,7 +49,7 @@ if(happy.artStatus==='placeholder-treatment'){
   if(referencesBaseline)fail('production happy must not reference mascot-moling.svg');
   if(overlayLanguage)fail('production happy description must not describe a baseline/overlay treatment');
   if(happySvg===neutralSvg)fail('production happy cannot be identical to neutral');
-  if(happySvg.length<30000||!/<image\\b/i.test(happySvg)||!embedded)fail('production happy embedded artwork missing');
+  if(happySvg.length<30000||!/<image\b/i.test(happySvg)||!embedded)fail('production happy embedded artwork missing');
   if(!validWebp)fail('production happy must embed a valid WebP');
   if(!hasAlpha)fail('production happy WebP must contain real alpha');
   if(!/單節圓頭墨臂/.test(happySvg))fail('production happy must preserve one-piece rounded limb language');
