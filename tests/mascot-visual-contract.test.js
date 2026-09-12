@@ -65,18 +65,20 @@ test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and 
   assert.equal(encouraging.artStatus,'production');
   assert.equal(thinking.artStatus,'production');
   assert.equal(celebrate.artStatus,'production');
-  assert.match(read('public/mascot/moling-happy.svg'),/happy production artwork/);
+  assert.match(read('public/mascot/moling-happy.svg'),/happy P1 production artwork v3/);
   assert.match(read('public/mascot/moling-encouraging.svg'),/encouraging production artwork v4/);
   assert.match(read('public/mascot/moling-thinking.svg'),/thinking production artwork v2/);
   assert.match(read('public/mascot/moling-celebrate.svg'),/celebrate 狀態 P5 production artwork v4/);
 });
 
-test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
+test('happy production v3 keeps all-ink identity and restrained success cues',()=>{
   const happy=read('public/mascot/moling-happy.svg');
-  assert.match(happy,/清楚笑意/);
-  assert.match(happy,/M78 167c8 11 18 16 30 16s22-5 30-16/);
-  assert.match(happy,/stroke-width="6"/);
-  assert.doesNotMatch(happy,/stroke="#d4a85b"/);
+  assert.match(happy,/全墨炭灰至深墨藍漸變/);
+  assert.match(happy,/純黑豆豆眼/);
+  assert.match(happy,/閉口上揚小笑容/);
+  assert.match(happy,/單節圓頭墨臂/);
+  assert.match(happy,/data:image\\/webp;base64,/);
+  assert.doesNotMatch(happy,/(巨型白眼|星點|勾號|勝利道具|狂躁)/);
 });
 
 test('encouraging P2 production art encodes supportive cues without blame cues',()=>{
