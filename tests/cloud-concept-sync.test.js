@@ -15,13 +15,15 @@ test('Cloudflare answer API persists concept mastery transactionally',()=>{
  assert.match(worker,/duplicate: true/);
 });
 
-test('Cloudflare daily plan schedules weak concepts with question targeting metadata',()=>{
- const worker=read('public/_worker.js');
+test('Cloudflare daily plan maps weak concepts into skill-first question targeting metadata',()=>{
+ const worker=read('public/_worker.js'),planner=read('public/server-skill-plan.js');
  assert.match(worker,/users\/\$\{uid\}\/concepts/);
- assert.match(worker,/conceptReview: true/);
- assert.match(worker,/conceptQuestionIds/);
- assert.match(worker,/conceptMastery: Number\(c\.mastery \|\| 0\)/);
- assert.match(worker,/conceptReview: selected\.filter/);
+ assert.match(worker,/SERVER_SKILL_PLAN\.buildPlan/);
+ assert.match(planner,/conceptReview:true/);
+ assert.match(planner,/conceptQuestionIds:Array\.isArray\(data\.questionIds\)/);
+ assert.match(planner,/conceptMastery:Number\(data\.mastery\|\|0\)/);
+ assert.match(planner,/conceptReview:items\.filter/);
+ assert.match(planner,/skillId:x\.skillId,kpId:x\.kpId,conceptKey:x\.conceptKey/);
 });
 
 test('firebase client downloads concept state and sends learning writes to same-origin Pages API',()=>{
