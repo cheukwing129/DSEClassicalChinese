@@ -4,17 +4,21 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: "Preview only, or synchronize reviewed catalog and prune stale question/KP docs"
+        description: "Preview, safely upsert, or synchronize reviewed catalog and prune stale question/KP docs"
         required: true
         default: check
         type: choice
         options:
           - check
+          - sync
           - sync-and-prune
       confirmation:
         description: "For sync-and-prune, enter PRUNE_REVIEWED_CONTENT"
         required: false
         type: string
+  workflow_run:
+    workflows: ['Tests']
+    types: [completed]
 
 permissions:
   contents: read
@@ -28,10 +32,15 @@ env:
 
 jobs:
   sync:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     env:
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MANJINGO }}
-      OPERATION: ${{ inputs.operation }}
+      OPERATION: ${{ inputs.operation || 'auto-apply' }}
       CONFIRMATION: ${{ inputs.confirmation }}
     steps:
       - name: Checkout reviewed catalog
@@ -73,6 +82,14 @@ jobs:
 
       - name: Preview Firestore catalog drift
         run: node scripts/import_to_firestore.js --check
+
+      - name: Safely upsert reviewed catalog after successful main tests
+        if: github.event_name == 'workflow_run'
+        run: node scripts/import_to_firestore.js --apply
+
+      - name: Safely upsert reviewed catalog
+        if: github.event_name == 'workflow_dispatch' && env.OPERATION == 'sync'
+        run: node scripts/import_to_firestore.js --apply
 
       - name: Synchronize reviewed catalog and prune stale content
         if: env.OPERATION == 'sync-and-prune'
