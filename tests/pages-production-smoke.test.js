@@ -66,6 +66,24 @@ test('production smoke verifies deployed answer outbox persistence retry and acc
   assert.match(source,/production outbox crossed account boundary/);
 });
 
+test('production smoke verifies deployed practice outbox plus ten-question and answer-position safety',()=>{
+  const source=read('scripts/smoke_practice_reliability.mjs');
+  assert.match(source,/read\('\/practice-outbox\.js'/);
+  assert.match(source,/read\('\/practice-api\.js'/);
+  assert.match(source,/read\('\/daily-plan-runtime\.js'/);
+  assert.match(source,/outbox\.enqueue/);
+  assert.match(source,/outbox\.markFailure/);
+  assert.match(source,/outbox\.bindUnowned/);
+  assert.match(source,/deployed practice outbox crossed account boundary/);
+  assert.match(source,/practiceApiSource\.includes\("import '\.\/practice-outbox\.js'"\)/);
+  assert.match(source,/flushPracticeOutbox\(\{force:true\}\)/);
+  assert.match(source,/daily\.sessionReservation\(queue,9,completed,10\)/);
+  assert.match(source,/reservation\.remainingSlots===0/);
+  assert.match(source,/merged\.questions\.length===10&&merged\.tail\.length===0/);
+  assert.match(source,/daily\.balanceChoiceQuestions\(allA,'production-smoke'\)/);
+  assert.match(source,/Math\.max\(\.\.\.counts\)-Math\.min\(\.\.\.counts\)<=1/);
+});
+
 test('Pages smoke performs one real reviewed answer and verifies all learning writes',()=>{
   const source=read('scripts/smoke_pages_api.mjs');
   assert.match(source,/accounts:signUp/);
@@ -133,5 +151,5 @@ test('production smoke workflow gates execution and always runs credentialed cle
 
 test('package exposes the production smoke command',()=>{
   const pkg=JSON.parse(read('package.json'));
-  assert.equal(pkg.scripts['smoke:pages'],'node scripts/smoke_sync_guard.mjs && node scripts/smoke_answer_outbox.mjs && node scripts/smoke_pages_api.mjs');
+  assert.equal(pkg.scripts['smoke:pages'],'node scripts/smoke_sync_guard.mjs && node scripts/smoke_answer_outbox.mjs && node scripts/smoke_practice_reliability.mjs && node scripts/smoke_pages_api.mjs');
 });
