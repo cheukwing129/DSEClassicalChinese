@@ -35,7 +35,8 @@ test('Ink Spirit theme is token-driven, accessible, and keeps Classic intact',()
   assert.match(css,/manyingo-logo-ink\.webp/);
   assert.doesNotMatch(css,/body\.app-nav-ready>\.title::after\{content:""/);
   const homepage=read('public/index.html');
-  assert.match(homepage,/<h1 class="title">Manyingo<\/h1>/);
+  assert.match(homepage,/<h1 class="title">Manyingo 文言年糕<\/h1>/);
+  assert.match(homepage,/body\.app-nav-ready>\.title::after\{content:'文言年糕'!important/);
   assert.match(homepage,/window\.ManjingoContent/);
   assert.match(css,/html\[data-ui-theme="ink"\]/);
   assert.match(css,/--ui-ink:#101b35/);
