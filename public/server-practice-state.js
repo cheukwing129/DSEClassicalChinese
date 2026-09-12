@@ -1,7 +1,7 @@
 (function(root,factory){
 'use strict';
 let practice=root&&root.ManjingoPracticeEffectiveness;
-if(typeof module==='object'&&module.exports){practice=require('./practice-effectiveness.js');module.exports=factory(practice);return;}
+if(typeof module==='object'&&module.exports){practice=require('./practice-effectiveness.js');const api=factory(practice);module.exports=api;root.ManjingoServerPracticeState=api;if(root.window&&root.window!==root)root.window.ManjingoServerPracticeState=api;return;}
 const api=factory(practice);root.ManjingoServerPracticeState=api;if(root.window&&root.window!==root)root.window.ManjingoServerPracticeState=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(practice){
 'use strict';
