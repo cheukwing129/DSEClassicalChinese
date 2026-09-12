@@ -50,9 +50,8 @@ body .small,#lessonApp .lesson-question-count{color:var(--ui-muted)}
 /* Homepage page-level rhythm */
 body.app-nav-ready{max-width:640px;margin:0 auto;padding-top:14px}
 .title{letter-spacing:-.035em}
-/* Classic keeps the original green brand title. */
-body.app-nav-ready>.title{display:flex;align-items:center;justify-content:center;gap:14px;color:var(--ui-green)!important;min-height:92px;margin:2px 0 0!important}
-body.app-nav-ready>.title::after{content:"";display:block;width:58px;height:86px;flex:0 0 58px;background:url('./mascot/moling-neutral.svg') center/contain no-repeat}
+body.app-nav-ready>.title{display:block;width:min(100%,520px);height:112px;min-height:0;margin:0 auto!important;font-size:0;color:transparent!important;background:url('./brand/manyingo-logo-classic.svg') center/contain no-repeat}
+body.app-nav-ready>.title::after{content:none}
 .status{color:var(--ui-muted)!important;margin-bottom:12px!important}
 .home-view{padding-bottom:8px}
 #homePath>.card,#homeWeakness>.card,#homeResults>.card{padding:20px}
@@ -165,9 +164,9 @@ body .feedback-ui.wrong,#lessonApp .feedback-ui.wrong{border-color:#ffc5c5}
 @media(max-width:430px){
   body{padding-left:12px!important;padding-right:12px!important}
   body.app-nav-ready{padding-top:8px}
-  .title{font-size:28px!important;margin-top:10px!important}
-  body.app-nav-ready>.title{gap:9px;min-height:72px;margin-top:0!important}
-  body.app-nav-ready>.title::after{width:44px;height:66px;flex-basis:44px}
+  .title{font-size:0!important;margin-top:0!important}
+  body.app-nav-ready>.title{width:min(100%,400px);height:86px;min-height:0;margin:0 auto!important}
+  body.app-nav-ready>.title::after{content:none}
   .player-status .streak::before{width:24px;height:32px;flex-basis:24px}
   body .card{border-radius:18px}
   #homePath>.card,#homeWeakness>.card,#homeResults>.card{padding:16px}
@@ -249,7 +248,7 @@ html[data-ui-theme="ink"] summary:focus-visible{outline-color:rgba(212,168,91,.5
 html[data-ui-theme="ink"] body .card,
 html[data-ui-theme="ink"] #lessonApp .lesson-head,
 html[data-ui-theme="ink"] #lessonApp .lesson-content{border-color:var(--ui-border);box-shadow:var(--ui-shadow)}
-html[data-ui-theme="ink"] body.app-nav-ready>.title{color:var(--ui-ink)!important}
+html[data-ui-theme="ink"] body.app-nav-ready>.title{background-image:url('./brand/manyingo-logo-ink.svg')}
 html[data-ui-theme="ink"] .circle{border-color:var(--brand-warm-gold);background:linear-gradient(145deg,#20344e,#17666b)}
 html[data-ui-theme="ink"] .fill,
 html[data-ui-theme="ink"] #lessonApp .lesson-progress div,
