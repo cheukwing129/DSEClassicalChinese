@@ -22,8 +22,8 @@ test('homepage brand renders theme-aware Manyingo logo without entering the focu
   const css=read('public/app-ui.css');
   const shell=read('public/home-shell.js');
   assert.match(css,/--brand-ink-teal:#0f5a5a/);
-  assert.match(css,/body\.app-nav-ready>\.title[^}]*manyingo-logo-classic\.svg/);
-  assert.match(css,/html\[data-ui-theme="ink"\] body\.app-nav-ready>\.title[^}]*manyingo-logo-ink\.svg/);
+  assert.match(css,/body\.app-nav-ready>\.title[^}]*manyingo-logo-classic\.webp/);
+  assert.match(css,/html\[data-ui-theme="ink"\] body\.app-nav-ready>\.title[^}]*manyingo-logo-ink\.webp/);
   assert.match(css,/body\.app-nav-ready>\.title::after\{content:none\}/);
   assert.match(css,/@media\(max-width:430px\)[\s\S]*body\.app-nav-ready>\.title\{width:min\(100%,400px\);height:86px/);
   assert.match(shell,/body\.'\+STUDY_CLASS\+'>\.title/);
