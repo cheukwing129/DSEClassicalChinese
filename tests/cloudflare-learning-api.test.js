@@ -28,7 +28,7 @@ test('learning API rejects unauthenticated requests before Firestore access',asy
  assert.match(body.error,/Firebase ID token/);
 });
 
-test('health endpoint reports whether server credentials are configured without exposing them',async()=>{
+test('health endpoint reports learning and practice policy without exposing credentials',async()=>{
  const mod=await loadWorker();
  const response=await mod.default.fetch(new Request('https://manjingo.pages.dev/api/health'),{FIREBASE_PROJECT_ID:'manjingo-95d9a'});
  const body=await response.json();
@@ -37,6 +37,7 @@ test('health endpoint reports whether server credentials are configured without 
  assert.equal(body.configured,false);
  assert.equal(body.firestoreProject,'manjingo-95d9a');
  assert.equal(body.learningPolicy,'shared-v1');
+ assert.equal(body.practicePolicy,'server-practice-v1');
  assert.equal(JSON.stringify(body).includes('PRIVATE KEY'),false);
 });
 
@@ -57,6 +58,26 @@ test('worker uses encrypted service credentials to obtain datastore OAuth and wr
  assert.match(source,/documents:commit/);
  assert.match(source,/documents:rollback/);
  assert.match(source,/answerLogs\/\$\{answer\.answerId\}/);
+});
+
+test('practice API persists idempotent sessions and server-computed intervention state',()=>{
+ const client=fs.readFileSync(path.join(__dirname,'..','public','practice-api.js'),'utf8');
+ assert.match(source,/import '\.\/server-practice-state\.js'/);
+ assert.match(source,/url\.pathname === '\/api\/practice-session'/);
+ assert.match(source,/url\.pathname === '\/api\/practice-state'/);
+ assert.match(source,/practiceSessions\/\$\{session\.practiceId\}/);
+ assert.match(source,/interventions\/\$\{session\.skillId\}/);
+ assert.match(source,/SERVER_PRACTICE\.buildIntervention/);
+ assert.match(source,/allowed\.includes\(session\.skillId\)/);
+ assert.match(source,/duplicate:true/);
+ assert.match(client,/authorized\('\/api\/practice-session'/);
+ assert.match(client,/authorized\('\/api\/practice-state'/);
+});
+
+test('daily plan reads authoritative interventions alongside native skill mastery',()=>{
+ assert.match(source,/timed\(trace,'interventions_list'/);
+ assert.match(source,/users\/\$\{uid\}\/interventions/);
+ assert.match(source,/buildPlan\(\{knowledge,skills,concepts,interventions,kpUniverse:kpUniverseDocs/);
 });
 
 test('Pages config exposes only project id as a non-secret binding',()=>{

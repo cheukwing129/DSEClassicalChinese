@@ -19,13 +19,43 @@ test('equal-attempt records use the most recent answer timestamp',()=>{
  assert.equal(sync.mergeLearningState(local,remote).knowledge.a.mastery,52);
 });
 
-test('practice history is unioned, deduplicated, and ordered newest first',()=>{
- const first={kpId:'a',completedAt:'2026-09-10T10:00:00Z',strategy:'targeted',beforeMastery:40,afterMastery:50};
- const second={kpId:'a',completedAt:'2026-09-10T11:00:00Z',strategy:'remedial',beforeMastery:50,afterMastery:58};
+test('practice history is unioned, deduplicated, ordered and assigned stable practice ids',()=>{
+ const first={skillId:'fw.zhi',kpId:'a',routeKpId:'a',completedAt:'2026-09-10T10:00:00Z',strategy:'targeted',beforeMastery:40,afterMastery:50};
+ const second={skillId:'fw.zhi',kpId:'a',routeKpId:'a',completedAt:'2026-09-10T11:00:00Z',strategy:'remedial',beforeMastery:50,afterMastery:58};
  const merged=sync.mergePracticeHistory([first],[first,second]);
  assert.equal(merged.length,2);
  assert.equal(merged[0].strategy,'remedial');
  assert.equal(merged[1].strategy,'targeted');
+ assert.match(merged[0].practiceId,/^pr_[a-z0-9]+$/);
+ assert.equal(sync.ensurePracticeIdentity(first).practiceId,sync.ensurePracticeIdentity(first).practiceId);
+});
+
+test('different skills on one shared route keep distinct deterministic practice ids',()=>{
+ const base={kpId:'shared',routeKpId:'shared',completedAt:'2026-09-10T10:00:00Z',strategy:'targeted',beforeMastery:40,afterMastery:42};
+ const a=sync.ensurePracticeIdentity({...base,skillId:'fw.nai'}),b=sync.ensurePracticeIdentity({...base,skillId:'fw.ze'}),merged=sync.mergePracticeHistory([a],[b]);
+ assert.notEqual(a.practiceId,b.practiceId);
+ assert.equal(merged.length,2);
+});
+
+test('server-native intervention state wins an equal-time local projection',()=>{
+ const local={skill:{skillId:'skill',key:'remedial',updatedAt:'2026-09-10T10:00:00Z',source:'local-projection'}};
+ const remote={skill:{skillId:'skill',key:'reteach',updatedAt:'2026-09-10T10:00:00Z',source:'server-native-v1'}};
+ assert.equal(sync.mergeInterventionState(local,remote).skill.key,'reteach');
+});
+
+test('server practice state restores history and intervention after local practice data is absent',()=>{
+ const merged=sync.mergeServerPractice({knowledge:{},practiceHistory:[],interventionState:{}},{practiceHistory:[{practiceId:'practice_001',skillId:'fw.zhi',kpId:'kp_virtual_zhi',routeKpId:'kp_virtual_zhi',completedAt:'2026-09-10T10:00:00Z'}],interventionState:{'fw.zhi':{skillId:'fw.zhi',key:'remedial',updatedAt:'2026-09-10T10:01:00Z',source:'server-native-v1'}}});
+ assert.equal(merged.practiceHistory.length,1);
+ assert.equal(merged.practiceHistory[0].practiceId,'practice_001');
+ assert.equal(merged.interventionState['fw.zhi'].key,'remedial');
+});
+
+test('client sync snapshot strips practice history and intervention state once server persistence owns them',()=>{
+ const snapshot=sync.snapshotLearningState({totalXp:20,knowledge:{a:{}},practiceHistory:[{practiceId:'p'}],interventionState:{x:{key:'remedial'}}});
+ assert.equal(snapshot.totalXp,20);
+ assert.deepEqual(snapshot.knowledge,{a:{}});
+ assert.equal('practiceHistory' in snapshot,false);
+ assert.equal('interventionState' in snapshot,false);
 });
 
 test('question rotation merge keeps local recency then appends remote unique ids',()=>{

@@ -12,7 +12,9 @@ test('answer transaction derives a trusted core skill from reviewed metadata and
  assert.match(worker,/questionData&&questionData\.skillIds/);
  assert.match(worker,/CURRICULUM\.migrationFor\(kpId\)/);
  assert.match(worker,/Number\(def\.stage\)<=2/);
- assert.doesNotMatch(worker,/raw\.skillId/);
+ const answerValidation=worker.match(/function validateAnswer\(raw\) \{([\s\S]*?)\n\}\nfunction validatePracticeSession/);
+ assert.ok(answerValidation);
+ assert.doesNotMatch(answerValidation[1],/raw\.skillId/);
 });
 
 test('server commits skill mastery atomically with KP gamification and answer log',()=>{

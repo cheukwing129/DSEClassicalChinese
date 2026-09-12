@@ -133,6 +133,7 @@ const health = await readJson(healthResponse, 'health');
 check(healthResponse.ok && health.ok === true, `health failed (${healthResponse.status})`);
 check(health.configured === true, 'Pages Worker is deployed but Firebase server credentials are not configured');
 check(health.service === 'manjingo-learning', 'unexpected health service');
+check(health.practicePolicy === 'server-practice-v1', 'deployed practice policy is not server-authoritative v1');
 reportTiming(healthResponse, 'health', ['total']);
 console.log(`✓ health: ${health.service} / ${health.firestoreProject}`);
 
@@ -147,8 +148,43 @@ const plan = await readJson(planResponse, 'daily plan');
 check(planResponse.ok, `daily plan failed (${planResponse.status}): ${plan.error || 'unknown error'}`);
 check(Array.isArray(plan.items), 'daily plan did not return items[]');
 check(Number.isFinite(Number(plan.totalRecommended)), 'daily plan did not return totalRecommended');
-reportTiming(planResponse, 'daily-plan', ['auth','oauth','knowledge_list','concepts_list','kp_list','total']);
+reportTiming(planResponse, 'daily-plan', ['auth','oauth','knowledge_list','concepts_list','interventions_list','kp_list','total']);
 console.log(`✓ authenticated Firestore daily plan: ${plan.items.length} item(s)`);
+
+const practiceRoute = plan.items.find(item => item && item.skillId && item.kpId);
+check(practiceRoute, 'daily plan did not provide a valid skill + KP practice route');
+const practiceId = `smokepractice${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+const practicePayload = {
+  practiceId,
+  skillId: String(practiceRoute.skillId),
+  routeKpId: String(practiceRoute.kpId),
+  kpId: String(practiceRoute.kpId),
+  beforeMastery: 30,
+  afterMastery: 32,
+  correctCount: 1,
+  questionCount: 2,
+  strategy: 'targeted',
+  completedAt: new Date().toISOString()
+};
+const practiceResponse = await api('/api/practice-session', idToken, { method: 'POST', body: JSON.stringify(practicePayload) });
+const practice = await readJson(practiceResponse, 'practice session');
+check(practiceResponse.ok && practice.success === true && practice.duplicate === false, `practice session failed (${practiceResponse.status}): ${practice.error || 'unknown error'}`);
+check(practice.practiceSession && practice.practiceSession.practiceId === practiceId, 'practice session did not return the persisted practice identity');
+check(practice.interventionState && practice.interventionState.skillId === practicePayload.skillId, 'practice session did not return server intervention state for the selected skill');
+reportTiming(practiceResponse, 'practice-session', ['auth','oauth','kp_list','practice_tx_begin','practice_tx_reads','practice_commit','total']);
+
+const practiceStateResponse = await api('/api/practice-state', idToken);
+const practiceState = await readJson(practiceStateResponse, 'practice state');
+check(practiceStateResponse.ok, `practice state failed (${practiceStateResponse.status}): ${practiceState.error || 'unknown error'}`);
+check(Array.isArray(practiceState.practiceIds) && practiceState.practiceIds.includes(practiceId), 'authoritative practice state did not restore the persisted practice event');
+check(practiceState.interventionState && practiceState.interventionState[practicePayload.skillId], 'authoritative practice state did not restore the skill intervention document');
+reportTiming(practiceStateResponse, 'practice-state', ['auth','oauth','interventions_list','total']);
+
+const duplicatePracticeResponse = await api('/api/practice-session', idToken, { method: 'POST', body: JSON.stringify(practicePayload) });
+const duplicatePractice = await readJson(duplicatePracticeResponse, 'duplicate practice session');
+check(duplicatePracticeResponse.ok && duplicatePractice.success === true && duplicatePractice.duplicate === true, 'practice retry was not idempotent');
+reportTiming(duplicatePracticeResponse, 'practice-duplicate', ['auth','oauth','kp_list','practice_tx_begin','practice_tx_reads','practice_tx_rollback','total']);
+console.log(`✓ server-authoritative practice persisted, restored, and deduplicated for ${practicePayload.skillId}`);
 
 const dueResponse = await api('/api/due-knowledge-points', idToken);
 const due = await readJson(dueResponse, 'due knowledge points');

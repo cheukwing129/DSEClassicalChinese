@@ -18,7 +18,7 @@ const kpUniverse=catalog.knowledgePoints.map(kp=>({id:String(kp.kpId),data:{text
 const now=new Date('2026-09-12T08:00:00Z');
 const future='2026-10-12T08:00:00Z';
 function skillDoc(skillId,mastery=70,overrides={}){return{id:String(skillId),data:{skillId:String(skillId),mastery,attempts:3,correctCount:3,wrongCount:0,lastCorrect:true,lastAnsweredAt:'2026-09-12T07:00:00Z',nextReviewAt:future,source:'server-native-v1',...overrides}}}
-function plan(options={}){return planner.buildPlan({kpUniverse,knowledge:[],skills:[],concepts:[],targetCount:10,now,...options})}
+function plan(options={}){return planner.buildPlan({kpUniverse,knowledge:[],skills:[],concepts:[],interventions:[],targetCount:10,now,...options})}
 
 test('real reviewed KP universe gives every one of the 49 core skills a server practice route',()=>{
  const {routes}=planner.buildRoutes(kpUniverse),core=curriculum.coreSkills();
@@ -79,6 +79,29 @@ test('weak misconception is lifted from its KP into a skill-first review target'
  assert.equal(item.category,'weak');
 });
 
+test('server-authoritative reteach outranks ordinary review and keeps its stored route',()=>{
+ const skills=[skillDoc('fw.zhi',80),skillDoc('fw.er',25,{lastCorrect:false,nextReviewAt:'2026-09-01T08:00:00Z'})];
+ const interventions=[{id:'fw.zhi',data:{skillId:'fw.zhi',routeKpId:'kp_virtual_zhi',learningState:{key:'reteach',label:'需要概念重教',priority:4,actionable:true,tone:'danger'},updatedAt:'2026-09-12T07:30:00Z',source:'server-native-v1'}}];
+ const result=plan({skills,interventions});
+ assert.equal(result.interventionAdaptive,true);
+ assert.equal(result.items[0].skillId,'fw.zhi');
+ assert.equal(result.items[0].kpId,'kp_virtual_zhi');
+ assert.equal(result.items[0].interventionState,'reteach');
+ assert.equal(result.items[0].interventionActionable,true);
+ assert.equal(result.interventions[0].skillId,'fw.zhi');
+});
+
+test('effective server intervention cools a weak skill instead of immediately re-escalating it',()=>{
+ const skills=[skillDoc('fw.zhi',50,{lastCorrect:false})];
+ const interventions=[{id:'fw.zhi',data:{skillId:'fw.zhi',routeKpId:'kp_virtual_zhi',learningState:{key:'remedial-effective',label:'補救後已穩定',priority:0,actionable:false,tone:'success'},updatedAt:'2026-09-12T07:30:00Z',source:'server-native-v1'}}];
+ const result=plan({skills,interventions,targetCount:14});
+ const item=result.items.find(x=>x.skillId==='fw.zhi');
+ assert.ok(item);
+ assert.equal(item.interventionCooldown,true);
+ assert.equal(item.interventionActionable,false);
+ assert.notEqual(item.category,'weak');
+});
+
 test('fully unlocked ten-task plan reserves two to three tasks for unseen transfer skills',()=>{
  const skills=curriculum.coreSkills().map(skill=>skillDoc(skill.id,70));
  const result=plan({skills});
@@ -91,12 +114,14 @@ test('fully unlocked ten-task plan reserves two to three tasks for unseen transf
  assert.equal(new Set(result.skills).size,result.skills.length);
 });
 
-test('worker daily plan reads native skills and delegates selection to the pure skill planner',()=>{
+test('worker daily plan reads native skills and server interventions before pure skill selection',()=>{
  const worker=source('public/_worker.js');
  assert.match(worker,/import '\.\/server-skill-plan\.js'/);
  assert.match(worker,/users\/\$\{uid\}\/skills/);
+ assert.match(worker,/users\/\$\{uid\}\/interventions/);
  assert.match(worker,/timed\(trace,'skills_list'/);
- assert.match(worker,/SERVER_SKILL_PLAN\.buildPlan\(\{knowledge,skills,concepts,kpUniverse:kpUniverseDocs/);
+ assert.match(worker,/timed\(trace,'interventions_list'/);
+ assert.match(worker,/SERVER_SKILL_PLAN\.buildPlan\(\{knowledge,skills,concepts,interventions,kpUniverse:kpUniverseDocs/);
  assert.doesNotMatch(worker,/const dueIds = new Set\(due\.map/);
 });
 

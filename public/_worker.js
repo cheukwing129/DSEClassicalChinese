@@ -1,10 +1,13 @@
 import './learning-policy.js';
 import './curriculum-v1.js';
 import './server-skill-plan.js';
+import './practice-effectiveness.js';
+import './server-practice-state.js';
 
 const POLICY=globalThis.ManjingoLearningPolicy;
 const CURRICULUM=globalThis.ManjingoCurriculumV1;
 const SERVER_SKILL_PLAN=globalThis.ManjingoServerSkillPlan;
+const SERVER_PRACTICE=globalThis.ManjingoServerPracticeState;
 const PROJECT_FALLBACK = 'manjingo-95d9a';
 const TOKEN_SCOPE = 'https://www.googleapis.com/auth/datastore';
 const FIRESTORE_ROOT = 'https://firestore.googleapis.com/v1';
@@ -256,6 +259,13 @@ function validateAnswer(raw) {
     isCorrect: raw.isCorrect, usedHint: Boolean(raw.usedHint), attemptCount, responseTimeMs, localDate
   };
 }
+function validatePracticeSession(raw){
+  if(!raw||!raw.skillId||!(raw.routeKpId||raw.kpId))throw Object.assign(new Error('Invalid practice session payload'),{status:400});
+  const practiceId=String(raw.practiceId||''),skillId=String(raw.skillId),routeKpId=String(raw.routeKpId||raw.kpId),kpId=String(raw.kpId||routeKpId),strategy=String(raw.strategy||'targeted').toLowerCase(),beforeMastery=Number(raw.beforeMastery),afterMastery=Number(raw.afterMastery),questionCount=Number(raw.questionCount),correctCount=Number(raw.correctCount),completedAt=new Date(raw.completedAt||Date.now()),conceptKey=optionalText(raw.conceptKey,128),conceptLabel=optionalText(raw.conceptLabel,160),conceptBefore=raw.conceptBeforeMastery==null?null:Number(raw.conceptBeforeMastery),conceptAfter=raw.conceptAfterMastery==null?null:Number(raw.conceptAfterMastery),conceptDelta=raw.conceptDelta==null?null:Number(raw.conceptDelta);
+  const masteryOk=[beforeMastery,afterMastery].every(value=>Number.isFinite(value)&&value>=0&&value<=100),conceptOk=[conceptBefore,conceptAfter].every(value=>value==null||(Number.isFinite(value)&&value>=0&&value<=100))&&(conceptDelta==null||Number.isFinite(conceptDelta)),time=completedAt.getTime(),now=Date.now();
+  if(!/^[A-Za-z0-9_-]{8,128}$/.test(practiceId)||!/^[A-Za-z0-9._-]{2,128}$/.test(skillId)||!/^[A-Za-z0-9._-]{1,128}$/.test(routeKpId)||kpId!==routeKpId||!['targeted','remedial','reteach'].includes(strategy)||!masteryOk||!Number.isInteger(questionCount)||questionCount<1||questionCount>20||!Number.isInteger(correctCount)||correctCount<0||correctCount>questionCount||!Number.isFinite(time)||time<now-366*86400000||time>now+10*60000||!conceptOk||(conceptKey&&!/^[A-Za-z0-9:._-]+$/.test(conceptKey)))throw Object.assign(new Error('Invalid practice session payload'),{status:400});
+  return SERVER_PRACTICE.normalizeSession({practiceId,skillId,routeKpId,kpId,beforeMastery,afterMastery,delta:afterMastery-beforeMastery,correctCount,questionCount,accuracy:Math.round(correctCount/questionCount*100),strategy,conceptKey,conceptLabel,conceptBeforeMastery:conceptBefore,conceptAfterMastery:conceptAfter,conceptDelta,completedAt:completedAt.toISOString()});
+}
 
 async function submitAnswer(request, env, uid, trace) {
   let raw;
@@ -354,16 +364,32 @@ async function submitAnswer(request, env, uid, trace) {
   }
 }
 
+async function submitPracticeSession(request,env,uid,trace){
+  let raw;try{raw=await request.json()}catch(_){throw Object.assign(new Error('JSON body required'),{status:400})}
+  const session=validatePracticeSession(raw),token=await timed(trace,'oauth',()=>getServiceAccessToken(env)),kpUniverse=await timed(trace,'kp_list',()=>getKnowledgePointUniverse(env,token)),route=kpUniverse.find(row=>String(row&&row.id)===session.routeKpId),allowed=route?SERVER_SKILL_PLAN.skillIdsForKp(session.routeKpId,route.data||{}):[];
+  if(!route||!allowed.includes(session.skillId))throw Object.assign(new Error('practice skill does not match route knowledge point'),{status:400});
+  const tx=await timed(trace,'practice_tx_begin',()=>beginTransaction(env,token));
+  try{
+    const sessionPath=`users/${uid}/practiceSessions/${session.practiceId}`,interventionPath=`users/${uid}/interventions/${session.skillId}`,[sessionDoc,interventionDoc]=await timed(trace,'practice_tx_reads',()=>batchGetDocuments(env,token,[sessionPath,interventionPath],tx));
+    if(sessionDoc){await timed(trace,'practice_tx_rollback',()=>rollback(env,token,tx));const current=interventionDoc&&interventionDoc.data||{};return json({success:true,practiceSession:sessionDoc.data,interventionState:{...(current.learningState||{}),skillId:session.skillId,kpIds:current.kpIds||[],routeKpId:current.routeKpId||session.routeKpId,updatedAt:current.updatedAt||null,source:current.source||'server-native-v1'},duplicate:true})}
+    const now=new Date(),next=SERVER_PRACTICE.buildIntervention(interventionDoc&&interventionDoc.data,session,now),storedSession={...session,source:'server-native-v1',receivedAt:now};
+    await timed(trace,'practice_commit',()=>commit(env,token,tx,[updateWrite(env,sessionPath,storedSession),updateWrite(env,interventionPath,next)]));
+    return json({success:true,practiceSession:{...session,source:'server-native-v1',receivedAt:now.toISOString()},interventionState:{...next.learningState,skillId:session.skillId,kpIds:next.kpIds,routeKpId:next.routeKpId,updatedAt:now.toISOString(),source:'server-native-v1'},duplicate:false});
+  }catch(error){await timed(trace,'practice_tx_rollback',()=>rollback(env,token,tx));throw error}
+}
+async function practiceState(env,uid,trace){const token=await timed(trace,'oauth',()=>getServiceAccessToken(env)),rows=await timed(trace,'interventions_list',()=>listDocuments(env,token,`users/${uid}/interventions`)),state=SERVER_PRACTICE.flattenInterventions(rows);return json({...state,serverTime:new Date().toISOString()})}
+
 function isDue(data, now) { const value = data && data.nextReviewAt; return !value || new Date(value).getTime() <= now.getTime(); }
 async function dailyPlan(env, uid, trace) {
   const token = await timed(trace,'oauth',()=>getServiceAccessToken(env));
-  const [knowledge, skills, concepts, kpUniverseDocs] = await Promise.all([
+  const [knowledge, skills, concepts, interventions, kpUniverseDocs] = await Promise.all([
     timed(trace,'knowledge_list',()=>listDocuments(env, token, `users/${uid}/knowledge`)),
     timed(trace,'skills_list',()=>listDocuments(env, token, `users/${uid}/skills`)),
     timed(trace,'concepts_list',()=>listDocuments(env, token, `users/${uid}/concepts`)),
+    timed(trace,'interventions_list',()=>listDocuments(env, token, `users/${uid}/interventions`)),
     timed(trace,'kp_list',()=>getKnowledgePointUniverse(env, token))
   ]);
-  const plan=SERVER_SKILL_PLAN.buildPlan({knowledge,skills,concepts,kpUniverse:kpUniverseDocs,targetCount:Number(CURRICULUM&&CURRICULUM.dailyPolicy&&CURRICULUM.dailyPolicy.sessionSize)||10,now:new Date()});
+  const plan=SERVER_SKILL_PLAN.buildPlan({knowledge,skills,concepts,interventions,kpUniverse:kpUniverseDocs,targetCount:Number(CURRICULUM&&CURRICULUM.dailyPolicy&&CURRICULUM.dailyPolicy.sessionSize)||10,now:new Date()});
   return json(plan);
 }
 async function dueKnowledge(env, uid, trace) {
@@ -376,9 +402,11 @@ async function dueKnowledge(env, uid, trace) {
 
 async function api(request, env, trace) {
   const url = new URL(request.url);
-  if (url.pathname === '/api/health') return json({ ok: true, service: 'manjingo-learning', firestoreProject: projectId(env), configured: Boolean(env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY), learningPolicy: 'shared-v1' });
+  if (url.pathname === '/api/health') return json({ ok: true, service: 'manjingo-learning', firestoreProject: projectId(env), configured: Boolean(env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY), learningPolicy: 'shared-v1', practicePolicy:SERVER_PRACTICE.VERSION });
   const uid = await timed(trace,'auth',()=>verifyFirebaseIdToken(request, env));
   if (url.pathname === '/api/submit-answer' && request.method === 'POST') return submitAnswer(request, env, uid, trace);
+  if (url.pathname === '/api/practice-session' && request.method === 'POST') return submitPracticeSession(request, env, uid, trace);
+  if (url.pathname === '/api/practice-state' && request.method === 'GET') return practiceState(env, uid, trace);
   if (url.pathname === '/api/daily-plan' && (request.method === 'GET' || request.method === 'POST')) return dailyPlan(env, uid, trace);
   if (url.pathname === '/api/due-knowledge-points' && (request.method === 'GET' || request.method === 'POST')) return dueKnowledge(env, uid, trace);
   return json({ error: 'Not found' }, 404);
