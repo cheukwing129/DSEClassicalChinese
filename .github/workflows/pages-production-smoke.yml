@@ -32,14 +32,16 @@ jobs:
         if: github.event_name == 'workflow_run'
         run: |
           for attempt in $(seq 1 18); do
-            if curl -fsS "$MANJINGO_BASE_URL/practice-outbox.js" | grep -q 'manjingo_practice_outbox_v1'; then
-              echo "Pages reliability assets are available."
+            if curl -fsS "$MANJINGO_BASE_URL/practice-outbox.js" | grep -q 'manjingo_practice_outbox_v1' && \
+               curl -fsS "$MANJINGO_BASE_URL/stage3-reading.js" | grep -q 'ManjingoStage3Reading' && \
+               curl -fsS "$MANJINGO_BASE_URL/home-shell.js" | grep -q 'stage3-reading.js'; then
+              echo "Pages reliability and Stage 3 assets are available."
               exit 0
             fi
             echo "Waiting for Pages deployment ($attempt/18)..."
             sleep 10
           done
-          echo "::error::Pages did not expose the practice reliability assets within 3 minutes."
+          echo "::error::Pages did not expose the required reliability and Stage 3 assets within 3 minutes."
           exit 1
       - name: Install Firebase Admin cleanup runtime
         run: npm install --prefix functions --no-audit --no-fund
