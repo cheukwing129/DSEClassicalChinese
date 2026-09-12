@@ -107,7 +107,10 @@ test('homepage and lesson wire diagnostics without changing the Stage 3 advanced
   const lesson=fs.readFileSync(path.join(root,'public/lesson.html'),'utf8');
   const pack=fs.readFileSync(path.join(root,'public/question-pack-transfer-07.js'),'utf8');
   assert.match(theme,/stage3-diagnostics\.js/);
-  assert.match(lesson,/local-lesson\.js<\/script><script src="\.\/stage3-diagnostics\.js"/);
+  const localLesson=lesson.indexOf('<script src="./local-lesson.js"></script>');
+  const diagnostics=lesson.indexOf('<script src="./stage3-diagnostics.js"></script>');
+  const open=lesson.indexOf('window.ManjingoLocalLesson.open');
+  assert.ok(localLesson>=0&&diagnostics>localLesson&&open>diagnostics,'diagnostics must patch local lesson before open()');
   assert.match(pack,/skillIds:\['read\.argumentation'\]/);
   assert.match(pack,/skillIds:\['transfer\.short-passage'\]/);
   assert.match(pack,/skillIds:\['transfer\.mixed'\]/);
@@ -121,4 +124,5 @@ test('browser integration exposes a two-question verification route and soft-evi
   assert.match(source,/不會直接降低核心技能掌握度/);
   assert.match(source,/這 2 題才是核心能力證據/);
   assert.match(source,/recordVerification\(skillId/);
+  assert.doesNotMatch(source,/MutationObserver/,'diagnostic refresh should stay event-driven and avoid observer feedback loops');
 });
