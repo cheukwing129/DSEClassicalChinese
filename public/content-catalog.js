@@ -10,6 +10,7 @@ if(typeof document!=='undefined'&&document.readyState==='loading'){
  if(!window.ManjingoQuestionPackTransfer03)document.write('<script src="./question-pack-transfer-03.js"><\/script>');
  if(!window.ManjingoQuestionPackTransfer04)document.write('<script src="./question-pack-transfer-04.js"><\/script>');
  if(!window.ManjingoQuestionPackTransfer05)document.write('<script src="./question-pack-transfer-05.js"><\/script>');
+ if(!window.ManjingoQuestionPackTransfer06)document.write('<script src="./question-pack-transfer-06.js"><\/script>');
 }
 
 const baseKnowledgePoints=[
@@ -55,6 +56,7 @@ const transferPack01=window.ManjingoQuestionPackTransfer01||{questions:[]};
 const transferPack03=window.ManjingoQuestionPackTransfer03||{knowledgePoints:[],questions:[]};
 const transferPack04=window.ManjingoQuestionPackTransfer04||{knowledgePoints:[],questions:[]};
 const transferPack05=window.ManjingoQuestionPackTransfer05||{knowledgePoints:[],questions:[]};
+const transferPack06=window.ManjingoQuestionPackTransfer06||{knowledgePoints:[],questions:[]};
 
 const KP_REVISIONS={
  kp_p3_zhi:{content:'之：跨語境辨析',difficulty:3},kp_p3_er:{content:'而：跨語境辨析',difficulty:3},kp_p3_yi:{content:'以：跨語境辨析',difficulty:3},kp_p3_yu:{content:'於：跨語境辨析',difficulty:3},kp_p3_qi:{content:'其：跨語境辨析',difficulty:3},kp_p3_judgment:{content:'判斷句：跨句辨析',difficulty:3},kp_p3_passive:{content:'被動句：跨形式辨析',difficulty:3},kp_p3_fronting:{content:'賓語前置：跨句辨析',difficulty:3},kp_p3_adverbial:{content:'狀語後置：跨句辨析',difficulty:3},kp_p3_ellipsis:{content:'省略句：語境補足',difficulty:3},kp_p3_translation:{content:'文言翻譯：綜合策略',difficulty:3},kp_p3_argument:{content:'論證方法：綜合辨析',difficulty:3}
@@ -62,11 +64,14 @@ const KP_REVISIONS={
 const QUESTION_REVISIONS={
  p2q044:{q:'曹劌先後否定「衣食所安」和祭祀之福，正確理由是哪一項？',o:['前者是小惠未遍，百姓不會跟從；後者是小信未孚，神不會賜福','兩者都因魯國物資不足','前者違反禮制，後者得罪百姓','兩者都因軍隊不願作戰'],a:'前者是小惠未遍，百姓不會跟從；後者是小信未孚，神不會賜福',explanation:'魯莊公先提出小惠與祭祀作為作戰憑藉，曹劌分別以「小惠未遍，民弗從也」和「小信未孚，神弗福也」否定；直到「小大之獄……必以情」才認為可以一戰。'},
  p3q018:{q:'「其真無馬邪？」中的「其」主要表示？',o:['反問語氣（難道）','推測語氣（大概／恐怕）','代詞（他的）','連詞（如果）'],a:'反問語氣（難道）',explanation:'第一個「其」配合「邪」形成反問，可理解為「難道真的沒有千里馬嗎？」。 '},
- p3q019:{q:'「其真不知馬也」中的「其」主要表示？',o:['推測語氣（大概／恐怕）','反問語氣（難道）','代詞（他的）','指示代詞（這）'],a:'推測語氣（大概／恐怕）',explanation:'前一句用「其」反問「難道真的沒有千里馬嗎」，後一句轉為推測判斷：大概是真的不懂得識別千里馬。'}
+ p3q019:{q:'「其真不知馬也」中的「其」主要表示？',o:['推測語氣（大概／恐怕）','反問語氣（難道）','代詞（他的）','指示代詞（這）'],a:'推測語氣（大概／恐怕）',explanation:'前一句用「其」反問「難道真的沒有千里馬嗎」，後一句轉為推測判斷：大概是真的不懂得識別千里馬。'},
+ tr5q010:{skillIds:['trans.function-word','syn.judgment']},
+ tr5q017:{skillIds:['trans.supplement','syn.ellipsis-subject']},
+ tr5q019:{skillIds:['trans.ancient-modern','lex.ancient-modern']},tr5q020:{skillIds:['trans.ancient-modern','lex.ancient-modern']},tr5q021:{skillIds:['trans.ancient-modern','lex.ancient-modern']},tr5q022:{skillIds:['trans.ancient-modern','lex.ancient-modern']},tr5q023:{skillIds:['trans.ancient-modern','lex.ancient-modern']},tr5q024:{skillIds:['trans.ancient-modern','lex.ancient-modern']}
 };
 
-const knowledgePoints=[...baseKnowledgePoints,...pack02.knowledgePoints,...pack03.knowledgePoints,...transferPack03.knowledgePoints,...transferPack04.knowledgePoints,...transferPack05.knowledgePoints].map(kp=>KP_REVISIONS[kp.kpId]?{...kp,...KP_REVISIONS[kp.kpId]}:{...kp});
-const rawQuestions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions,...capacityPack01.questions,...transferPack01.questions,...transferPack03.questions,...transferPack04.questions,...transferPack05.questions].map(q=>QUESTION_REVISIONS[q.id]?{...q,...QUESTION_REVISIONS[q.id]}:{...q});
+const knowledgePoints=[...baseKnowledgePoints,...pack02.knowledgePoints,...pack03.knowledgePoints,...transferPack03.knowledgePoints,...transferPack04.knowledgePoints,...transferPack05.knowledgePoints,...transferPack06.knowledgePoints].map(kp=>KP_REVISIONS[kp.kpId]?{...kp,...KP_REVISIONS[kp.kpId]}:{...kp});
+const rawQuestions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions,...capacityPack01.questions,...transferPack01.questions,...transferPack03.questions,...transferPack04.questions,...transferPack05.questions,...transferPack06.questions].map(q=>QUESTION_REVISIONS[q.id]?{...q,...QUESTION_REVISIONS[q.id]}:{...q});
 
 function misconceptionConcept(q){
  const kp=String(q&&q.kpId||''),answer=String(q&&q.a||''),text=String(q&&q.q||'');
