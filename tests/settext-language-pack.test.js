@@ -7,9 +7,15 @@ const vm=require('node:vm');
 const root=path.join(__dirname,'..');
 const curriculum=require('../public/curriculum-v1.js');
 const metadata=require('../public/question-metadata-v1.js');
-const packSource=fs.readFileSync(path.join(root,'public','question-pack-settext-language-01.js'),'utf8');
+const read=file=>fs.readFileSync(path.join(root,'public',file),'utf8');
+const packSource=read('question-pack-settext-language-01.js');
 
 function loadPack(){const context={window:{},Array,Object,Number,String,Math,Set,Map};vm.createContext(context);vm.runInContext(packSource,context);return context.window.ManjingoQuestionPackSetTextLanguage01;}
+function loadCatalog(){
+ const context={window:{},Array,Object,Number,String,Math,Set,Map};vm.createContext(context);
+ for(const file of ['question-pack-02.js','question-pack-03.js','question-pack-lesson.js','question-pack-capacity-01.js','question-pack-transfer-01.js','question-pack-transfer-03.js','question-pack-transfer-04.js','question-pack-transfer-05.js','question-pack-transfer-06.js','question-pack-transfer-07.js','question-pack-settext-language-01.js','content-catalog.js'])vm.runInContext(read(file),context,{filename:file});
+ return context.window.ManjingoContent;
+}
 
 const DSE_GROUPS=[
  'lunyu','yuwosuoyu','xiaoyaoyou','quanxue','lianpo-linxiangru','chushibiao',
@@ -58,6 +64,14 @@ test('prescribed texts are used as language material rather than content-recall 
   assert.equal(classified.normalCore,true);
   assert.equal(classified.sourceKind,'set-text');
  }
+});
+
+test('reviewed browser catalog includes all 36 new language questions without new knowledge points',()=>{
+ const catalog=loadCatalog(),setRows=catalog.questions.filter(q=>String(q.id).startsWith('stl1q'));
+ assert.equal(catalog.questions.length,505);
+ assert.equal(catalog.knowledgePoints.filter(kp=>kp.teachable!==false).length,89);
+ assert.equal(setRows.length,36);
+ assert.equal(new Set(setRows.map(q=>q.id)).size,36);
 });
 
 test('browser catalog and Firestore importer both include the prescribed-text language pack',()=>{
