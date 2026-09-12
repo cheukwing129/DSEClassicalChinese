@@ -12,6 +12,7 @@ if(typeof document!=='undefined'&&document.readyState==='loading'){
  if(!window.ManjingoQuestionPackTransfer05)document.write('<script src="./question-pack-transfer-05.js"><\/script>');
  if(!window.ManjingoQuestionPackTransfer06)document.write('<script src="./question-pack-transfer-06.js"><\/script>');
  if(!window.ManjingoQuestionPackTransfer07)document.write('<script src="./question-pack-transfer-07.js"><\/script>');
+ if(!window.ManjingoQuestionPackSetTextLanguage01)document.write('<script src="./question-pack-settext-language-01.js"><\/script>');
 }
 
 const baseKnowledgePoints=[
@@ -59,6 +60,7 @@ const transferPack04=window.ManjingoQuestionPackTransfer04||{knowledgePoints:[],
 const transferPack05=window.ManjingoQuestionPackTransfer05||{knowledgePoints:[],questions:[]};
 const transferPack06=window.ManjingoQuestionPackTransfer06||{knowledgePoints:[],questions:[]};
 const transferPack07=window.ManjingoQuestionPackTransfer07||{knowledgePoints:[],questions:[]};
+const setTextLanguagePack=window.ManjingoQuestionPackSetTextLanguage01||{questions:[]};
 
 const KP_REVISIONS={
  kp_p3_zhi:{content:'之：跨語境辨析',difficulty:3},kp_p3_er:{content:'而：跨語境辨析',difficulty:3},kp_p3_yi:{content:'以：跨語境辨析',difficulty:3},kp_p3_yu:{content:'於：跨語境辨析',difficulty:3},kp_p3_qi:{content:'其：跨語境辨析',difficulty:3},kp_p3_judgment:{content:'判斷句：跨句辨析',difficulty:3},kp_p3_passive:{content:'被動句：跨形式辨析',difficulty:3},kp_p3_fronting:{content:'賓語前置：跨句辨析',difficulty:3},kp_p3_adverbial:{content:'狀語後置：跨句辨析',difficulty:3},kp_p3_ellipsis:{content:'省略句：語境補足',difficulty:3},kp_p3_translation:{content:'文言翻譯：綜合策略',difficulty:3},kp_p3_argument:{content:'論證方法：綜合辨析',difficulty:3}
@@ -73,7 +75,7 @@ const QUESTION_REVISIONS={
 };
 
 const knowledgePoints=[...baseKnowledgePoints,...pack02.knowledgePoints,...pack03.knowledgePoints,...transferPack03.knowledgePoints,...transferPack04.knowledgePoints,...transferPack05.knowledgePoints,...transferPack06.knowledgePoints,...transferPack07.knowledgePoints].map(kp=>KP_REVISIONS[kp.kpId]?{...kp,...KP_REVISIONS[kp.kpId]}:{...kp});
-const rawQuestions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions,...capacityPack01.questions,...transferPack01.questions,...transferPack03.questions,...transferPack04.questions,...transferPack05.questions,...transferPack06.questions,...transferPack07.questions].map(q=>QUESTION_REVISIONS[q.id]?{...q,...QUESTION_REVISIONS[q.id]}:{...q});
+const rawQuestions=[...baseQuestions,...pack02.questions,...pack03.questions,...lessonPack.questions,...capacityPack01.questions,...transferPack01.questions,...transferPack03.questions,...transferPack04.questions,...transferPack05.questions,...transferPack06.questions,...transferPack07.questions,...setTextLanguagePack.questions].map(q=>QUESTION_REVISIONS[q.id]?{...q,...QUESTION_REVISIONS[q.id]}:{...q});
 
 function misconceptionConcept(q){
  const kp=String(q&&q.kpId||''),answer=String(q&&q.a||''),text=String(q&&q.q||'');

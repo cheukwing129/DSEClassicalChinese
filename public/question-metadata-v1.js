@@ -125,19 +125,29 @@ const SOURCE_SENTENCE_GROUPS={
  p3q030:'sentence:loushiming:helouzhiyou'
 };
 
-const SET_TEXT_IDS=new Set([
+const DSE_SET_TEXT_IDS=new Set([
+ 'lunyu','yuwosuoyu','xiaoyaoyou','quanxue','lianpo-linxiangru','chushibiao',
+ 'shishuo','shidexishan','yueyanglou','liuguolun','tangshi-sanshou','songci-sanshou'
+]);
+const DSE_SET_TEXT_ALIASES=new Map([
+ ['lianpo','lianpo-linxiangru'],
+ ['xunzi-quanxue-stage3','quanxue']
+]);
+const LEGACY_SET_TEXT_IDS=new Set([
  'yueyanglou','chushibiao','yuwosuoyu','shengyouhuan','caogui','zouji',
  'taohuayuan','loushiming','ailianshuo','maqianlishuo','xiaoshitan'
 ]);
+const SET_TEXT_IDS=new Set([...DSE_SET_TEXT_IDS,...LEGACY_SET_TEXT_IDS,...DSE_SET_TEXT_ALIASES.keys()]);
 const CORE_ACTIONS=new Set(['retain','refactor','merge']);
 const SOURCE_KINDS=new Set(['set-text','classical-canon','historical','constructed','mixed']);
 
+function canonicalDseSetTextId(value){const id=String(value||'');return DSE_SET_TEXT_ALIASES.get(id)||id;}
+function isDseSetTextId(value){return DSE_SET_TEXT_IDS.has(canonicalDseSetTextId(value));}
 function migrationFor(kpId){
   if(!curriculum)return null;
   if(typeof curriculum.migrationFor==='function')return curriculum.migrationFor(kpId);
   return curriculum.migration&&curriculum.migration[String(kpId)]||null;
 }
-
 function skillStage(skillId){
   if(!curriculum)return 0;
   const definition=typeof curriculum.skill==='function'?curriculum.skill(skillId):Array.isArray(curriculum.skills)?curriculum.skills.find(x=>String(x.id)===String(skillId)):null;
@@ -180,7 +190,7 @@ function inferSourceKind(question){
   if(SOURCE_KINDS.has(explicit))return explicit;
   const sourceTextId=resolvedSourceTextId(question);
   if(!sourceTextId||sourceTextId==='CROSS')return'mixed';
-  return SET_TEXT_IDS.has(sourceTextId)?'set-text':'classical-canon';
+  return isDseSetTextId(sourceTextId)||LEGACY_SET_TEXT_IDS.has(sourceTextId)?'set-text':'classical-canon';
 }
 
 function defaultTransferLevel(question,mode){
@@ -241,8 +251,13 @@ return{
   QUESTION_OVERRIDES,
   SOURCE_TEXT_OVERRIDES,
   SOURCE_SENTENCE_GROUPS,
+  DSE_SET_TEXT_IDS,
+  DSE_SET_TEXT_ALIASES,
+  LEGACY_SET_TEXT_IDS,
   SET_TEXT_IDS,
   SOURCE_KINDS,
+  canonicalDseSetTextId,
+  isDseSetTextId,
   normalizeSentence,
   quotedSegments,
   inferSourceSentenceId,
