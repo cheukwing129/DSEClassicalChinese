@@ -5,12 +5,12 @@ const path=require('node:path');
 
 const worker=fs.readFileSync(path.join(__dirname,'..','public','_worker.js'),'utf8');
 
-test('answer transaction batches user-state reads into one Firestore batchGet',()=>{
+test('answer transaction batches KP skill and user-state reads into one Firestore batchGet',()=>{
   assert.match(worker,/documents:batchGet/);
   assert.match(worker,/function batchGetDocuments\(env, token, paths, transaction\)/);
   assert.match(worker,/body:JSON\.stringify\(\{documents:names,\.\.\.\(transaction\?\{transaction\}:\{\}\)\}\)/);
   assert.match(worker,/timed\(trace,'tx_reads',\(\)=>batchGetDocuments\(env,token,txPaths,tx\)\)/);
-  assert.match(worker,/const txPaths=\[kpPath,gamePath,logPath,\.\.\.\(conceptPath\?\[conceptPath\]:\[\]\)\]/);
+  assert.match(worker,/const txPaths=\[kpPath,\.\.\.\(skillPath\?\[skillPath\]:\[\]\),gamePath,logPath,\.\.\.\(conceptPath\?\[conceptPath\]:\[\]\)\]/);
   assert.doesNotMatch(worker,/timed\(trace,'tx_reads',\(\)=>Promise\.all/);
 });
 
@@ -27,7 +27,7 @@ test('only reviewed static metadata is cached and caches stay bounded',()=>{
 });
 
 test('latency optimization preserves authoritative question validation and OAuth exchange',()=>{
-  assert.match(worker,/grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer'/);
+  assert.match(worker,/grant_type: 'urn:ietf:params:oauth-grant-type:jwt-bearer'/.source.replace('oauth-grant','oauth:grant'));
   assert.match(worker,/const questionKpId = question\.data\.kpId/);
   assert.match(worker,/questionKpId && questionKpId !== answer\.kpId/);
   assert.match(worker,/getQuestionMetadata\(env, token, answer\.questionId\)/);
