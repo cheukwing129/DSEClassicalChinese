@@ -88,3 +88,13 @@ test('study shell tracks question position and restores the homepage after compl
   assert.match(source,/document\.body\.classList\.remove\(STUDY_CLASS\)/);
   assert.match(source,/已完成的進度會保留/);
 });
+
+test('homepage hides placeholder zero-state until local learning hydration is rendered',()=>{
+  const html=read('public/index.html');
+  assert.match(html,/<html lang="zh-Hant" class="app-booting">/);
+  assert.match(html,/html\.app-booting body\{visibility:hidden\}/);
+  assert.match(html,/載入學習進度…/);
+  assert.match(html,/function revealApp\(\)\{document\.documentElement\.classList\.remove\('app-booting'\)\}/);
+  assert.match(html,/render\(\);applyLocalPlan\(\);revealApp\(\);void loadCloudPlan\(\);/);
+  assert.ok(html.indexOf('render();applyLocalPlan();revealApp()')<html.indexOf('void loadCloudPlan()'));
+});
