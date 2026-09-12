@@ -12,7 +12,7 @@ const manifest=JSON.parse(read('public/mascot/manifest.json'));
 const stateIds=['neutral','happy','celebrate','encouraging','thinking','determined'];
 const sizes=[32,48,64,96,160];
 const productionPriority=['happy','encouraging','thinking','determined','celebrate'];
-const pendingPriority=['celebrate'];
+const pendingPriority=[];
 
 test('mascot manifest is the complete six-state v1 contract',()=>{
   assert.equal(manifest.version,1);
@@ -42,6 +42,8 @@ test('runtime and manifest stay in exact parity including artwork readiness',()=
   assert.equal(runtime.descriptor('encouraging').artStatus,'production');
   assert.equal(runtime.isProductionArt('thinking'),true);
   assert.equal(runtime.descriptor('thinking').artStatus,'production');
+  assert.equal(runtime.isProductionArt('celebrate'),true);
+  assert.equal(runtime.descriptor('celebrate').artStatus,'production');
   assert.deepEqual(runtime.productionQueue().map(state=>state.id),pendingPriority);
 });
 
@@ -62,11 +64,11 @@ test('manifest artwork lifecycle distinguishes baseline-derived, candidate, and 
   assert.equal(happy.artStatus,'production');
   assert.equal(encouraging.artStatus,'production');
   assert.equal(thinking.artStatus,'production');
-  assert.equal(celebrate.artStatus,'candidate');
+  assert.equal(celebrate.artStatus,'production');
   assert.match(read('public/mascot/moling-happy.svg'),/happy production artwork/);
   assert.match(read('public/mascot/moling-encouraging.svg'),/encouraging production artwork v4/);
   assert.match(read('public/mascot/moling-thinking.svg'),/thinking production artwork v2/);
-  assert.match(read('public/mascot/moling-celebrate.svg'),/celebrate 狀態 P5 candidate artwork v4/);
+  assert.match(read('public/mascot/moling-celebrate.svg'),/celebrate 狀態 P5 production artwork v4/);
 });
 
 test('happy production v2 keeps the real smile primary at feedback sizes',()=>{
@@ -109,7 +111,7 @@ test('thinking P3 production art encodes curious focus without confused cues',()
 test('celebrate P5 QA covers happy comparison and completion layouts',()=>{
   const qa=read('public/mascot-celebrate-p5-qa.html');
   assert.match(qa,/Celebrate P5 Visual QA/);
-  assert.match(qa,/P5 · candidate v4/);
+  assert.match(qa,/P5 · production v4/);
   assert.match(qa,/Gate A · same-character identity/);
   assert.match(qa,/moling-neutral-all-ink-candidate\.svg/);
   assert.match(qa,/identityGrid/);
