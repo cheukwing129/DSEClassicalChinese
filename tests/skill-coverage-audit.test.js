@@ -3,74 +3,15 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
-
 const root=path.join(__dirname,'..');
 const curriculum=require('../public/curriculum-v1.js');
 const metadata=require('../public/question-metadata-v1.js');
 function read(file){return fs.readFileSync(path.join(root,file),'utf8')}
-function loadCatalog(){
- const context={window:{},Map,Set,Array,Object,Number,String,Math,RegExp};vm.createContext(context);
- for(const file of ['public/question-pack-02.js','public/question-pack-03.js','public/question-pack-lesson.js','public/question-pack-capacity-01.js','public/question-pack-transfer-01.js','public/question-pack-transfer-03.js','public/question-pack-transfer-04.js','public/content-catalog.js'])vm.runInContext(read(file),context,{filename:file});
- return context.window.ManjingoContent;
-}
-function coverage(){
- const catalog=loadCatalog(),questions=metadata.annotateAll(catalog.questions).filter(q=>q.normalCore),policy=curriculum.qualityPolicy;
- return curriculum.coreSkills().map(skill=>{
-  const matched=questions.filter(q=>q.skillIds.includes(skill.id));
-  const namedSources=new Set(matched.map(q=>String(q.sourceTextId||'')).filter(x=>x&&x!=='CROSS'&&x!=='UNKNOWN'));
-  const sentenceIds=new Set(matched.map(q=>String(q.sourceSentenceId||'')).filter(Boolean));
-  const unseen=matched.filter(q=>q.sourceKind!=='set-text').length;
-  const gaps=[];
-  if(matched.length<policy.minimumQuestionsPerCoreSkill)gaps.push(`questions:${matched.length}/${policy.minimumQuestionsPerCoreSkill}`);
-  if(namedSources.size<policy.minimumSourceTextsPerCoreSkill)gaps.push(`sources:${namedSources.size}/${policy.minimumSourceTextsPerCoreSkill}`);
-  if(unseen<policy.minimumUnseenOrNonSetTextQuestions)gaps.push(`unseen:${unseen}/${policy.minimumUnseenOrNonSetTextQuestions}`);
-  return{id:skill.id,domain:skill.domain,stage:skill.stage,questions:matched.length,sources:namedSources.size,sentences:sentenceIds.size,unseen,setText:matched.length-unseen,gaps,sourceIds:Array.from(namedSources).sort()};
- });
-}
-
-test('skill coverage audit reports current transfer-content debt without hiding zero-coverage skills',()=>{
- const report=coverage(),core=metadata.normalCoreQuestions(loadCatalog().questions);
- assert.equal(core.length,225);
- assert.equal(report.length,curriculum.coreSkills().length);
- assert.ok(report.some(x=>x.questions===0),'zero-coverage core skills must stay visible in the audit');
- assert.ok(report.some(x=>x.gaps.length===0),'audit should distinguish mature-enough skills from content debt');
- const deficits=report.filter(x=>x.gaps.length).sort((a,b)=>a.questions-b.questions||a.sources-b.sources||a.id.localeCompare(b.id));
- assert.equal(deficits.length,27,'stage 1 reading pack should clear four previous deficits');
- console.log('SKILL_COVERAGE_AUDIT='+JSON.stringify({totalCoreQuestions:core.length,coreSkills:report.length,deficitSkills:deficits.length,deficits}));
-});
-
-test('transfer pack 02 clears the six priority coverage gaps',()=>{
- const byId=new Map(coverage().map(x=>[x.id,x]));
- for(const id of ['trans.lexical-fidelity','trans.reorder','trans.integrated','fw.nai','lex.causative','read.referent-tracking']){
-  const row=byId.get(id);
-  assert.ok(row,`missing coverage row for ${id}`);
-  assert.deepEqual(row.gaps,[],`${id} still below quality floor: ${row.gaps.join(', ')}`);
-  assert.ok(row.questions>=6,`${id} needs at least six questions`);
-  assert.ok(row.sources>=3,`${id} needs at least three named sources`);
-  assert.ok(row.unseen>=2,`${id} needs at least two non-set-text questions`);
- }
-});
-
-test('stage 1 function-word pack clears four zero-coverage foundation skills',()=>{
- const byId=new Map(coverage().map(x=>[x.id,x]));
- for(const id of ['fw.wei','fw.zhe','fw.suo','fw.ye']){
-  const row=byId.get(id);
-  assert.ok(row,`missing coverage row for ${id}`);
-  assert.deepEqual(row.gaps,[],`${id} still below quality floor: ${row.gaps.join(', ')}`);
-  assert.equal(row.questions,6,`${id} should launch with six reviewed questions`);
-  assert.ok(row.sources>=3,`${id} needs at least three named sources`);
-  assert.equal(row.unseen,6,`${id} should launch entirely in non-set-text transfer contexts`);
- }
-});
-
-test('stage 1 reading pack clears four zero-coverage foundation skills',()=>{
- const byId=new Map(coverage().map(x=>[x.id,x]));
- for(const id of ['read.sentence-core','read.context-clues','read.logical-relation','syn.negative-patterns']){
-  const row=byId.get(id);
-  assert.ok(row,`missing coverage row for ${id}`);
-  assert.deepEqual(row.gaps,[],`${id} still below quality floor: ${row.gaps.join(', ')}`);
-  assert.equal(row.questions,6,`${id} should launch with six reviewed questions`);
-  assert.ok(row.sources>=3,`${id} needs at least three named sources`);
-  assert.equal(row.unseen,6,`${id} should launch entirely in non-set-text transfer contexts`);
- }
-});
+function loadCatalog(){const context={window:{},Map,Set,Array,Object,Number,String,Math,RegExp};vm.createContext(context);for(const file of ['public/question-pack-02.js','public/question-pack-03.js','public/question-pack-lesson.js','public/question-pack-capacity-01.js','public/question-pack-transfer-01.js','public/question-pack-transfer-03.js','public/question-pack-transfer-04.js','public/question-pack-transfer-05.js','public/content-catalog.js'])vm.runInContext(read(file),context,{filename:file});return context.window.ManjingoContent;}
+function coverage(){const catalog=loadCatalog(),questions=metadata.annotateAll(catalog.questions).filter(q=>q.normalCore),policy=curriculum.qualityPolicy;return curriculum.coreSkills().map(skill=>{const matched=questions.filter(q=>q.skillIds.includes(skill.id)),namedSources=new Set(matched.map(q=>String(q.sourceTextId||'')).filter(x=>x&&x!=='CROSS'&&x!=='UNKNOWN')),sentenceIds=new Set(matched.map(q=>String(q.sourceSentenceId||'')).filter(Boolean)),unseen=matched.filter(q=>q.sourceKind!=='set-text').length,gaps=[];if(matched.length<policy.minimumQuestionsPerCoreSkill)gaps.push(`questions:${matched.length}/${policy.minimumQuestionsPerCoreSkill}`);if(namedSources.size<policy.minimumSourceTextsPerCoreSkill)gaps.push(`sources:${namedSources.size}/${policy.minimumSourceTextsPerCoreSkill}`);if(unseen<policy.minimumUnseenOrNonSetTextQuestions)gaps.push(`unseen:${unseen}/${policy.minimumUnseenOrNonSetTextQuestions}`);return{id:skill.id,domain:skill.domain,stage:skill.stage,questions:matched.length,sources:namedSources.size,sentences:sentenceIds.size,unseen,setText:matched.length-unseen,gaps,sourceIds:Array.from(namedSources).sort()};});}
+function assertCleared(ids){const byId=new Map(coverage().map(x=>[x.id,x]));for(const id of ids){const row=byId.get(id);assert.ok(row,`missing coverage row for ${id}`);assert.deepEqual(row.gaps,[],`${id} still below quality floor: ${row.gaps.join(', ')}`);assert.ok(row.questions>=6,`${id} needs at least six questions`);assert.ok(row.sources>=3,`${id} needs at least three named sources`);assert.ok(row.unseen>=2,`${id} needs at least two non-set-text questions`);}}
+test('skill coverage audit reports current transfer-content debt without hiding zero-coverage skills',()=>{const report=coverage(),core=metadata.normalCoreQuestions(loadCatalog().questions);assert.equal(core.length,249);assert.equal(report.length,curriculum.coreSkills().length);assert.ok(report.some(x=>x.questions===0));assert.ok(report.some(x=>x.gaps.length===0));const deficits=report.filter(x=>x.gaps.length).sort((a,b)=>a.questions-b.questions||a.sources-b.sources||a.id.localeCompare(b.id));assert.equal(deficits.length,23,'stage 1 translation pack should clear four previous deficits');console.log('SKILL_COVERAGE_AUDIT='+JSON.stringify({totalCoreQuestions:core.length,coreSkills:report.length,deficitSkills:deficits.length,deficits}));});
+test('transfer pack 02 clears the six priority coverage gaps',()=>assertCleared(['trans.lexical-fidelity','trans.reorder','trans.integrated','fw.nai','lex.causative','read.referent-tracking']));
+test('stage 1 function-word pack clears four zero-coverage foundation skills',()=>assertCleared(['fw.wei','fw.zhe','fw.suo','fw.ye']));
+test('stage 1 reading pack clears four zero-coverage foundation skills',()=>assertCleared(['read.sentence-core','read.context-clues','read.logical-relation','syn.negative-patterns']));
+test('stage 1 translation pack clears four zero-coverage foundation skills',()=>{const ids=['syn.interrogative-patterns','trans.function-word','trans.supplement','trans.ancient-modern'];assertCleared(ids);const byId=new Map(coverage().map(x=>[x.id,x]));for(const id of ids){assert.equal(byId.get(id).questions,6,`${id} should launch with six reviewed questions`);assert.equal(byId.get(id).unseen,6,`${id} should launch entirely in non-set-text contexts`);}});

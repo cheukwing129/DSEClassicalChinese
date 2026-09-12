@@ -31,8 +31,8 @@ test('Firestore importer resolves Firebase Admin through the Functions package b
 
 test('prune only removes stale question and knowledge-point documents',()=>{
   const source=read('scripts/import_to_firestore.js');
-  assert.match(source,/mode === 'prune'/);
-  assert.match(source,/report\.collectionName !== 'texts'/);
+  assert.match(source,/mode\s*===\s*'prune'/);
+  assert.match(source,/report\.collectionName\s*!==\s*'texts'/);
   assert.match(source,/deleteStale/);
   assert.match(source,/Firestore catalog still differs after synchronization/);
 });

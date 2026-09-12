@@ -27,7 +27,6 @@ const skills=[
  {id:'lex.intentional',domain:'lex',label:'意動用法',stage:2},
  {id:'lex.tongjia',domain:'lex',label:'通假／文字對應',stage:2},
  {id:'lex.semantic-role',domain:'lex',label:'依句法位置判斷詞性與語義功能',stage:2},
-
  {id:'fw.zhi',domain:'fw',label:'之',stage:1},
  {id:'fw.er',domain:'fw',label:'而',stage:1},
  {id:'fw.yi',domain:'fw',label:'以',stage:1},
@@ -42,7 +41,6 @@ const skills=[
  {id:'fw.hu',domain:'fw',label:'乎',stage:2},
  {id:'fw.yan',domain:'fw',label:'焉',stage:2},
  {id:'fw.ye',domain:'fw',label:'也',stage:1},
-
  {id:'syn.judgment',domain:'syn',label:'判斷句',stage:1},
  {id:'syn.passive',domain:'syn',label:'被動句',stage:1},
  {id:'syn.object-fronting',domain:'syn',label:'賓語前置',stage:1},
@@ -53,7 +51,6 @@ const skills=[
  {id:'syn.negative-patterns',domain:'syn',label:'否定結構',stage:1},
  {id:'syn.interrogative-patterns',domain:'syn',label:'疑問結構',stage:1},
  {id:'syn.fixed-patterns',domain:'syn',label:'常見固定格式',stage:2},
-
  {id:'read.sentence-core',domain:'read',label:'找句子主幹',stage:1},
  {id:'read.referent-tracking',domain:'read',label:'代詞與省略主語追蹤',stage:1},
  {id:'read.logical-relation',domain:'read',label:'因果／轉折／承接／假設／並列',stage:1},
@@ -62,7 +59,6 @@ const skills=[
  {id:'read.actor-tracking',domain:'read',label:'多人物敘事施事者追蹤',stage:2},
  {id:'read.unknown-word-tolerance',domain:'read',label:'不逐字全懂仍能掌握句意',stage:2},
  {id:'read.argumentation',domain:'read',label:'論證方法與說理關係',stage:3},
-
  {id:'trans.lexical-fidelity',domain:'trans',label:'關鍵實詞落實',stage:1},
  {id:'trans.function-word',domain:'trans',label:'虛詞處理',stage:1},
  {id:'trans.reorder',domain:'trans',label:'倒裝還原',stage:1},
@@ -70,7 +66,6 @@ const skills=[
  {id:'trans.ancient-modern',domain:'trans',label:'古今義轉換',stage:1},
  {id:'trans.fluency',domain:'trans',label:'準確而自然的現代漢語',stage:2},
  {id:'trans.integrated',domain:'trans',label:'綜合翻譯',stage:2},
-
  {id:'transfer.single-sentence',domain:'transfer',label:'單句陌生語境',stage:1},
  {id:'transfer.sentence-pair',domain:'transfer',label:'兩句互證',stage:2},
  {id:'transfer.micro-passage',domain:'transfer',label:'3–5 句小段',stage:2},
@@ -95,6 +90,10 @@ const migration={
  kp_read_context_clues:{action:'retain',targetSkillIds:['read.context-clues']},
  kp_read_logical_relation:{action:'retain',targetSkillIds:['read.logical-relation']},
  kp_syn_negative_patterns:{action:'retain',targetSkillIds:['syn.negative-patterns']},
+ kp_syn_interrogative_patterns:{action:'retain',targetSkillIds:['syn.interrogative-patterns']},
+ kp_trans_function_word:{action:'retain',targetSkillIds:['trans.function-word']},
+ kp_trans_supplement:{action:'retain',targetSkillIds:['trans.supplement']},
+ kp_trans_ancient_modern:{action:'retain',targetSkillIds:['trans.ancient-modern']},
  gj_004:{action:'retain',targetSkillIds:['lex.ancient-modern']},
  gj_005:{action:'retain',targetSkillIds:['lex.ancient-modern']},
  cy_004:{action:'refactor',targetSkillIds:['lex.word-class-shift']},
@@ -110,7 +109,6 @@ const migration={
  kp_argument_001:{action:'advanced-reading',targetSkillIds:['read.argumentation']},
  kp_argument_002:{action:'advanced-reading',targetSkillIds:['read.argumentation']},
  kp_argument_003:{action:'advanced-reading',targetSkillIds:['read.argumentation']},
-
  kp_yueyang_context:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
  kp_yueyang_scene:{action:'optional-set-text',targetSkillIds:[]},
  kp_yueyang_emotion:{action:'optional-set-text',targetSkillIds:[]},
@@ -135,7 +133,6 @@ const migration={
  kp_maqianli_ignorance:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
  kp_xiaoshi_pool:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
  kp_xiaoshi_mood:{action:'optional-set-text',targetSkillIds:[],salvageQuestions:true},
-
  kp_p3_zhi:{action:'merge',targetSkillIds:['fw.zhi']},
  kp_p3_er:{action:'merge',targetSkillIds:['fw.er']},
  kp_p3_yi:{action:'merge',targetSkillIds:['fw.yi']},
@@ -150,28 +147,10 @@ const migration={
  kp_p3_argument:{action:'advanced-reading',targetSkillIds:['read.argumentation']}
 };
 
-const dailyPolicy={
- sessionSize:10,
- languageSkillTarget:{min:7,max:8},
- transferTarget:{min:2,max:3},
- setTextRecallTarget:{min:0,max:0},
- maxQuestionsPerSourceText:2,
- maxQuestionsPerSourceSentence:1,
- wrongAnswerFollowup:'same-skill-different-context-first'
-};
-
-const qualityPolicy={
- minimumQuestionsPerCoreSkill:6,
- minimumSourceTextsPerCoreSkill:3,
- minimumUnseenOrNonSetTextQuestions:2,
- maximumSingleSentenceShare:0.25,
- matureQuestionsPerSkill:{min:10,max:20},
- matureSourceTextsPerSkill:5
-};
-
+const dailyPolicy={sessionSize:10,languageSkillTarget:{min:7,max:8},transferTarget:{min:2,max:3},setTextRecallTarget:{min:0,max:0},maxQuestionsPerSourceText:2,maxQuestionsPerSourceSentence:1,wrongAnswerFollowup:'same-skill-different-context-first'};
+const qualityPolicy={minimumQuestionsPerCoreSkill:6,minimumSourceTextsPerCoreSkill:3,minimumUnseenOrNonSetTextQuestions:2,maximumSingleSentenceShare:0.25,matureQuestionsPerSkill:{min:10,max:20},matureSourceTextsPerSkill:5};
 function skill(id){return skills.find(x=>x.id===String(id))||null}
 function migrationFor(kpId){return migration[String(kpId)]||null}
 function coreSkills(){return skills.filter(x=>x.stage<=2)}
-
 return{VERSION,domains,skills,migration,dailyPolicy,qualityPolicy,skill,migrationFor,coreSkills};
 });
