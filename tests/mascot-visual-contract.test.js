@@ -109,6 +109,10 @@ test('thinking P3 production art encodes curious focus without confused cues',()
 test('celebrate P5 QA covers happy comparison and completion layouts',()=>{
   const qa=read('public/mascot-celebrate-p5-qa.html');
   assert.match(qa,/Celebrate P5 Visual QA/);
+  assert.match(qa,/P5 · candidate v4/);
+  assert.match(qa,/Gate A · same-character identity/);
+  assert.match(qa,/moling-neutral-all-ink-candidate\.svg/);
+  assert.match(qa,/identityGrid/);
   assert.match(qa,/const sizes=\[34,42,48,64,96,160\]/);
   assert.match(qa,/runtime\.asset\('happy'\)/);
   assert.match(qa,/runtime\.asset\('celebrate'\)/);
