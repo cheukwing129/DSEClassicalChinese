@@ -135,10 +135,17 @@ test('cleanup recursively removes temporary Firestore data and Firebase Auth use
   assert.match(source,/unlinkSync\(stateFile\)/);
 });
 
-test('production smoke workflow gates execution and always runs credentialed cleanup',()=>{
+test('production smoke runs automatically after successful main tests and always cleans up',()=>{
   const workflow=read('.github/workflows/pages-production-smoke.yml');
   assert.match(workflow,/workflow_dispatch/);
+  assert.match(workflow,/schedule:/);
+  assert.match(workflow,/workflow_run:/);
+  assert.match(workflow,/workflows: \['Tests'\]/);
+  assert.match(workflow,/github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(workflow,/github\.event\.workflow_run\.head_branch == 'main'/);
   assert.match(workflow,/ENABLE_PAGES_SMOKE == 'true'/);
+  assert.match(workflow,/practice-outbox\.js/);
+  assert.match(workflow,/seq 1 18/);
   assert.match(workflow,/npm run smoke:pages/);
   assert.match(workflow,/MANJINGO_BASE_URL/);
   assert.match(workflow,/Install Firebase Admin cleanup runtime/);
