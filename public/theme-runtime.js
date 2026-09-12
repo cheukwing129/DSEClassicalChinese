@@ -1,0 +1,19 @@
+(function(root,factory){
+'use strict';
+const api=factory(root);
+if(typeof module==='object'&&module.exports)module.exports=api;
+root.ManjingoTheme=api;
+})(typeof globalThis!=='undefined'?globalThis:this,function(root){
+'use strict';
+const STORAGE_KEY='manjingo.uiTheme';
+const THEMES=Object.freeze({classic:{id:'classic',label:'經典綠'},ink:{id:'ink',label:'墨靈'}});
+function normalizeTheme(value){return Object.prototype.hasOwnProperty.call(THEMES,String(value||''))?String(value):'classic'}
+function storage(){try{return root&&root.localStorage?root.localStorage:null}catch(e){return null}}
+function read(){const store=storage();try{return normalizeTheme(store&&store.getItem(STORAGE_KEY))}catch(e){return'classic'}}
+function updateControls(theme){if(typeof document==='undefined')return;document.querySelectorAll('[data-ui-theme-choice]').forEach(button=>{const active=button.getAttribute('data-ui-theme-choice')===theme;button.setAttribute('aria-pressed',active?'true':'false');button.classList.toggle('active',active)})}
+function apply(value,options){const theme=normalizeTheme(value),opts=options||{};if(typeof document!=='undefined'&&document.documentElement)document.documentElement.setAttribute('data-ui-theme',theme);if(opts.persist!==false){const store=storage();try{if(store)store.setItem(STORAGE_KEY,theme)}catch(e){}}updateControls(theme);if(typeof document!=='undefined'&&typeof root.CustomEvent==='function')document.dispatchEvent(new root.CustomEvent('manjingo:themechange',{detail:{theme}}));return theme}
+function buildSwitcher(){if(typeof document==='undefined'||!document.body||document.getElementById('uiThemeSwitcher'))return false;const wrap=document.createElement('div');wrap.id='uiThemeSwitcher';wrap.className='ui-theme-switcher';wrap.setAttribute('role','group');wrap.setAttribute('aria-label','介面主題');const label=document.createElement('span');label.className='ui-theme-label';label.textContent='介面';wrap.appendChild(label);Object.keys(THEMES).forEach(id=>{const button=document.createElement('button');button.type='button';button.className='ui-theme-choice';button.setAttribute('data-ui-theme-choice',id);button.setAttribute('aria-pressed','false');button.textContent=THEMES[id].label;button.addEventListener('click',()=>apply(id));wrap.appendChild(button)});document.body.insertBefore(wrap,document.body.firstChild);updateControls(normalizeTheme(document.documentElement.getAttribute('data-ui-theme')));return true}
+function install(){apply(read(),{persist:false});buildSwitcher();return true}
+if(typeof document!=='undefined'){apply(read(),{persist:false});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install()}
+return{storageKey:STORAGE_KEY,themes:THEMES,normalizeTheme,read,apply,buildSwitcher,install};
+});
